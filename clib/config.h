@@ -20,7 +20,7 @@
  */
 
 /* fftw.h -- system-wide definitions */
-/* $Id: config.h,v 1.1 2003/01/19 21:58:43 giannozz Exp $ */
+/* $Id: config.h,v 1.1.1.1 2003/01/19 21:58:43 giannozz Exp $ */
 
 /* configuration options (guessed by configure) */
 
