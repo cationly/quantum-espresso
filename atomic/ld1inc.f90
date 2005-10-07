@@ -91,6 +91,9 @@ module ld1inc
        enls(nwfsx),      & ! the energies of the pseudo atom
        jjs(nwfsx),       & ! the j of each wavefunction (only rel=2)
        ocs(nwfsx),       & ! the occupations of the pseudo atom
+#if defined __PAW_FROM_NC__
+       rcutnc2paw(nwfsx), & ! the cut-off radius for NC wavefunctions to be used instead of AE ones in the construction of PAW
+#endif
        rcut(nwfsx),      & ! the cut-off radius for pseudowavefunctions
        rcutus(nwfsx),    & ! the cut-off radius for us-pseudowavefunctions
        rcloc,            & ! cut-off for local potential
@@ -226,6 +229,7 @@ module ld1inc
        psipaw(ndm,nwfsx),& ! the all-electron wavefunctions for any beta
        aeccharge(ndm),   & ! true, not smoothened, AE core charge for PAW
        psccharge(ndm)      ! smoothened core charge for PAW
+  character(len=20) :: which_paw_augfun  ! choose shape of PAW augm. funct.
   !
   !  file names
   !

@@ -56,7 +56,7 @@ MODULE atomic_paw
      INTEGER        :: mesh      ! the size of the mesh
      REAL (dp) :: r (ndm)   ! the mesh
      REAL (dp) :: r2 (ndm)  ! r^2
-     REAL (dp) :: sqr (ndm) ! sqrt(r)
+     REAL (dp) :: sqrtr (ndm) ! sqrt(r)
      REAL (dp) :: dx        ! log(r(i+1))-log(r(i))
      LOGICAL :: nlcc ! nonlinear core correction
      INTEGER :: nwfc ! number of wavefunctions/projectors
@@ -132,8 +132,13 @@ CONTAINS
     ! Compute the effective potentials (H+XC)
     CALL compute_onecenter_energy ( eps,  veffps_, &
        pawset_, chargeps,  pawset_%nlcc, pawset_%psccharge, nspin_ )
+#if defined __PAW_FROM_NC__
+    CALL compute_onecenter_energy ( e1,   veff1, &
+       pawset_, charge1,   pawset_%nlcc, pawset_%aeccharge, nspin_ )
+#else
     CALL compute_onecenter_energy ( e1,   veff1, &
        pawset_, charge1,  .TRUE.,        pawset_%aeccharge, nspin_ )
+#endif
     CALL compute_onecenter_energy ( e1ps, veff1ps, &
        pawset_, charge1ps, pawset_%nlcc, pawset_%psccharge, nspin_ )
     ! Add the local part
@@ -163,16 +168,17 @@ CONTAINS
   ! Convert the USPP to a PAW dataset
   !
   SUBROUTINE us2paw (pawset_,                                     &
-       zval, mesh, r, r2, sqr, dx, irc, ikk,                      &
+       zval, mesh, r, r2, sqrtr, dx, irc, ikk,                    &
        nbeta, lls, ocs, enls, psipaw, phis, betas, qvan, kindiff, &
-       nlcc, aerhoc, psrhoc, aevtot,psvtot, do_write_dataset)
+       nlcc, aerhoc, psrhoc, aevtot, psvtot, which_paw_augfun,    &
+       do_write_dataset)
     USE funct
     IMPLICIT NONE
     TYPE(paw_t),   INTENT(OUT) :: pawset_
     REAL(dp), INTENT(IN)  :: zval
     INTEGER,       INTENT(IN)  :: mesh
     REAL(dp), INTENT(IN)  :: r(ndm)
-    REAL(dp), INTENT(IN)  :: r2(ndm), sqr(ndm), dx
+    REAL(dp), INTENT(IN)  :: r2(ndm), sqrtr(ndm), dx
     INTEGER,       INTENT(IN)  :: irc
     INTEGER,       INTENT(IN)  :: ikk(nwfsx)
     INTEGER,       INTENT(IN)  :: nbeta
@@ -189,6 +195,7 @@ CONTAINS
     REAL(dp), INTENT(IN)  :: psrhoc(ndm)
     REAL(dp), INTENT(IN)  :: aevtot(ndm)
     REAL(dp), INTENT(IN)  :: psvtot(ndm)
+    CHARACTER(20), INTENT(IN)  :: which_paw_augfun
     LOGICAL,INTENT(IN),OPTIONAL:: do_write_dataset
     !
     REAL(DP), EXTERNAL :: int_0_inf_dr
@@ -206,7 +213,7 @@ CONTAINS
     pawset_%mesh=mesh
     pawset_%r(1:mesh)=r(1:mesh)
     pawset_%r2(1:mesh)=r2(1:mesh)
-    pawset_%sqr(1:mesh)=sqr(1:mesh)
+    pawset_%sqrtr(1:mesh)=sqrtr(1:mesh)
     pawset_%dx=dx
     pawset_%irc=irc
     pawset_%ikk(1:nbeta)=ikk(1:nbeta)
@@ -252,40 +259,46 @@ CONTAINS
        END DO
     END DO
     !
-!!! Uncomment the following line if you wish to test the invariance with
-!!! respect to the specific shape of the radial part of the augmentation
-!!! functions (the following implementation of this test is correct for
-!!! spherical symmetry only, ie only the zero-th moment is conserved)
-!#define __TEST_AUGFUN__
-#if defined __TEST_AUGFUN__
-    CALL infomsg ('us2paw','Use for tests only!', -1)
-    ! a gaussian
-    aux(1:mesh)=EXP(-(r(1:mesh)**2)/(TWO*0.25_dp**2))
-    DO ns=1,nbeta
-       DO ns1=1,ns
-          IF ( (pawset_%l(ns1)==pawset_%l(ns)) .AND. (ABS(pawset_%augmom(ns,ns1,0))>eps8)) THEN
-             !
-             ! Choose the shape of the augmentation functions: NC Q ...
-             pawset_%augfun(1:mesh,ns,ns1) = qvan(1:mesh,ns,ns1)
-             ! ... or Gaussian Q ?
-             !pawset_%augfun(1:mesh,ns,ns1) = aux(1:mesh) * pawset_%r2(1:mesh)
-             !
-             ! Renormalize the aug. functions so that their integral is correct
-             raux=int_0_inf_dr(pawset_%augfun(1:pawset_%irc,ns,ns1),pawset_%r,pawset_%r2,pawset_%dx,pawset_%irc,(pawset_%l(ns)+1)*2)
-             IF (ABS(raux) < eps8) THEN
-                CALL errore('us2paw','norm of augmentation funciton too small',ns*100+ns1)
+    IF (which_paw_augfun/='AE') THEN
+       ! The following lines enables to test the invariance with
+       ! respect to the specific shape of the radial part of the augmentation
+       ! functions (the following implementation of this test is correct for
+       ! spherical symmetry only, ie only the zero-th moment is conserved)
+       CALL infomsg ('us2paw','This is valid only for spherical symmetry!', -1)
+       CALL infomsg ('us2paw','You have specified: '//which_paw_augfun,-1)
+       ! define a gaussian
+       aux(1:mesh)=EXP(-(r(1:mesh)**2)/(TWO*0.25_dp**2))
+       DO ns=1,nbeta
+          DO ns1=1,ns
+             IF ( (pawset_%l(ns1)==pawset_%l(ns)) .AND. (ABS(pawset_%augmom(ns,ns1,0))>eps8)) THEN
+                !
+                SELECT CASE (which_paw_augfun)
+                CASE ('QVAN')
+                   ! Choose the shape of the augmentation functions: NC Q ...
+                   pawset_%augfun(1:mesh,ns,ns1) = qvan(1:mesh,ns,ns1)
+                CASE ('GAUSS')
+                   ! ... or Gaussian Q ?
+                   !pawset_%augfun(1:mesh,ns,ns1) = aux(1:mesh) * pawset_%r2(1:mesh)
+                CASE DEFAULT
+                   CALL errore ('us2paw','Specified augmentation functions not allowed or coded',1)
+                END SELECT
+                !
+                ! Renormalize the aug. functions so that their integral is correct
+                raux=int_0_inf_dr(pawset_%augfun(1:pawset_%irc,ns,ns1),pawset_%r,pawset_%r2,pawset_%dx,pawset_%irc,(pawset_%l(ns)+1)*2)
+                IF (ABS(raux) < eps8) THEN
+                   CALL errore('us2paw','norm of augmentation function too small',ns*100+ns1)
+                END IF
+                raux=pawset_%augmom(ns,ns1,0)/raux
+                pawset_%augfun(1:mesh,ns,ns1)=raux*pawset_%augfun(1:mesh,ns,ns1)
+             ELSE
+                pawset_%augfun(1:mesh,ns,ns1)=ZERO
              END IF
-             raux=pawset_%augmom(ns,ns1,0)/raux
-             !pawset_%augfun(1:mesh,ns,ns1)=raux*pawset_%augfun(1:mesh,ns,ns1)
-          ELSE
-             pawset_%augfun(1:mesh,ns,ns1)=ZERO
-          END IF
-          ! Set the symmetric part
-          pawset_%augfun(1:mesh,ns1,ns)=pawset_%augfun(1:mesh,ns,ns1)
-          !WRITE (900+ns*10+ns1,'(2e20.10)')(r(n),pawset_%augfun(n,ns,ns1),n=1,irc)
+             ! Set the symmetric part
+             pawset_%augfun(1:mesh,ns1,ns)=pawset_%augfun(1:mesh,ns,ns1)
+             !WRITE (900+ns*10+ns1,'(2e20.10)')(r(n),pawset_%augfun(n,ns,ns1),n=1,irc)
+          END DO
        END DO
-    END DO
-#endif
+    END IF
     !
     !
     ! Copy kinetic energy differences
@@ -305,8 +318,13 @@ CONTAINS
     CALL compute_onecenter_energy ( raux,  aux2, &
        pawset_, pscharge, pawset_%nlcc, pawset_%psccharge, nspin )
     pawset_%psloc(1:mesh)=psvtot(1:mesh)-aux2(1:mesh,1)
+#if defined __PAW_FROM_NC__
+    CALL compute_onecenter_energy ( raux,  aux2, &
+       pawset_, aecharge, pawset_%nlcc, pawset_%aeccharge, nspin )
+#else
     CALL compute_onecenter_energy ( raux,  aux2, &
        pawset_, aecharge, .TRUE.,       pawset_%aeccharge, nspin )
+#endif
     pawset_%aeloc(1:mesh)=aevtot(1:mesh)-aux2(1:mesh,1)
     !WRITE(4444,'(5e20.10)')(r(n),aevtot(n),psvtot(n),pawset_%aeloc(n),pawset_%psloc(n),n=1,mesh)
     !
@@ -332,7 +350,7 @@ CONTAINS
   !
   ! ...
   !
-  SUBROUTINE paw2us (pawset_,zval,mesh,r,r2,sqr,dx,nbeta,lls,ikk, &
+  SUBROUTINE paw2us (pawset_,zval,mesh,r,r2,sqrtr,dx,nbeta,lls,ikk, &
        betas,qq,qvan,pseudotype)
     USE funct, ONLY : which_dft
     IMPLICIT NONE
@@ -340,7 +358,7 @@ CONTAINS
     REAL(dp), INTENT(OUT) :: zval
     INTEGER,       INTENT(OUT) :: mesh
     REAL(dp), INTENT(OUT) :: r(ndm)
-    REAL(dp), INTENT(OUT) :: r2(ndm), sqr(ndm), dx
+    REAL(dp), INTENT(OUT) :: r2(ndm), sqrtr(ndm), dx
     INTEGER,       INTENT(OUT) :: nbeta
     INTEGER,       INTENT(OUT) :: lls(nwfsx)
     INTEGER,       INTENT(OUT) :: ikk(nwfsx)
@@ -355,7 +373,7 @@ CONTAINS
     mesh=pawset_%mesh
     r(1:mesh)=pawset_%r(1:mesh)
     r2(1:mesh)=pawset_%r2(1:mesh)
-    sqr(1:mesh)=pawset_%sqr(1:mesh)
+    sqrtr(1:mesh)=pawset_%sqrtr(1:mesh)
     dx=pawset_%dx
     !
     nbeta=pawset_%nwfc
@@ -396,7 +414,7 @@ CONTAINS
        WRITE(un,'(i8)') pawset_%mesh
        WRITE(un,'(e20.10)') (pawset_%r(n), n=1,pawset_%mesh)
        WRITE(un,'(e20.10)') (pawset_%r2(n), n=1,pawset_%mesh)
-       WRITE(un,'(e20.10)') (pawset_%sqr(n), n=1,pawset_%mesh)
+       WRITE(un,'(e20.10)') (pawset_%sqrtr(n), n=1,pawset_%mesh)
        WRITE(un,'(e20.10)') pawset_%dx
        WRITE(un,*) pawset_%nlcc
        WRITE(un,'(i8)') pawset_%nwfc
@@ -423,7 +441,7 @@ CONTAINS
        READ(un,'(i8)') pawset_%mesh
        READ(un,'(e20.10)') (pawset_%r(n), n=1,pawset_%mesh)
        READ(un,'(e20.10)') (pawset_%r2(n), n=1,pawset_%mesh)
-       READ(un,'(e20.10)') (pawset_%sqr(n), n=1,pawset_%mesh)
+       READ(un,'(e20.10)') (pawset_%sqrtr(n), n=1,pawset_%mesh)
        READ(un,'(e20.10)') pawset_%dx
        READ(un,*) pawset_%nlcc
        READ(un,'(i8)') pawset_%nwfc
@@ -527,7 +545,7 @@ CONTAINS
          vcharge_(1:pawset_%mesh,2)
     !
     ! Hartree
-    CALL hartree(0,2,pawset_%mesh,pawset_%r,pawset_%r2,pawset_%sqr,pawset_%dx,rhovtot,vh)
+    CALL hartree(0,2,pawset_%mesh,pawset_%r,pawset_%r2,pawset_%sqrtr,pawset_%dx,rhovtot,vh)
     vh(1:pawset_%mesh) = e2 * vh(1:pawset_%mesh)
     aux(1:pawset_%mesh) = vh(1:pawset_%mesh) * rhovtot(1:pawset_%mesh)
     eh = HALF * int_0_inf_dr(aux,pawset_%r,pawset_%r2,pawset_%dx,pawset_%mesh,2)

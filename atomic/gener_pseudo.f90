@@ -48,6 +48,11 @@ subroutine gener_pseudo
        gi(ndm,2),    &  ! auxiliary to compute the integrals
        sum, db, work(nwfsx) ! work space
 
+  real(DP) :: vpotpaw (ndm) ! total potential to be used for PAW generation (normally the AE potential)
+#if defined __PAW_FROM_NC__
+  integer  :: inc2paw
+#endif
+
   real(DP), allocatable :: &
        b(:,:), binv(:,:) ! the B matrix and its inverse
 
@@ -92,6 +97,17 @@ subroutine gener_pseudo
   !
   call pseudovloc
   !
+  !   initialize total potential for PAW generation
+  if (lpaw) then
+     do n=1,mesh
+#if defined __PAW_FROM_NC__
+        vpotpaw(n)=vpsloc(n)
+#else
+        vpotpaw(n)=vpot(n,1)
+#endif
+     enddo
+  endif
+  !
   !   if nlcc is true compute here the core charge
   !   the core charge is needed also for the PAW dataset
   !
@@ -121,10 +137,16 @@ subroutine gener_pseudo
         if (r(n).lt.rcut(ns)) ik=n
         if (r(n).lt.rcutus(ns)) ikus=n
         if (r(n).lt.rcloc) ikloc=n
+#if defined __PAW_FROM_NC__
+        if (r(n).lt.rcutnc2paw(ns)) inc2paw=n
+#endif
      enddo
      if (mod(ik,2) == 0) ik=ik+1
      if (mod(ikus,2) == 0) ikus=ikus+1
      if (mod(ikloc,2) == 0) ikloc=ikloc+1
+#if defined __PAW_FROM_NC__
+     if (mod(inc2paw,2) == 0) inc2paw=inc2paw+1
+#endif
      if (ikus.gt.mesh) call errore('gener_pseudo','ik is wrong ',1)
      if (pseudotype == 3) then
         ikk(ns)=max(ikus+10,ikloc+5)
@@ -134,9 +156,35 @@ subroutine gener_pseudo
      !
      !  compute the phi functions
      !
+#if defined __PAW_FROM_NC__
+! compute possibly harder NC pseudowavefunctions to be used as AE reference
+! for PAW generation
+     if (lpaw) then
+        nnode=0
+        call compute_phi(lam,inc2paw,ik,nwf0,ns,xc,1,nnode,ocs(ns))
+        if (nnode.ne.0) call errore('gener_pseudo','too many nodes',1)
+        ! We would like to do psipaw=phis, but subsequent call of
+        ! compute_phi would overwrite psipaw. save phis into gi.
+        do n=1,mesh
+           gi(n,1)=phis(n,ns)
+        enddo
+     endif
+#endif
      nnode=0
+#if defined __PAW_FROM_NC__
+     call compute_phi(lam,ik,ik,nwf0,ns,xc,1,nnode,ocs(ns))
+#else
      call compute_phi(lam,ik,nwf0,ns,xc,1,nnode,ocs(ns))
+#endif
      if (nnode.ne.0) call errore('gener_pseudo','too many nodes',1)
+#if defined __PAW_FROM_NC__
+     if (lpaw) then
+        do n=1,mesh
+           psipaw(n,ns)=gi(n,1)
+           write (2000+ns,*)r(n),phis(n,ns),psipaw(n,ns)
+        enddo
+     endif
+#endif
      !
      !   US only on the components where ikus <> ik
      ! 
@@ -320,6 +368,9 @@ subroutine gener_pseudo
   !    generate a PAW dataset if required
   !
   if (lpaw) then
+#if defined __PAW_FROM_NC__
+     write (*,*) 'WARNING: __PAW_FROM_NC__'
+#endif
      !
      ! compute kinetic energy differences, using:
      ! AE:   T |psi> = (e - Vae) |psi>
@@ -330,7 +381,12 @@ subroutine gener_pseudo
               ikl=max(ikk(ns),ikk(ns1))
               nst=2*(lls(ns)+1)
               do n=1,ikl
-                 gi(n,1)=psipaw(n,ns)*(enls(ns1)-vpot(n,1))*psipaw(n,ns1)
+!#if defined __PAW_FROM_NC__
+!                 gi(n,1)=psipsus(n,ns)*(enls(ns1)-vpsloc(n))*psipsus(n,ns1)
+!#else
+                 gi(n,1)=psipaw(n,ns)*(enls(ns1)-vpotpaw(n))*psipaw(n,ns1)
+!                 gi(n,1)=psipaw(n,ns)*(enls(ns1)-vpot(n,1))*psipaw(n,ns1)
+!#endif
               end do
               aekin(ns,ns1)=int_0_inf_dr(gi(1:mesh,1),r,r2,dx,ikl,nst)
               do n=1,ikl
@@ -347,10 +403,21 @@ subroutine gener_pseudo
      end do
      !
      ! create the 'pawsetup' object containing the atomic setup for PAW
+!#if defined __PAW_FROM_NC__
+!     call us2paw ( pawsetup,                                         &
+!          zval, mesh, r, r2, sqr, dx, maxval(ikk(1:nbeta)), ikk,     &
+!          nbeta, lls, ocs, enls, psipsus, phis, betas, qvan, kindiff, &
+!          nlcc, psccharge, psccharge, vpsloc, vpsloc, which_paw_augfun, .true. )
+!#else
+!     call us2paw ( pawsetup,                                         &
+!          zval, mesh, r, r2, sqr, dx, maxval(ikk(1:nbeta)), ikk,     &
+!          nbeta, lls, ocs, enls, psipaw, phis, betas, qvan, kindiff, &
+!          nlcc, psccharge, psccharge, vpot(:,1), vpsloc, which_paw_augfun, .true. )
      call us2paw ( pawsetup,                                         &
           zval, mesh, r, r2, sqr, dx, maxval(ikk(1:nbeta)), ikk,     &
           nbeta, lls, ocs, enls, psipaw, phis, betas, qvan, kindiff, &
-          nlcc, aeccharge, psccharge, vpot, vpsloc )
+          nlcc, aeccharge, psccharge, vpotpaw, vpsloc, which_paw_augfun )!, .true. )
+!#endif
      !
      ! the augmentation functions are changed in 'pawsetup': read from it
      call paw2us ( pawsetup, zval, mesh, r, r2, sqr, dx, nbeta, lls, &
