@@ -1,0 +1,34 @@
+This directory contains a test for accuracy of PAW calculations. The
+test consists of:
+
+1) reference AE calculation
+2) reference NC calculation with small cutoff radii (NChard)
+3) NC with standard cutoff radii
+4) US with standard cutoff radii
+5) US with small cutoff radii (UShard)
+6) PAW with standard cutoff radii, exact augmentation functions (PAW-AE-QAE)
+7) PAW built using NChard wavefunctions instead of AE ones and corresponding
+   augmentation functions (PAW-NChard-Qhard)
+8) as 7) with the same augmentation functions as US (4) (PAW-NChard-Qsmooth)
+
+Execute with
+
+./genAll.bash
+./testAll.bash
+./viewAll.bash
+
+after changing
+
+LD1_orig=~/espresso-CVS/bin/ld1.x
+LD1_new=~/develop_PAW/bin/ld1.x
+
+to point to a normal ld1.x executable and to one compiled with the
+__PAW_FROM_NC__ option.
+
+Notice that (8) reproduces the reference results (2) with similar
+accuracy than (6) (for which the reference is (1)), whereas (4) is
+much worse.
+
+(4) is a standard US calculation, and (8) has the same wavefunctions,
+projectors, local potential and augmentation functions so the
+numerical cost should be similar.
