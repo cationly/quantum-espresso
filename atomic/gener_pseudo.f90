@@ -181,7 +181,7 @@ subroutine gener_pseudo
      if (lpaw) then
         do n=1,mesh
            psipaw(n,ns)=gi(n,1)
-           write (2000+ns,*)r(n),phis(n,ns),psipaw(n,ns)
+           !write (2000+ns,*)r(n),phis(n,ns),psipaw(n,ns)
         enddo
      endif
 #endif
