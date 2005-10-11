@@ -13,23 +13,24 @@ subroutine readpp
   !
   !    Read pseudopotentials
   !
-  USE kinds,      ONLY : DP
-  USE atom,       ONLY : chi, nchi, oc, msh, rab, numeric, xmin, dx
+  USE atom,       ONLY : numeric, xmin, dx
   USE uspp_param, ONLY : iver, tvanp, newpseudo
   USE ions_base,  ONLY : ntyp => nsp
   USE funct,      ONLY : iexch, icorr, igcx, igcc
   USE io_files,   ONLY : pseudo_dir, psfile
-  USE io_global,  ONLY : stdout
+  USE pseudo_types,        ONLY : paw_t            !!PAW
+  USE read_pseudo_module,  ONLY : paw_io           !!PAW
+  USE upf_to_internal,     ONLY : set_pseudo_paw   !!PAW
   !
   implicit none
   !
+  TYPE(paw_t) :: pawset                            !!PAW
+  !
   character(len=256) :: file_pseudo
   ! file name complete with path
-  real(DP), allocatable :: chi2r(:)
-  real(DP):: norm, eps = 1.0_DP
-  integer :: iunps, isupf, l, nt, nb, ios
+  integer :: iunps, isupf, l, nt, ios, pseudo_type
   integer :: iexch_, icorr_, igcx_, igcc_
-  integer, external :: pseudo_type
+  external pseudo_type
   !
   iunps = 4
   l = len_trim (pseudo_dir)
@@ -86,6 +87,21 @@ subroutine readpp
               call readnewvan (nt, iunps)
            endif
            close (iunps)
+           !
+        else if (pseudo_type (psfile (nt) ) ==3) then
+           !
+           !    PSEUDO PAW in temporary format. Use with care
+           !
+           !tpaw(nt)=.true.
+           numeric (nt) = .true.
+           newpseudo (nt) = .true.
+           tvanp (nt) = .true.
+           open (unit = iunps, file = file_pseudo, status = 'old', &
+                form='formatted', iostat = ios)
+           call paw_io (pawset, iunps, "INP")
+           close (iunps)
+           call set_pseudo_paw (nt, pawset)
+           !
         else
            tvanp (nt) = .false.
            newpseudo (nt) = .false.
@@ -114,28 +130,7 @@ subroutine readpp
            CALL errore( 'readpp','inconsistent DFT read',nt)
         end if
      end if
-     !
-     ! Check that there are no zero wavefunctions
-     !
-     allocate ( chi2r (msh(nt)) )
-     do nb = 1, nchi (nt)
-        chi2r(:) = chi ( :msh(nt), nb, nt ) **2 * rab( :msh(nt), nt )
-        call simpson (msh(nt), chi(1, nb, nt), rab(1,nt), norm)
-        !
-        ! if a zero wavefunction is found, set to zero 
-        !
-        if ( norm < eps ) then
-           WRITE( stdout,'(5X,"WARNING: atomic wfc # ",i2, &
-                & " for atom type",i2," has zero norm")') nb, nt
-           !
-           ! set occupancy to a negative number so that this wfc
-           ! is not going to be used for starting wavefunctions
-           !
-           oc (nb, nt) = -eps
-        end if
-     enddo
-     deallocate ( chi2r )
-     !
+
   enddo
   return
 end subroutine readpp
@@ -152,6 +147,9 @@ integer function pseudo_type (psfile)
        pseudo_type = 1
   if (l > 5) then
      if (psfile (l - 5:l) .eq.'.RRKJ3') pseudo_type = 2
+  end if
+  if (l > 3) then
+     if (psfile (l - 3:l) .eq.'.PAW') pseudo_type = 3
   end if
   !
   return
