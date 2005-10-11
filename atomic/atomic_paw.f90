@@ -31,8 +31,10 @@ MODULE atomic_paw
   !============================================================================
   !
   USE kinds, ONLY: dp
-  USE ld1_parameters, ONLY: ndm, nwfsx
-  USE parameters, ONLY: lmaxx
+  !  USE ld1_parameters, ONLY: ndm, nwfsx
+  USE parameters, ONLY: ndm=>ndmx, nwfsx=>nchix
+  USE pseudo_types, ONLY: paw_t
+  USE read_pseudo_module, ONLY: paw_io
   !
   IMPLICIT NONE
   PRIVATE
@@ -43,46 +45,6 @@ MODULE atomic_paw
   ! TEMP, to be substituted by module constants
   REAL(dp), PARAMETER :: &
        PI=3.14159265358979323846_dp, FPI=4._dp*PI, E2=2._dp, EPS8=1.0e-8_dp
-  !
-  !============================================================================
-  !
-  ! Type describing a PAW dataset
-  !
-  TYPE :: paw_t
-     REAL (dp) :: zval
-     REAL (dp) :: z
-     REAL (dp) :: zmesh
-     CHARACTER(LEN=80) :: dft
-     INTEGER        :: mesh      ! the size of the mesh
-     REAL (dp) :: r (ndm)   ! the mesh
-     REAL (dp) :: r2 (ndm)  ! r^2
-     REAL (dp) :: sqrtr (ndm) ! sqrt(r)
-     REAL (dp) :: dx        ! log(r(i+1))-log(r(i))
-     LOGICAL :: nlcc ! nonlinear core correction
-     INTEGER :: nwfc ! number of wavefunctions/projectors
-     INTEGER :: lmax ! maximum angular momentum of projectors
-     INTEGER :: l(nwfsx) ! angular momentum of projectors
-     INTEGER :: ikk(nwfsx) ! cutoff radius for the projectors
-     INTEGER :: irc ! r(irc) = radius of the augmentation sphere
-     REAL (dp) :: &
-          oc (nwfsx), & ! the occupations
-          enl (nwfsx), & ! the energy of the wavefunctions
-          aewfc (ndm,nwfsx), &  ! all-electron wavefunctions
-          pswfc (ndm,nwfsx),        & ! pseudo wavefunctions
-          proj (ndm,nwfsx),     & ! projectors
-          augfun(ndm,nwfsx,nwfsx),      & ! augmentation functions
-          augmom(nwfsx,nwfsx,0:2*lmaxx) , & ! moments of the augmentation functions
-          aeccharge (ndm),  & ! AE core charge
-          psccharge (ndm),  & ! PS core charge
-          aeloc (ndm),     & ! descreened AE potential: v_AE-v_H[n1]-v_XC[n1+nc]
-          psloc (ndm),     & ! descreened local PS potential: v_PS-v_H[n~+n^]-v_XC[n~+n^+n~c]
-          kdiff (nwfsx,nwfsx)         ! kinetic energy differences
-!!!  Notes about screening:
-!!!       Without nlcc, the local PSpotential is descreened with n~+n^ only.
-!!!       The local AEpotential is descreened ALWAYS with n1+nc. This improves
-!!!       the accuracy, and will not cost in the plane wave code (atomic
-!!!       contribution only).
-  END TYPE paw_t
   !
   !============================================================================
   !
@@ -102,7 +64,7 @@ CONTAINS
   ! Compute also the total energy
   ! 
   SUBROUTINE new_paw_hamiltonian (veffps_, ddd_, etot_, &
-       pawset_, nwfc_, l_, nspin_, spin_, oc_, pswfc_, eig_)
+       pawset_, nwfc_, l_, nspin_, spin_, oc_, pswfc_, eig_, dddion_)
     IMPLICIT NONE
     REAL(dp), INTENT(OUT) :: veffps_(ndm,2)
     REAL(dp), INTENT(OUT) :: ddd_(nwfsx,nwfsx,2)
@@ -115,6 +77,7 @@ CONTAINS
     REAL(dp), INTENT(IN)  :: oc_(nwfsx)
     REAL(dp), INTENT(IN)  :: pswfc_(ndm,nwfsx)
     REAL(dp), INTENT(IN)  :: eig_(nwfsx)
+    REAL(dp), OPTIONAL :: dddion_(nwfsx,nwfsx,2)
     !
     REAL(dp) :: &                                        ! one center:
          eps,             e1,             e1ps,             & ! energies;
@@ -153,6 +116,9 @@ CONTAINS
     !
     ! Compute the nonlocal D coefficients
     CALL compute_nonlocal_coeff (ddd_,pawset_,nspin_,veffps_,veff1,veff1ps)
+    IF (PRESENT(dddion_)) THEN
+       CALL compute_nonlocal_coeff_ion (dddion_,pawset_,nspin_,veffps_,veff1,veff1ps)
+    END IF
     !
     ! Compute total energy
     eigsum=ZERO
@@ -168,13 +134,14 @@ CONTAINS
   ! Convert the USPP to a PAW dataset
   !
   SUBROUTINE us2paw (pawset_,                                     &
-       zval, mesh, r, r2, sqrtr, dx, irc, ikk,                    &
+       symbol, zval, mesh, r, r2, sqrtr, dx, irc, ikk,            &
        nbeta, lls, ocs, enls, psipaw, phis, betas, qvan, kindiff, &
        nlcc, aerhoc, psrhoc, aevtot, psvtot, which_paw_augfun,    &
        do_write_dataset)
     USE funct
     IMPLICIT NONE
     TYPE(paw_t),   INTENT(OUT) :: pawset_
+    CHARACTER(LEN=2), INTENT(IN)  :: symbol
     REAL(dp), INTENT(IN)  :: zval
     INTEGER,       INTENT(IN)  :: mesh
     REAL(dp), INTENT(IN)  :: r(ndm)
@@ -199,7 +166,7 @@ CONTAINS
     LOGICAL,INTENT(IN),OPTIONAL:: do_write_dataset
     !
     REAL(DP), EXTERNAL :: int_0_inf_dr
-    REAL(dp) :: vps(ndm,2), projsum(nwfsx,nwfsx,2), ddd(nwfsx,nwfsx,2)
+    REAL(dp) :: vps(ndm,2), projsum(nwfsx,nwfsx,2), ddd(nwfsx,nwfsx,2), dddion(nwfsx,nwfsx,2)
     INTEGER :: ns, ns1, n, l
     REAL(dp) :: aux(ndm), aux2(ndm,2), raux
     REAL(dp) :: aecharge(ndm,2), pscharge(ndm,2)
@@ -207,6 +174,7 @@ CONTAINS
     INTEGER :: nspin=1, spin(nwfsx)=1
     CHARACTER(LEN=4) :: shortname
     !
+    pawset_%symbol=symbol
     pawset_%zval=zval
     !
     ! Copy the mesh
@@ -337,11 +305,16 @@ CONTAINS
     !
     ! Generate the paw hamiltonian for test (should be equal to the US one)
     CALL new_paw_hamiltonian (vps, ddd, etot, &
-       pawset_, pawset_%nwfc, pawset_%l, nspin, spin, pawset_%oc, pawset_%pswfc, pawset_%enl)
+       pawset_, pawset_%nwfc, pawset_%l, nspin, spin, pawset_%oc, pawset_%pswfc, pawset_%enl, dddion)
+    pawset_%dion(1:nbeta,1:nbeta)=dddion(1:nbeta,1:nbeta,1)
     WRITE(6,'(/5x,A,f12.6,A)') 'Estimated PAW energy =',etot,' Ryd'
     WRITE(6,'(/5x,A)') 'The PAW screened D coefficients'
     DO ns1=1,pawset_%nwfc
        WRITE(6,'(6f12.5)') (ddd(ns1,ns,1),ns=1,pawset_%nwfc)
+    END DO
+    WRITE(6,'(/5x,A)') 'The PAW descreened D coefficients (US)'
+    DO ns1=1,pawset_%nwfc
+       WRITE(6,'(6f12.5)') (dddion(ns1,ns,1),ns=1,pawset_%nwfc)
     END DO
     !
   END SUBROUTINE us2paw
@@ -382,12 +355,11 @@ CONTAINS
     !
     DO ns=1,nbeta
        DO ns1=1,nbeta
+          qvan(1:mesh,ns,ns1)=pawset_%augfun(1:mesh,ns,ns1)
           IF (lls(ns)==lls(ns1)) THEN
-             qvan(1:mesh,ns,ns1)=pawset_%augfun(1:mesh,ns,ns1)
              qq(ns,ns1)=pawset_%augmom(ns,ns1,0)
-          ELSE ! enforce spherical symmetry
-             qvan(1:mesh,ns,ns1)=0._dp
-             qq(ns,ns1)=0._dp
+          ELSE ! different spherical harmonic => 0
+             qq(ns,ns1)=ZERO
           END IF
        END DO
     END DO
@@ -397,77 +369,6 @@ CONTAINS
     !
     CALL which_dft (pawset_%dft)
   END SUBROUTINE paw2us
-  !
-  !============================================================================
-  !
-  ! Read/write the PAW dataset
-  !
-  SUBROUTINE paw_io(pawset_,un,what)
-    TYPE(paw_t), INTENT(INOUT) :: pawset_
-    INTEGER, INTENT(IN) :: un
-    CHARACTER(LEN=3), INTENT(IN) :: what
-    INTEGER :: n, ns, ns1, l
-    SELECT CASE (what)
-    CASE ("OUT")
-       WRITE(un,*)
-       WRITE(un,'(e20.10)') pawset_%zval
-       WRITE(un,'(i8)') pawset_%mesh
-       WRITE(un,'(e20.10)') (pawset_%r(n), n=1,pawset_%mesh)
-       WRITE(un,'(e20.10)') (pawset_%r2(n), n=1,pawset_%mesh)
-       WRITE(un,'(e20.10)') (pawset_%sqrtr(n), n=1,pawset_%mesh)
-       WRITE(un,'(e20.10)') pawset_%dx
-       WRITE(un,*) pawset_%nlcc
-       WRITE(un,'(i8)') pawset_%nwfc
-       WRITE(un,'(i8)') (pawset_%l(ns), ns=1,pawset_%nwfc)
-       WRITE(un,'(i8)') (pawset_%ikk(ns), ns=1,pawset_%nwfc)
-       WRITE(un,'(i8)') pawset_%irc
-       WRITE(un,'(e20.10)') (pawset_%oc(ns), ns=1,pawset_%nwfc)
-       WRITE(un,'(e20.10)') (pawset_%enl(ns), ns=1,pawset_%nwfc)
-       WRITE(un,'(e20.10)') ((pawset_%aewfc(n,ns), n=1,pawset_%mesh), ns=1,pawset_%nwfc)
-       WRITE(un,'(e20.10)') ((pawset_%pswfc(n,ns), n=1,pawset_%mesh), ns=1,pawset_%nwfc)
-       WRITE(un,'(e20.10)') ((pawset_%proj(n,ns), n=1,pawset_%mesh), ns=1,pawset_%nwfc)
-       WRITE(un,'(e20.10)') (((pawset_%augfun(n,ns,ns1), n=1,pawset_%mesh), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc)
-       WRITE(un,'(i8)') pawset_%lmax
-       WRITE(un,'(e20.10)') (((pawset_%augmom(ns,ns1,l), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc),l=0,2*pawset_%lmax)
-       WRITE(un,'(e20.10)') (pawset_%aeccharge(n), n=1,pawset_%mesh)
-       IF (pawset_%nlcc) WRITE(un,'(e20.10)') (pawset_%psccharge(n), n=1,pawset_%mesh)
-       WRITE(un,'(e20.10)') (pawset_%aeloc(n), n=1,pawset_%mesh)
-       WRITE(un,'(e20.10)') (pawset_%psloc(n), n=1,pawset_%mesh)
-       WRITE(un,'(e20.10)') ((pawset_%kdiff(ns,ns1), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc)
-       WRITE(un,'(A)') TRIM(pawset_%dft)
-    CASE ("INP")
-       READ(un,*)
-       READ(un,'(e20.10)') pawset_%zval
-       READ(un,'(i8)') pawset_%mesh
-       READ(un,'(e20.10)') (pawset_%r(n), n=1,pawset_%mesh)
-       READ(un,'(e20.10)') (pawset_%r2(n), n=1,pawset_%mesh)
-       READ(un,'(e20.10)') (pawset_%sqrtr(n), n=1,pawset_%mesh)
-       READ(un,'(e20.10)') pawset_%dx
-       READ(un,*) pawset_%nlcc
-       READ(un,'(i8)') pawset_%nwfc
-       READ(un,'(i8)') (pawset_%l(ns), ns=1,pawset_%nwfc)
-       READ(un,'(i8)') (pawset_%ikk(ns), ns=1,pawset_%nwfc)
-       READ(un,'(i8)') pawset_%irc
-       READ(un,'(e20.10)') (pawset_%oc(ns), ns=1,pawset_%nwfc)
-       READ(un,'(e20.10)') (pawset_%enl(ns), ns=1,pawset_%nwfc)
-       READ(un,'(e20.10)') ((pawset_%aewfc(n,ns), n=1,pawset_%mesh), ns=1,pawset_%nwfc)
-       READ(un,'(e20.10)') ((pawset_%pswfc(n,ns), n=1,pawset_%mesh), ns=1,pawset_%nwfc)
-       READ(un,'(e20.10)') ((pawset_%proj(n,ns), n=1,pawset_%mesh), ns=1,pawset_%nwfc)
-       READ(un,'(e20.10)') (((pawset_%augfun(n,ns,ns1), n=1,pawset_%mesh), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc)
-       READ(un,'(i8)') pawset_%lmax
-       READ(un,'(e20.10)') (((pawset_%augmom(ns,ns1,l), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc),l=0,2*pawset_%lmax)
-       READ(un,'(e20.10)') (pawset_%aeccharge(n), n=1,pawset_%mesh)
-       IF (pawset_%nlcc) READ(un,'(e20.10)') (pawset_%psccharge(n), n=1,pawset_%mesh)
-       READ(un,'(e20.10)') (pawset_%aeloc(n), n=1,pawset_%mesh)
-       READ(un,'(e20.10)') (pawset_%psloc(n), n=1,pawset_%mesh)
-       READ(un,'(e20.10)') ((pawset_%kdiff(ns,ns1), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc)
-       pawset_%dft="                                                                                "
-       READ(un,'(A)') pawset_%dft
-    CASE DEFAULT
-       CALL errore ('paw_io','specify (INP)ut or (OUT)put',1)
-    END SELECT
-    CLOSE(un)
-  END SUBROUTINE paw_io
   !
   !============================================================================
   !                          PRIVATE ROUTINES                               !!!
@@ -646,6 +547,53 @@ CONTAINS
        END DO
     END DO
   END SUBROUTINE compute_nonlocal_coeff
+  !
+  !============================================================================
+  !
+  ! 'D_ion' coefficients = D1 - D~1
+  !
+  SUBROUTINE compute_nonlocal_coeff_ion(ddd_, pawset_, nspin_, veffps_, veff1_, veff1ps_)
+    IMPLICIT NONE
+    REAL(dp), INTENT(OUT) :: ddd_(nwfsx,nwfsx,2)
+    TYPE(paw_t),   INTENT(IN)  :: pawset_
+    INTEGER,       INTENT(IN)  :: nspin_
+    REAL(dp), INTENT(IN)  :: veffps_(ndm,2)
+    REAL(dp), INTENT(IN)  :: veff1_(ndm,2)
+    REAL(dp), INTENT(IN)  :: veff1ps_(ndm,2)
+    INTEGER :: is, ns, ns1
+    REAL(dp) :: aux(ndm)
+    REAL(DP), EXTERNAL :: int_0_inf_dr
+    !
+    ! D^ = Int Q*v~
+    ! D1-D1~ = kindiff + Int[ae*v1*ae - ps*v1~*ps - augfun*v~1]
+    DO is=1,nspin_
+       DO ns=1,pawset_%nwfc
+          DO ns1=1,ns
+             IF (pawset_%l(ns)==pawset_%l(ns1)) THEN
+                aux(1:pawset_%mesh) =                        &
+!!!                     pawset_%augfun(1:pawset_%mesh,ns,ns1) * &
+!!!                     veffps_(1:pawset_%mesh,is)
+!!!                aux(1:pawset_%mesh) = aux(1:pawset_%mesh) +  &
+                     pawset_%aewfc(1:pawset_%mesh,ns ) *     &
+                     pawset_%aewfc(1:pawset_%mesh,ns1) *     &
+                     veff1_(1:pawset_%mesh,is)
+                aux(1:pawset_%mesh) = aux(1:pawset_%mesh) -  &
+                     pawset_%pswfc(1:pawset_%mesh,ns ) *     &
+                     pawset_%pswfc(1:pawset_%mesh,ns1) *     &
+                     veff1ps_(1:pawset_%mesh,is)
+                aux(1:pawset_%mesh) = aux(1:pawset_%mesh) -  &
+                     pawset_%augfun(1:pawset_%mesh,ns,ns1) * &
+                     veff1ps_(1:pawset_%mesh,is)
+                ddd_(ns,ns1,is) = pawset_%kdiff(ns,ns1) +       &
+                     int_0_inf_dr(aux,pawset_%r,pawset_%r2,pawset_%dx,pawset_%irc,(pawset_%l(ns)+1)*2)
+             ELSE
+                ddd_(ns,ns1,is)=ZERO
+             END IF
+             ddd_(ns1,ns,is)=ddd_(ns,ns1,is)
+          END DO
+       END DO
+    END DO
+  END SUBROUTINE compute_nonlocal_coeff_ion
   !
   !============================================================================
   !

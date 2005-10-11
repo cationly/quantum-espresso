@@ -15,7 +15,7 @@ subroutine run_pseudo
   !
   !
   use ld1inc
-  use atomic_paw, only : new_paw_hamiltonian, paw2us
+  use atomic_paw, only : new_paw_hamiltonian
   implicit none
 
   integer :: &

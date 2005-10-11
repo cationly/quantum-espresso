@@ -48,6 +48,8 @@ subroutine gener_pseudo
        gi(ndm,2),    &  ! auxiliary to compute the integrals
        sum, db, work(nwfsx) ! work space
 
+  character (len=2), external :: atom_name
+  character(len=2) :: symbol
   real(DP) :: vpotpaw (ndm) ! total potential to be used for PAW generation (normally the AE potential)
 #if defined __PAW_FROM_NC__
   integer  :: inc2paw
@@ -372,6 +374,8 @@ subroutine gener_pseudo
      write (*,*) 'WARNING: __PAW_FROM_NC__'
 #endif
      !
+     symbol=atom_name(nint(zed))
+     !
      ! compute kinetic energy differences, using:
      ! AE:   T |psi> = (e - Vae) |psi>
      ! PS:   T |phi> = (e - Vps) |phi> - |chi>
@@ -403,23 +407,12 @@ subroutine gener_pseudo
      end do
      !
      ! create the 'pawsetup' object containing the atomic setup for PAW
-!#if defined __PAW_FROM_NC__
-!     call us2paw ( pawsetup,                                         &
-!          zval, mesh, r, r2, sqr, dx, maxval(ikk(1:nbeta)), ikk,     &
-!          nbeta, lls, ocs, enls, psipsus, phis, betas, qvan, kindiff, &
-!          nlcc, psccharge, psccharge, vpsloc, vpsloc, which_paw_augfun, .true. )
-!#else
-!     call us2paw ( pawsetup,                                         &
-!          zval, mesh, r, r2, sqr, dx, maxval(ikk(1:nbeta)), ikk,     &
-!          nbeta, lls, ocs, enls, psipaw, phis, betas, qvan, kindiff, &
-!          nlcc, psccharge, psccharge, vpot(:,1), vpsloc, which_paw_augfun, .true. )
-     call us2paw ( pawsetup,                                         &
-          zval, mesh, r, r2, sqr, dx, maxval(ikk(1:nbeta)), ikk,     &
-          nbeta, lls, ocs, enls, psipaw, phis, betas, qvan, kindiff, &
-          nlcc, aeccharge, psccharge, vpotpaw, vpsloc, which_paw_augfun )!, .true. )
-!#endif
+     call us2paw ( pawsetup,                                             &
+          symbol, zval, mesh, r, r2, sqr, dx, maxval(ikk(1:nbeta)), ikk, &
+          nbeta, lls, ocs, enls, psipaw, phis, betas, qvan, kindiff,     &
+          nlcc, aeccharge, psccharge, vpotpaw, vpsloc, which_paw_augfun )
      !
-     ! the augmentation functions are changed in 'pawsetup': read from it
+     ! the augmentation functions can be changed in 'pawsetup': read from it
      call paw2us ( pawsetup, zval, mesh, r, r2, sqr, dx, nbeta, lls, &
           ikk, betas, qq, qvan, pseudotype )
      !

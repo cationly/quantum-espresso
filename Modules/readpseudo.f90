@@ -20,6 +20,90 @@
         SAVE
 
       CONTAINS
+
+!---------------------------------------------------------------------
+SUBROUTINE paw_io(pawset_,un,what)
+  !---------------------------------------------------------------------
+  !
+  ! Read/write the PAW dataset in a temporary format.
+  ! No check for errors coded!
+  !
+  USE pseudo_types, ONLY: paw_t
+  TYPE(paw_t), INTENT(INOUT) :: pawset_
+  INTEGER, INTENT(IN) :: un
+  CHARACTER(LEN=3), INTENT(IN) :: what
+  INTEGER :: n, ns, ns1, l
+  SELECT CASE (what)
+  CASE ("OUT")
+     WRITE(un,*)
+     WRITE(un,*) pawset_%symbol
+     WRITE(un,'(e20.10)') pawset_%zval
+     WRITE(un,'(i8)') pawset_%mesh
+     WRITE(un,'(e20.10)') (pawset_%r(n), n=1,pawset_%mesh)
+     WRITE(un,'(e20.10)') (pawset_%r2(n), n=1,pawset_%mesh)
+     WRITE(un,'(e20.10)') (pawset_%sqrtr(n), n=1,pawset_%mesh)
+     WRITE(un,'(e20.10)') pawset_%dx
+     WRITE(un,*) pawset_%nlcc
+     WRITE(un,'(i8)') pawset_%nwfc
+     WRITE(un,'(i8)') (pawset_%l(ns), ns=1,pawset_%nwfc)
+     WRITE(un,'(i8)') (pawset_%ikk(ns), ns=1,pawset_%nwfc)
+     WRITE(un,'(i8)') pawset_%irc
+     WRITE(un,'(e20.10)') (pawset_%oc(ns), ns=1,pawset_%nwfc)
+     WRITE(un,'(e20.10)') (pawset_%enl(ns), ns=1,pawset_%nwfc)
+     WRITE(un,'(e20.10)') ((pawset_%aewfc(n,ns), n=1,pawset_%mesh), ns=1,pawset_%nwfc)
+     WRITE(un,'(e20.10)') ((pawset_%pswfc(n,ns), n=1,pawset_%mesh), ns=1,pawset_%nwfc)
+     WRITE(un,'(e20.10)') ((pawset_%proj(n,ns), n=1,pawset_%mesh), ns=1,pawset_%nwfc)
+     WRITE(un,'(e20.10)') (((pawset_%augfun(n,ns,ns1), n=1,pawset_%mesh), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc)
+     WRITE(un,'(i8)') pawset_%lmax
+     WRITE(un,'(e20.10)') (((pawset_%augmom(ns,ns1,l), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc),l=0,2*pawset_%lmax)
+     WRITE(un,'(e20.10)') (pawset_%aeccharge(n), n=1,pawset_%mesh)
+     IF (pawset_%nlcc) WRITE(un,'(e20.10)') (pawset_%psccharge(n), n=1,pawset_%mesh)
+     WRITE(un,'(e20.10)') (pawset_%aeloc(n), n=1,pawset_%mesh)
+     WRITE(un,'(e20.10)') (pawset_%psloc(n), n=1,pawset_%mesh)
+     WRITE(un,'(e20.10)') ((pawset_%kdiff(ns,ns1), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc)
+     WRITE(un,'(e20.10)') ((pawset_%dion(ns,ns1), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc)
+     WRITE(un,'(A)') TRIM(pawset_%dft)
+  CASE ("INP")
+     READ(un,*)
+     READ(un,*) pawset_%symbol
+     READ(un,'(e20.10)') pawset_%zval
+     READ(un,'(i8)') pawset_%mesh
+     READ(un,'(e20.10)') (pawset_%r(n), n=1,pawset_%mesh)
+     READ(un,'(e20.10)') (pawset_%r2(n), n=1,pawset_%mesh)
+     READ(un,'(e20.10)') (pawset_%sqrtr(n), n=1,pawset_%mesh)
+     READ(un,'(e20.10)') pawset_%dx
+     READ(un,*) pawset_%nlcc
+     READ(un,'(i8)') pawset_%nwfc
+     READ(un,'(i8)') (pawset_%l(ns), ns=1,pawset_%nwfc)
+     READ(un,'(i8)') (pawset_%ikk(ns), ns=1,pawset_%nwfc)
+     READ(un,'(i8)') pawset_%irc
+     READ(un,'(e20.10)') (pawset_%oc(ns), ns=1,pawset_%nwfc)
+     READ(un,'(e20.10)') (pawset_%enl(ns), ns=1,pawset_%nwfc)
+     READ(un,'(e20.10)') ((pawset_%aewfc(n,ns), n=1,pawset_%mesh), ns=1,pawset_%nwfc)
+     READ(un,'(e20.10)') ((pawset_%pswfc(n,ns), n=1,pawset_%mesh), ns=1,pawset_%nwfc)
+     READ(un,'(e20.10)') ((pawset_%proj(n,ns), n=1,pawset_%mesh), ns=1,pawset_%nwfc)
+     READ(un,'(e20.10)') (((pawset_%augfun(n,ns,ns1), n=1,pawset_%mesh), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc)
+     READ(un,'(i8)') pawset_%lmax
+     READ(un,'(e20.10)') (((pawset_%augmom(ns,ns1,l), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc),l=0,2*pawset_%lmax)
+     READ(un,'(e20.10)') (pawset_%aeccharge(n), n=1,pawset_%mesh)
+     IF (pawset_%nlcc) READ(un,'(e20.10)') (pawset_%psccharge(n), n=1,pawset_%mesh)
+     READ(un,'(e20.10)') (pawset_%aeloc(n), n=1,pawset_%mesh)
+     READ(un,'(e20.10)') (pawset_%psloc(n), n=1,pawset_%mesh)
+     READ(un,'(e20.10)') ((pawset_%kdiff(ns,ns1), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc)
+     READ(un,'(e20.10)') ((pawset_%dion(ns,ns1), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc)
+     pawset_%dft="                                                                                "
+     READ(un,'(A)') pawset_%dft
+  CASE DEFAULT
+     CALL errore ('paw_io','specify (INP)ut or (OUT)put',1)
+  END SELECT
+  CLOSE(un)
+END SUBROUTINE paw_io
+!---------------------------------------------------------------------
+
+
+
+
+
 !
 !---------------------------------------------------------------------
 subroutine read_pseudo_upf (iunps, upf, ierr)  

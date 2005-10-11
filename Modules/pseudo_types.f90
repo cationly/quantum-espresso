@@ -16,9 +16,57 @@
 
         USE kinds, ONLY: DP
         USE parameters, ONLY: ndmx, cp_lmax
+        USE parameters, ONLY: lmaxx
+        !  USE ld1_parameters, ONLY: ndm, nwfsx
+        USE parameters, ONLY: ndm=>ndmx, nwfsx=>nchix
 
         IMPLICIT NONE
         SAVE
+
+
+TYPE :: paw_t
+   !
+   ! Type describing a PAW dataset (temporary).
+   ! Functions are defined on a logarithmic radial mesh.
+   !
+   CHARACTER(LEN=2) :: symbol
+   REAL (DP) :: zval
+   REAL (DP) :: z
+   REAL (DP) :: zmesh
+   CHARACTER(LEN=80) :: dft
+   INTEGER        :: mesh      ! the size of the mesh
+   REAL (DP) :: r (ndm)     ! the mesh
+   REAL (DP) :: r2 (ndm)    ! r^2
+   REAL (DP) :: sqrtr (ndm) ! sqrt(r)
+   REAL (DP) :: dx          ! log(r(i+1))-log(r(i))
+   LOGICAL :: nlcc ! nonlinear core correction
+   INTEGER :: nwfc ! number of wavefunctions/projectors
+   INTEGER :: lmax ! maximum angular momentum of projectors
+   INTEGER :: l(nwfsx) ! angular momentum of projectors
+   INTEGER :: ikk(nwfsx) ! cutoff radius for the projectors
+   INTEGER :: irc ! r(irc) = radius of the augmentation sphere
+   REAL (DP) :: &
+        oc (nwfsx), & ! the occupations
+        enl (nwfsx), & ! the energy of the wavefunctions
+        aewfc (ndm,nwfsx), &  ! all-electron wavefunctions
+        pswfc (ndm,nwfsx),        & ! pseudo wavefunctions
+        proj (ndm,nwfsx),     & ! projectors
+        augfun(ndm,nwfsx,nwfsx),      & ! augmentation functions
+        augmom(nwfsx,nwfsx,0:2*lmaxx) , & ! moments of the augmentation functions
+        aeccharge (ndm),  & ! AE core charge * 4PI r^2
+        psccharge (ndm),  & ! PS core charge * 4PI r^2
+        aeloc (ndm),     & ! descreened AE potential: v_AE-v_H[n1]-v_XC[n1+nc]
+        psloc (ndm),     & ! descreened local PS potential: v_PS-v_H[n~+n^]-v_XC[n~+n^+n~c]
+        kdiff (nwfsx,nwfsx) ,&      ! kinetic energy differences
+        dion(nwfsx,nwfsx)
+!!!  Notes about screening:
+!!!       Without nlcc, the local PSpotential is descreened with n~+n^ only.
+!!!       The local AEpotential is descreened ALWAYS with n1+nc. This improves
+!!!       the accuracy, and will not cost in the plane wave code (atomic
+!!!       contribution only).
+END TYPE paw_t
+!
+!============================================================================
 
 !  BEGIN manual
 !  TYPE DEFINITIONS
