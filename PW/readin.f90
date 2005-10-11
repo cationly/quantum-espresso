@@ -18,9 +18,10 @@ subroutine readpp
   USE ions_base,  ONLY : ntyp => nsp
   USE funct,      ONLY : iexch, icorr, igcx, igcc
   USE io_files,   ONLY : pseudo_dir, psfile
-  USE pseudo_types,        ONLY : paw_t            !!PAW
-  USE read_pseudo_module,  ONLY : paw_io           !!PAW
-  USE upf_to_internal,     ONLY : set_pseudo_paw   !!PAW
+  USE pseudo_types,       ONLY: paw_t, deallocate_pseudo_paw !!PAW
+  USE read_pseudo_module, ONLY: paw_io                       !!PAW
+  USE upf_to_internal,    ONLY: set_pseudo_paw               !!PAW
+  USE parameters,         ONLY: nchix, ndmx, lmaxx           !!PAW
   !
   implicit none
   !
@@ -98,9 +99,10 @@ subroutine readpp
            tvanp (nt) = .true.
            open (unit = iunps, file = file_pseudo, status = 'old', &
                 form='formatted', iostat = ios)
-           call paw_io (pawset, iunps, "INP")
+           call paw_io (pawset, iunps, "INP",ndmx,nchix,lmaxx)
            close (iunps)
            call set_pseudo_paw (nt, pawset)
+           call deallocate_pseudo_paw (pawset)
            !
         else
            tvanp (nt) = .false.

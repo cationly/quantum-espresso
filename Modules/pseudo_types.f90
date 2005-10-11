@@ -35,36 +35,37 @@ TYPE :: paw_t
    REAL (DP) :: zmesh
    CHARACTER(LEN=80) :: dft
    INTEGER        :: mesh      ! the size of the mesh
-   REAL (DP) :: r (ndm)     ! the mesh
-   REAL (DP) :: r2 (ndm)    ! r^2
-   REAL (DP) :: sqrtr (ndm) ! sqrt(r)
+   REAL (DP), POINTER :: r(:) !r (ndm)     ! the mesh
+   REAL (DP), POINTER :: r2(:) !r2 (ndm)    ! r^2
+   REAL (DP), POINTER :: sqrtr(:) !sqrtr (ndm) ! sqrt(r)
    REAL (DP) :: dx          ! log(r(i+1))-log(r(i))
    LOGICAL :: nlcc ! nonlinear core correction
    INTEGER :: nwfc ! number of wavefunctions/projectors
    INTEGER :: lmax ! maximum angular momentum of projectors
-   INTEGER :: l(nwfsx) ! angular momentum of projectors
-   INTEGER :: ikk(nwfsx) ! cutoff radius for the projectors
+   INTEGER, POINTER :: l(:) !l(nwfsx) ! angular momentum of projectors
+   INTEGER, POINTER :: ikk(:) !ikk(nwfsx) ! cutoff radius for the projectors
    INTEGER :: irc ! r(irc) = radius of the augmentation sphere
-   REAL (DP) :: &
-        oc (nwfsx), & ! the occupations
-        enl (nwfsx), & ! the energy of the wavefunctions
-        aewfc (ndm,nwfsx), &  ! all-electron wavefunctions
-        pswfc (ndm,nwfsx),        & ! pseudo wavefunctions
-        proj (ndm,nwfsx),     & ! projectors
-        augfun(ndm,nwfsx,nwfsx),      & ! augmentation functions
-        augmom(nwfsx,nwfsx,0:2*lmaxx) , & ! moments of the augmentation functions
-        aeccharge (ndm),  & ! AE core charge * 4PI r^2
-        psccharge (ndm),  & ! PS core charge * 4PI r^2
-        aeloc (ndm),     & ! descreened AE potential: v_AE-v_H[n1]-v_XC[n1+nc]
-        psloc (ndm),     & ! descreened local PS potential: v_PS-v_H[n~+n^]-v_XC[n~+n^+n~c]
-        kdiff (nwfsx,nwfsx) ,&      ! kinetic energy differences
-        dion(nwfsx,nwfsx)
+   REAL (DP), POINTER :: &
+        oc(:), &!oc (nwfsx), & ! the occupations
+        enl(:), &!enl (nwfsx), & ! the energy of the wavefunctions
+        aewfc(:,:), &!aewfc (ndm,nwfsx), &  ! all-electron wavefunctions
+        pswfc(:,:), &!pswfc (ndm,nwfsx),        & ! pseudo wavefunctions
+        proj(:,:), &!proj (ndm,nwfsx),     & ! projectors
+        augfun(:,:,:), &!augfun(ndm,nwfsx,nwfsx),      & ! augmentation functions
+        augmom(:,:,:), &!augmom(nwfsx,nwfsx,0:2*lmaxx) , & ! moments of the augmentation functions
+        aeccharge(:), &!aeccharge (ndm),  & ! AE core charge * 4PI r^2
+        psccharge(:), &!psccharge (ndm),  & ! PS core charge * 4PI r^2
+        aeloc(:), &!aeloc (ndm),     & ! descreened AE potential: v_AE-v_H[n1]-v_XC[n1+nc]
+        psloc(:), &!psloc (ndm),     & ! descreened local PS potential: v_PS-v_H[n~+n^]-v_XC[n~+n^+n~c]
+        kdiff(:,:), &!kdiff (nwfsx,nwfsx) ,&      ! kinetic energy differences
+        dion(:,:) !dion(nwfsx,nwfsx)
 !!!  Notes about screening:
 !!!       Without nlcc, the local PSpotential is descreened with n~+n^ only.
 !!!       The local AEpotential is descreened ALWAYS with n1+nc. This improves
 !!!       the accuracy, and will not cost in the plane wave code (atomic
 !!!       contribution only).
 END TYPE paw_t
+
 !
 !============================================================================
 
@@ -164,6 +165,67 @@ END TYPE paw_t
 !  ----------------------------------------------
 
       CONTAINS
+
+SUBROUTINE nullify_pseudo_paw( paw )
+  TYPE( paw_t ), INTENT(INOUT) :: paw
+  NULLIFY( paw%r, paw%r2, paw%sqrtr )
+  NULLIFY( paw%l, paw%ikk )
+  NULLIFY( paw%oc, paw%enl, paw%aewfc, paw%pswfc, paw%proj )
+  NULLIFY( paw%augfun, paw%augmom, paw%aeccharge, paw%psccharge )
+  NULLIFY( paw%aeloc, paw%psloc, paw%kdiff, paw%dion )
+  RETURN
+END SUBROUTINE nullify_pseudo_paw
+
+SUBROUTINE allocate_pseudo_paw( paw, size_mesh, size_nwfc, size_lmax )
+  TYPE( paw_t ), INTENT(INOUT) :: paw
+  INTEGER, INTENT(IN) :: size_mesh, size_nwfc, size_lmax
+  ALLOCATE ( paw%r(size_mesh) )
+  ALLOCATE ( paw%r2(size_mesh) )
+  ALLOCATE ( paw%sqrtr(size_mesh) )
+  ALLOCATE ( paw%l(size_nwfc) )
+  ALLOCATE ( paw%ikk(size_nwfc) )
+  ALLOCATE ( paw%oc(size_nwfc) )
+  ALLOCATE ( paw%enl(size_nwfc) )
+  ALLOCATE ( paw%aewfc(size_mesh,size_nwfc) )
+  ALLOCATE ( paw%pswfc(size_mesh,size_nwfc) )
+  ALLOCATE ( paw%proj (size_mesh,size_nwfc) )
+  ALLOCATE ( paw%augfun(size_mesh,size_nwfc,size_nwfc) )
+  ALLOCATE ( paw%augmom(size_nwfc,size_nwfc,0:2*size_lmax+1) )
+  ALLOCATE ( paw%aeccharge(size_mesh) )
+  ALLOCATE ( paw%psccharge(size_mesh) )
+  ALLOCATE ( paw%aeloc(size_mesh) )
+  ALLOCATE ( paw%psloc(size_mesh) )
+  ALLOCATE ( paw%kdiff(size_nwfc,size_nwfc) )
+  ALLOCATE ( paw%dion (size_nwfc,size_nwfc) )
+END SUBROUTINE allocate_pseudo_paw
+
+SUBROUTINE deallocate_pseudo_paw( paw )
+  TYPE( paw_t ), INTENT(INOUT) :: paw
+  IF( ASSOCIATED( paw%r ) ) DEALLOCATE( paw%r )
+  IF( ASSOCIATED( paw%r2 ) ) DEALLOCATE( paw%r2 )
+  IF( ASSOCIATED( paw%sqrtr ) ) DEALLOCATE( paw%sqrtr )
+  IF( ASSOCIATED( paw%l ) ) DEALLOCATE( paw%l )
+  IF( ASSOCIATED( paw%ikk ) ) DEALLOCATE( paw%ikk )
+  IF( ASSOCIATED( paw%oc ) ) DEALLOCATE( paw%oc )
+  IF( ASSOCIATED( paw%enl ) ) DEALLOCATE( paw%enl )
+  IF( ASSOCIATED( paw%aewfc ) ) DEALLOCATE( paw%aewfc )
+  IF( ASSOCIATED( paw%pswfc ) ) DEALLOCATE( paw%pswfc )
+  IF( ASSOCIATED( paw%proj ) ) DEALLOCATE( paw%proj )
+  IF( ASSOCIATED( paw%augfun ) ) DEALLOCATE( paw%augfun )
+  IF( ASSOCIATED( paw%augmom ) ) DEALLOCATE( paw%augmom )
+  IF( ASSOCIATED( paw%aeccharge ) ) DEALLOCATE( paw%aeccharge )
+  IF( ASSOCIATED( paw%psccharge ) ) DEALLOCATE( paw%psccharge )
+  IF( ASSOCIATED( paw%aeloc ) ) DEALLOCATE( paw%aeloc )
+  IF( ASSOCIATED( paw%psloc ) ) DEALLOCATE( paw%psloc )
+  IF( ASSOCIATED( paw%kdiff ) ) DEALLOCATE( paw%kdiff )
+  IF( ASSOCIATED( paw%dion ) ) DEALLOCATE( paw%dion )
+  RETURN
+END SUBROUTINE deallocate_pseudo_paw
+
+
+
+
+
 
 !  subroutines
 

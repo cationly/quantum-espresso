@@ -22,16 +22,17 @@
       CONTAINS
 
 !---------------------------------------------------------------------
-SUBROUTINE paw_io(pawset_,un,what)
+SUBROUTINE paw_io(pawset_,un,what,size_mesh,size_nwfc,size_lmax)
   !---------------------------------------------------------------------
   !
   ! Read/write the PAW dataset in a temporary format.
   ! No check for errors coded!
   !
-  USE pseudo_types, ONLY: paw_t
+  USE pseudo_types, ONLY: paw_t, nullify_pseudo_paw, allocate_pseudo_paw
   TYPE(paw_t), INTENT(INOUT) :: pawset_
   INTEGER, INTENT(IN) :: un
   CHARACTER(LEN=3), INTENT(IN) :: what
+  INTEGER, INTENT(IN), OPTIONAL :: size_mesh, size_nwfc, size_lmax
   INTEGER :: n, ns, ns1, l
   SELECT CASE (what)
   CASE ("OUT")
@@ -64,16 +65,21 @@ SUBROUTINE paw_io(pawset_,un,what)
      WRITE(un,'(e20.10)') ((pawset_%dion(ns,ns1), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc)
      WRITE(un,'(A)') TRIM(pawset_%dft)
   CASE ("INP")
+     IF (.NOT.PRESENT(size_lmax)) CALL errore ('paw_io','maximum dimensions should be specified',1)
+     CALL nullify_pseudo_paw(pawset_)
+     CALL allocate_pseudo_paw(pawset_,size_mesh,size_nwfc,size_lmax)
      READ(un,*)
      READ(un,*) pawset_%symbol
      READ(un,'(e20.10)') pawset_%zval
      READ(un,'(i8)') pawset_%mesh
+     IF (pawset_%mesh > size_mesh) CALL errore ('paw_io','size_mesh too small?',1)
      READ(un,'(e20.10)') (pawset_%r(n), n=1,pawset_%mesh)
      READ(un,'(e20.10)') (pawset_%r2(n), n=1,pawset_%mesh)
      READ(un,'(e20.10)') (pawset_%sqrtr(n), n=1,pawset_%mesh)
      READ(un,'(e20.10)') pawset_%dx
      READ(un,*) pawset_%nlcc
      READ(un,'(i8)') pawset_%nwfc
+     IF (pawset_%nwfc > size_nwfc) CALL errore ('paw_io','size_nwfc too small?',1)
      READ(un,'(i8)') (pawset_%l(ns), ns=1,pawset_%nwfc)
      READ(un,'(i8)') (pawset_%ikk(ns), ns=1,pawset_%nwfc)
      READ(un,'(i8)') pawset_%irc
@@ -84,13 +90,15 @@ SUBROUTINE paw_io(pawset_,un,what)
      READ(un,'(e20.10)') ((pawset_%proj(n,ns), n=1,pawset_%mesh), ns=1,pawset_%nwfc)
      READ(un,'(e20.10)') (((pawset_%augfun(n,ns,ns1), n=1,pawset_%mesh), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc)
      READ(un,'(i8)') pawset_%lmax
+     IF (pawset_%lmax > size_lmax) CALL errore ('paw_io','size_lmax too small?',1)
      READ(un,'(e20.10)') (((pawset_%augmom(ns,ns1,l), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc),l=0,2*pawset_%lmax)
      READ(un,'(e20.10)') (pawset_%aeccharge(n), n=1,pawset_%mesh)
      IF (pawset_%nlcc) READ(un,'(e20.10)') (pawset_%psccharge(n), n=1,pawset_%mesh)
      READ(un,'(e20.10)') (pawset_%aeloc(n), n=1,pawset_%mesh)
      READ(un,'(e20.10)') (pawset_%psloc(n), n=1,pawset_%mesh)
+     ALLOCATE (pawset_%dion (size_nwfc,size_nwfc))
      READ(un,'(e20.10)') ((pawset_%kdiff(ns,ns1), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc)
-     READ(un,'(e20.10)') ((pawset_%dion(ns,ns1), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc)
+     READ(un,'(e20.10)') ((pawset_%dion (ns,ns1), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc)
      pawset_%dft="                                                                                "
      READ(un,'(A)') pawset_%dft
   CASE DEFAULT

@@ -31,10 +31,8 @@ MODULE atomic_paw
   !============================================================================
   !
   USE kinds, ONLY: dp
-  !  USE ld1_parameters, ONLY: ndm, nwfsx
-  USE parameters, ONLY: ndm=>ndmx, nwfsx=>nchix
-  USE pseudo_types, ONLY: paw_t
-  USE read_pseudo_module, ONLY: paw_io
+  USE ld1_parameters, ONLY: ndm, nwfsx, lmaxx
+  USE pseudo_types, ONLY: paw_t, nullify_pseudo_paw, allocate_pseudo_paw
   !
   IMPLICIT NONE
   PRIVATE
@@ -52,7 +50,6 @@ MODULE atomic_paw
   PUBLIC :: us2paw
   PUBLIC :: paw2us
   PUBLIC :: new_paw_hamiltonian
-  PUBLIC :: paw_io
   !
 CONTAINS
   !
@@ -174,6 +171,8 @@ CONTAINS
     INTEGER :: nspin=1, spin(nwfsx)=1
     CHARACTER(LEN=4) :: shortname
     !
+    CALL nullify_pseudo_paw(pawset_)
+    CALL allocate_pseudo_paw(pawset_,ndm,nwfsx,lmaxx)
     pawset_%symbol=symbol
     pawset_%zval=zval
     !

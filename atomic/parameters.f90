@@ -6,15 +6,10 @@
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
 module ld1_parameters
-!!! This is to use the same parameters as the PW code.
-!!! introduced on 11 oct 2005 in order to test PAW
-!!! in pw.x, could be removed by defining as allocatable
-!!! the arrays in the PAW derived data type. (G.F.)
-use parameters, only: ndm=>ndmx, nwfsx=>nchix
-!!!
    integer, parameter :: &
-!!!           ndm=5000,     & ! the maximum mesh size 
+           ndm=5000,     & ! the maximum mesh size 
            ncmax1=10,    & ! the maximum configuration number
-!!!           nwfsx=10,     & ! the maximum number of pseudo wavefunctions
-           nwfx=35         ! the maximum number of wavefunctions
+           nwfsx=10,     & ! the maximum number of pseudo wavefunctions
+           nwfx=35,      & ! the maximum number of wavefunctions
+           lmaxx=5         ! the maximum angular momentum of wfcs (for PAW)
 end module ld1_parameters

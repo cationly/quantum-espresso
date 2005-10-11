@@ -16,7 +16,7 @@ subroutine ld1_writeout
   !
   use ld1inc
   use funct
-  use atomic_paw, only : paw_io
+  use read_pseudo_module, only : paw_io
   implicit none
 
   integer :: &

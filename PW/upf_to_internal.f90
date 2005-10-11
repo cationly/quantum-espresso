@@ -269,7 +269,7 @@ subroutine set_pseudo_paw (is, pawset)
           pawset%augfun(1:pawset%mesh,ir,ir))
   end do
 
-  !!! TEMP       !!! this was already present in set_pseudo_paw. what does it mean?
+  !!! TEMP       !!! this was already present in set_pseudo_upf. what does it mean?
   lloc(is) = 0
   !!!
   vloc_at(1:pawset%mesh,is) = pawset%psloc(1:pawset%mesh)

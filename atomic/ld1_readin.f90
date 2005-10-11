@@ -13,7 +13,8 @@ subroutine ld1_readin
   !
   use ld1inc
   use funct
-  use atomic_paw, only : paw_io, paw2us
+  use atomic_paw, only : paw2us
+  use read_pseudo_module, only : paw_io
   implicit none
 
   integer ::  &
@@ -402,7 +403,7 @@ subroutine ld1_readin
         open(unit=111, file=trim(file_pseudo), status='unknown',  &
              form='formatted', err=50, iostat=ios)
 50      call errore('ld1_readin','open error on file '//file_pseudo,abs(ios))
-        call paw_io(pawsetup,111,"INP")
+        call paw_io(pawsetup,111,"INP",ndm,nwfsx,lmaxx)
         close(111)
         call paw2us ( pawsetup, zval, mesh, r, r2, sqr, dx, nbeta, lls, &
              ikk, betas, qq, qvan, pseudotype )
