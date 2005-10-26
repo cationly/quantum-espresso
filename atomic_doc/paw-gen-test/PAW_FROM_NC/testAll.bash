@@ -1,37 +1,35 @@
 #!/bin/bash
 
-LD1_orig=~/espresso-CVS/bin/ld1.x
-LD1_new=~/develop_PAW/bin/ld1.x
+LD1=~/develop_PAW/bin/ld1.x
 
-FUNC="LDA"
-NLCC="false"
+FUNC="PBE"
 
 CALC[1]=NC
-PROG[1]=$LD1_orig
+PROG[1]=$LD1
 SUFF[1]=UPF
 
 CALC[2]=NChard
-PROG[2]=$LD1_orig
+PROG[2]=$LD1
 SUFF[2]=UPF
 
 CALC[3]=US
-PROG[3]=$LD1_orig
+PROG[3]=$LD1
 SUFF[3]=UPF
 
 CALC[4]=UShard
-PROG[4]=$LD1_orig
+PROG[4]=$LD1
 SUFF[4]=UPF
 
 CALC[5]=PAW-AE-QAE
-PROG[5]=$LD1_orig
+PROG[5]=$LD1
 SUFF[5]=PAW
 
 CALC[6]=PAW-NChard-Qhard
-PROG[6]=$LD1_new
+PROG[6]=$LD1
 SUFF[6]=PAW
 
 CALC[7]=PAW-NChard-Qsmooth
-PROG[7]=$LD1_new
+PROG[7]=$LD1
 SUFF[7]=PAW
 
 NCONF=11

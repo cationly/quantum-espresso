@@ -1,4 +1,4 @@
-Today is: mar feb  8 15:53:17 CET 2005
+Today is: mer ott 26 16:47:33 CEST 2005
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!                          Doing tests for Oxygen                          !!!
@@ -41,7 +41,7 @@ Pseudopotential tested in the (1s2) 2s0 2p6 configuration
   Error         =   -0.000443 Ryd
 Pseudopotential tested in the (1s2) 2s0 2p4 configuration
   Pseudo energy =  -35.232117 Ryd
-  Error         =   -0.001927 Ryd
+  Error         =   -0.001926 Ryd
 
 Testing pseudo PBE for O with nlcc=.true. ...
 Pseudopotential generated in the (1s2) 2s2 2p4 configuration
@@ -67,7 +67,7 @@ Pseudopotential generated in the (1s2 2s2 2p6 3s2 3p6) 3d10 4s1 configuration
   Pseudo energy = -207.078160 Ryd
 Pseudopotential tested in the (1s2 2s2 2p6 3s2 3p6) 3d9.7 4s1 configuration
   Pseudo energy = -206.915990 Ryd
-  Error         =   -0.000558 Ryd
+  Error         =   -0.000556 Ryd
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 

@@ -1,8 +1,5 @@
 #!/bin/bash
 
-LD1=../ld1-orig.x
-LD_=../ld1.x
-
 NCONF=11
 CALCLIST="NC NChard US UShard PAW-AE-QAE PAW-NChard-Qhard PAW-NChard-Qsmooth"
 

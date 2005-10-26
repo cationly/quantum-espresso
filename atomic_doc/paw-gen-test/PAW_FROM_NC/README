@@ -17,14 +17,6 @@ Execute with
 ./testAll.bash
 ./viewAll.bash
 
-after changing
-
-LD1_orig=~/espresso-CVS/bin/ld1.x
-LD1_new=~/develop_PAW/bin/ld1.x
-
-to point to a normal ld1.x executable and to one compiled with the
-__PAW_FROM_NC__ option.
-
 Notice that (8) reproduces the reference results (2) with similar
 accuracy than (6) (for which the reference is (1)), whereas (4) is
 much worse.

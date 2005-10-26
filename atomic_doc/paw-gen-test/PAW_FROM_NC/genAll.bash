@@ -1,15 +1,14 @@
 #!/bin/bash
 
-LD1_orig=~/espresso-CVS/bin/ld1.x
-LD1_new=~/develop_PAW/bin/ld1.x
+LD1=~/develop_PAW/bin/ld1.x
 
 RNC=1.40
 RNChard=1.20
 RUS=1.70
 Rd=1.40
 
-FUNC="LDA"
-NLCC="false"
+FUNC="PBE"
+NLCC="true"
 
 
 ### NC ###
@@ -53,7 +52,7 @@ cat <<EOF > $name/$name.gen.in
 2S  1  0  2.00  0.00  $RNC  $RUS  1
 2P  2  1  4.00  0.00  $RNC  $RUS  1
 EOF
-$LD1_orig < $name/$name.gen.in > $name/$name.gen.out
+$LD1 < $name/$name.gen.in > $name/$name.gen.out
 
 
 ### NC hard ###
@@ -97,7 +96,7 @@ cat <<EOF > $name/$name.gen.in
 2S  1  0  2.00  0.00  $RNC  $RUS  1
 2P  2  1  4.00  0.00  $RNC  $RUS  1
 EOF
-$LD1_orig < $name/$name.gen.in > $name/$name.gen.out
+$LD1 < $name/$name.gen.in > $name/$name.gen.out
 
 
 ### US ###
@@ -127,6 +126,7 @@ cat <<EOF > $name/$name.gen.in
    file_pseudopw='./$name/$name.UPF'
    zval=6.d0,
    lpaw=.false.
+   file_qvan = './$name/$name.qvan'
  /
 5
 2S  2  0  2.00  0.00  $RNC  $RUS
@@ -141,7 +141,7 @@ cat <<EOF > $name/$name.gen.in
 2S  1  0  2.00  0.00  $RNC  $RUS  1
 2P  2  1  4.00  0.00  $RNC  $RUS  1
 EOF
-$LD1_orig < $name/$name.gen.in > $name/$name.gen.out
+$LD1 < $name/$name.gen.in > $name/$name.gen.out
 
 
 ### US with hard augmentation charges ###
@@ -171,6 +171,7 @@ cat <<EOF > $name/$name.gen.in
    file_pseudopw='./$name/$name.UPF'
    zval=6.d0,
    lpaw=.false.
+   file_qvan = './$name/$name.qvan'
  /
 5
 2S  2  0  2.00  0.00  $RNChard  $RUS
@@ -185,7 +186,7 @@ cat <<EOF > $name/$name.gen.in
 2S  1  0  2.00  0.00  $RNC  $RUS  1
 2P  2  1  4.00  0.00  $RNC  $RUS  1
 EOF
-$LD1_orig < $name/$name.gen.in > $name/$name.gen.out
+$LD1 < $name/$name.gen.in > $name/$name.gen.out
 
 
 
@@ -216,6 +217,7 @@ cat <<EOF > $name/$name.gen.in
    file_pseudopw='./$name/$name.PAW'
    zval=6.d0,
    lpaw=.true.
+   file_qvan = './$name/$name.qvan'
  /
 5
 2S  2  0  2.00  0.00  $RNC  $RUS
@@ -230,7 +232,7 @@ cat <<EOF > $name/$name.gen.in
 2S  1  0  2.00  0.00  $RNC  $RUS  1
 2P  2  1  4.00  0.00  $RNC  $RUS  1
 EOF
-$LD1_orig < $name/$name.gen.in > $name/$name.gen.out
+$LD1 < $name/$name.gen.in > $name/$name.gen.out
 
 
 ### PAW from NC hard with NChard augmentation functions ###
@@ -260,13 +262,20 @@ cat <<EOF > $name/$name.gen.in
    file_pseudopw='./$name/$name.PAW'
    zval=6.d0,
    lpaw=.true.
+   lnc2paw=.true.
+   rcutnc2paw(1)=$RNChard,
+   rcutnc2paw(2)=$RNChard,
+   rcutnc2paw(3)=$RNChard,
+   rcutnc2paw(4)=$RNChard,
+   rcutnc2paw(5)=$RNChard,
+   file_qvan = './$name/$name.qvan'
  /
 5
-2S  2  0  2.00  0.00  $RNC  $RUS  $RNChard
-2S  2  0  0.00  0.05  $RNC  $RUS  $RNChard
-2P  2  1  4.00  0.00  $RNC  $RUS  $RNChard
-2P  2  1  0.00  0.05  $RNC  $RUS  $RNChard
-3D  3  2 -2.00  0.15  $Rd  $Rd  $RNChard
+2S  2  0  2.00  0.00  $RNC  $RUS
+2S  2  0  0.00  0.05  $RNC  $RUS
+2P  2  1  4.00  0.00  $RNC  $RUS
+2P  2  1  0.00  0.05  $RNC  $RUS
+3D  3  2 -2.00  0.15  $Rd  $Rd
  &test
   nconf=1,
  / 
@@ -274,7 +283,7 @@ cat <<EOF > $name/$name.gen.in
 2S  1  0  2.00  0.00  $RNC  $RUS  1
 2P  2  1  4.00  0.00  $RNC  $RUS  1
 EOF
-$LD1_new < $name/$name.gen.in > $name/$name.gen.out
+$LD1 < $name/$name.gen.in > $name/$name.gen.out
 
 
 ### PAW from NC hard with smoother NC augmentation functions (same radius as US calculation) ###
@@ -304,14 +313,21 @@ cat <<EOF > $name/$name.gen.in
    file_pseudopw='./$name/$name.PAW'
    zval=6.d0,
    lpaw=.true.
-!!   which_paw_augfun='QVAN'
+   lnc2paw=.true.
+   rcutnc2paw(1)=$RNChard,
+   rcutnc2paw(2)=$RNChard,
+   rcutnc2paw(3)=$RNChard,
+   rcutnc2paw(4)=$RNChard,
+   rcutnc2paw(5)=$RNChard,
+   which_paw_augfun ='QVAN'
+   file_qvan = './$name/$name.qvan'
  /
 5
-2S  2  0  2.00  0.00  $RNC  $RUS  $RNChard
-2S  2  0  0.00  0.05  $RNC  $RUS  $RNChard
-2P  2  1  4.00  0.00  $RNC  $RUS  $RNChard
-2P  2  1  0.00  0.05  $RNC  $RUS  $RNChard
-3D  3  2 -2.00  0.15  $Rd  $Rd  $RNChard
+2S  2  0  2.00  0.00  $RNC  $RUS
+2S  2  0  0.00  0.05  $RNC  $RUS
+2P  2  1  4.00  0.00  $RNC  $RUS
+2P  2  1  0.00  0.05  $RNC  $RUS
+3D  3  2 -2.00  0.15  $Rd  $Rd
  &test
   nconf=1,
  / 
@@ -319,5 +335,5 @@ cat <<EOF > $name/$name.gen.in
 2S  1  0  2.00  0.00  $RNC  $RUS  1
 2P  2  1  4.00  0.00  $RNC  $RUS  1
 EOF
-$LD1_new < $name/$name.gen.in > $name/$name.gen.out
+$LD1 < $name/$name.gen.in > $name/$name.gen.out
 
