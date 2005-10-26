@@ -26,9 +26,6 @@ subroutine ld1_readin
 
   real(DP) :: &
        edum(nwfsx), zdum        ! auxiliary
-#if defined __PAW_FROM_NC__
-  real(DP) :: dummy
-#endif
 
   character(len=80) :: config, configts(ncmax1)
   character(len=2) :: atom
@@ -71,7 +68,9 @@ subroutine ld1_readin
        rcore, &    ! the core radius for nlcc
        rcloc, &    ! the local cut-off for pseudo
        lpaw,  &    ! if true create a PAW dataset
+       lnc2paw, &  ! if true the PAW dataset is generated on a NC one
        which_paw_augfun , & ! choose augmentation functions for PAW
+       rcutnc2paw,    & ! cutoff radius for NC wfcs to be used for PAW generat.
        file_pseudopw, & ! output file where the pseudopotential is written
        file_screen,   & ! output file for the screening potential
        file_core,     & ! output file for total and core charge
@@ -114,9 +113,6 @@ subroutine ld1_readin
   latt  = 0
   title = ' '
   config=' '
-
-  lpaw = .false.
-  which_paw_augfun = 'AE'
 
   ! read the namelist input
 
@@ -238,6 +234,11 @@ subroutine ld1_readin
      pseudotype=0
      jjs=0.0_dp
 
+     lpaw = .false.
+     lnc2paw = .false.
+     which_paw_augfun = 'AE'
+     rcutnc2paw(:) = 0.0_dp
+
      read(5,inputp,err=500,iostat=ios)
 500  call errore('ld1_readin','reading inputp',abs(ios))
 
@@ -246,13 +247,8 @@ subroutine ld1_readin
      if (pseudotype < 1.or.pseudotype > 3) &
           call errore('ld1_readin','specify correct pseudotype',1)
      !
-#if defined __PAW_FROM_NC__
-     call read_psconfig (rel, lsd, nwfs, els, nns, lls, ocs, &
-          isws, jjs, enls, rcut, rcutus, rcutnc2paw )
-#else
      call read_psconfig (rel, lsd, nwfs, els, nns, lls, ocs, &
           isws, jjs, enls, rcut, rcutus )
-#endif
      !
      lmax = maxval(lls(1:nwfs))
      !
@@ -360,15 +356,9 @@ subroutine ld1_readin
   !  
   do nc=1,nconf
      if (configts(nc) == ' ') then
-#if defined __PAW_FROM_NC__
-        call read_psconfig (rel, lsd, nwftsc(nc), eltsc(1,nc), &
-             nntsc(1,nc), lltsc(1,nc), octsc(1,nc), iswtsc(1,nc), &
-             jjtsc(1,nc), edum(1), rcuttsc(1,nc), rcutustsc(1,nc), dummy )
-#else
         call read_psconfig (rel, lsd, nwftsc(nc), eltsc(1,nc), &
              nntsc(1,nc), lltsc(1,nc), octsc(1,nc), iswtsc(1,nc), &
              jjtsc(1,nc), edum(1), rcuttsc(1,nc), rcutustsc(1,nc) )
-#endif
      else
         call el_config(configts(nc),.false.,nwftsc(nc),eltsc(1,nc),  &
              &     nntsc(1,nc),lltsc(1,nc),octsc(1,nc),iswtsc(1,nc))
@@ -457,6 +447,13 @@ subroutine ld1_readin
           'Latter correction not implemented in PAW' ,latt)
      call errore('ld1_readin', &
           'PAW dataset generation and test is experimental' ,-1)
+     if (lnc2paw) then
+        call errore('ld1_readin', &
+             'Generating PAW dataset on top of a NC pseudopotential', -1)
+        do ns=1,nwfs
+           if (rcutnc2paw(ns) <= 0._dp) rcutnc2paw(ns)=rcut(ns)
+        end do
+     end if
   end if
 
   return
@@ -589,13 +586,8 @@ subroutine read_config(rel, lsd, nwf, el, nn, ll, oc, isw, jj)
 end subroutine read_config
 !
 !---------------------------------------------------------------
-#if defined __PAW_FROM_NC__
-subroutine read_psconfig (rel, lsd, nwfs, els, nns, lls, ocs, &
-     isws, jjs, enls, rcut, rcutus, rcutnc2paw)
-#else
 subroutine read_psconfig (rel, lsd, nwfs, els, nns, lls, ocs, &
      isws, jjs, enls, rcut, rcutus )
-#endif
   !---------------------------------------------------------------
   !
   use kinds, only: dp
@@ -608,9 +600,6 @@ subroutine read_psconfig (rel, lsd, nwfs, els, nns, lls, ocs, &
   integer :: nwfs, nns(nwfsx), lls(nwfsx), isws(nwfsx)
   real(DP) :: ocs(nwfsx), jjs(nwfsx), enls(nwfsx), &
        rcut(nwfsx), rcutus(nwfsx)
-#if defined __PAW_FROM_NC__
-  real(DP) :: rcutnc2paw(nwfsx)
-#endif
   ! local variables
   integer :: ios, n
   character (len=2) :: label
@@ -633,15 +622,9 @@ subroutine read_psconfig (rel, lsd, nwfs, els, nns, lls, ocs, &
            if (ocs(n) > (2.0_dp*lls(n)+1.0_dp))                 &
              call errore('read_psconfig','occupations (ls) wrong',n)
         else
-#if defined __PAW_FROM_NC__
-           read(5,*,err=30,end=30,iostat=ios) &
-                els(n), nns(n), lls(n), ocs(n), enls(n), &
-                rcut(n), rcutus(n), rcutnc2paw(n)
-#else
            read(5,*,err=30,end=30,iostat=ios) &
                 els(n), nns(n), lls(n), ocs(n), enls(n), &
                 rcut(n), rcutus(n)
-#endif
            isws(n)=1
            if (ocs(n) > 2.0_dp*(2.0_dp*lls(n)+1.0_dp))                 &
              call errore('read_psconfig','occupations (l) wrong',n)

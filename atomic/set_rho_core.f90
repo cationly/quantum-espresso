@@ -54,7 +54,7 @@ subroutine set_rho_core
 !  totrho = int_0_inf_dr(rhoc,r,r2,dx,mesh,2)
 !  write(6,'("Integrated core charge",f15.10)') totrho
   rhoco(:) = rhoc(1:mesh)
-  if (lpaw) aeccharge(1:mesh) = rhoc(1:mesh)
+  if (lpaw.and.(.not.lnc2paw)) aeccharge(1:mesh) = rhoc(1:mesh)
   !
   if (rcore > 0.0_dp) then
      !      rcore read on input
@@ -109,6 +109,13 @@ subroutine set_rho_core
      rhoc(n) = a*sin(b*r(n))/r(n) * r2(n)
   end do
   if (lpaw) psccharge(1:mesh) = rhoc(1:mesh)
+  if (lpaw.and.lnc2paw) then
+     if (nlcc) then
+        aeccharge(1:mesh) = psccharge(1:mesh)
+     else
+        aeccharge(1:mesh) = 0._dp
+     end if
+  end if
   write(6,'(/,5x,''  r > '',f4.2,'' : true rho core'')') r(ik)
   write(6,110) r(ik), a, b
 110 format (5x, '  r < ',f4.2,' : rho core = a sin(br)/r', &

@@ -55,7 +55,7 @@ subroutine start_potps
         !
         !    compute the phi functions
         !
-        call compute_phi(lam,ik,nwf0,ns,xc,0,nnode,octs(ns))
+        call compute_phi(lam,ik,ik,nwf0,ns,xc,0,nnode,octs(ns))
         if (pseudotype.eq.3) then
            !
            !   US only on the components where ikus <> ik

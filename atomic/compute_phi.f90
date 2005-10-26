@@ -6,11 +6,7 @@
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
 !--------------------------------------------------------------------------
-#if defined __PAW_FROM_NC__
 subroutine compute_phi(lam,ik,iknorm,nwf0,ns,xc,iflag,iok,occ)
-#else
-subroutine compute_phi(lam,ik,nwf0,ns,xc,iflag,iok,occ)
-#endif
   !--------------------------------------------------------------------------
   !
   !     This routine computes the phi functions by pseudizing the
@@ -27,9 +23,7 @@ subroutine compute_phi(lam,ik,nwf0,ns,xc,iflag,iok,occ)
   integer ::    &
        lam,  &   ! the angular momentum
        ik,   &   ! the point corresponding to rc
-#if defined __PAW_FROM_NC__
        iknorm, & ! the point at which set value=0.5
-#endif
        nwf0, &   ! 
        ns,   &   ! the function to pseudize
        iflag,&   ! if 1 print
@@ -89,13 +83,9 @@ subroutine compute_phi(lam,ik,nwf0,ns,xc,iflag,iok,occ)
      !
      !    fix arbitrarily the norm at the cut-off radius equal to 0.5
      !
-#if defined __PAW_FROM_NC__
-!!!  use the cut-off radius of the "standard" NC function so that
-!!!  the NC wfcs will coincide outside that value
+!!!  Previous version: jnor=chir(ik,ns) 
+!!!  Now choose a possibly different point at which the value equals 0.5
      jnor=chir(iknorm,ns)
-#else
-     jnor=chir(ik,ns) 
-#endif
      do n=1,mesh
         chir(n,ns)=chir(n,ns)*0.5_dp/jnor
     enddo
@@ -107,7 +97,7 @@ subroutine compute_phi(lam,ik,nwf0,ns,xc,iflag,iok,occ)
   !
   !   save the all-electron function for the PAW setup
   !
-  if (lpaw) psipaw(1:mesh,ns) = chir(1:mesh,ns)
+  if (lpaw.and.(.not.lnc2paw)) psipaw(1:mesh,ns) = chir(1:mesh,ns)
   !
   !   compute the first and second derivative of all-electron function
   !

@@ -92,13 +92,8 @@ CONTAINS
     ! Compute the effective potentials (H+XC)
     CALL compute_onecenter_energy ( eps,  veffps_, &
        pawset_, chargeps,  pawset_%nlcc, pawset_%psccharge, nspin_ )
-#if defined __PAW_FROM_NC__
-    CALL compute_onecenter_energy ( e1,   veff1, &
-       pawset_, charge1,   pawset_%nlcc, pawset_%aeccharge, nspin_ )
-#else
     CALL compute_onecenter_energy ( e1,   veff1, &
        pawset_, charge1,  .TRUE.,        pawset_%aeccharge, nspin_ )
-#endif
     CALL compute_onecenter_energy ( e1ps, veff1ps, &
        pawset_, charge1ps, pawset_%nlcc, pawset_%psccharge, nspin_ )
     ! Add the local part
@@ -245,7 +240,7 @@ CONTAINS
                    pawset_%augfun(1:mesh,ns,ns1) = qvan(1:mesh,ns,ns1)
                 CASE ('GAUSS')
                    ! ... or Gaussian Q ?
-                   !pawset_%augfun(1:mesh,ns,ns1) = aux(1:mesh) * pawset_%r2(1:mesh)
+                   pawset_%augfun(1:mesh,ns,ns1) = aux(1:mesh) * pawset_%r2(1:mesh)
                 CASE DEFAULT
                    CALL errore ('us2paw','Specified augmentation functions not allowed or coded',1)
                 END SELECT
@@ -285,13 +280,8 @@ CONTAINS
     CALL compute_onecenter_energy ( raux,  aux2, &
        pawset_, pscharge, pawset_%nlcc, pawset_%psccharge, nspin )
     pawset_%psloc(1:mesh)=psvtot(1:mesh)-aux2(1:mesh,1)
-#if defined __PAW_FROM_NC__
-    CALL compute_onecenter_energy ( raux,  aux2, &
-       pawset_, aecharge, pawset_%nlcc, pawset_%aeccharge, nspin )
-#else
     CALL compute_onecenter_energy ( raux,  aux2, &
        pawset_, aecharge, .TRUE.,       pawset_%aeccharge, nspin )
-#endif
     pawset_%aeloc(1:mesh)=aevtot(1:mesh)-aux2(1:mesh,1)
     !WRITE(4444,'(5e20.10)')(r(n),aevtot(n),psvtot(n),pawset_%aeloc(n),pawset_%psloc(n),n=1,mesh)
     !
