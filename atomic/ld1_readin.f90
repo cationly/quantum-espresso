@@ -296,6 +296,14 @@ subroutine ld1_readin
      nlc=0
      nnl=0
 
+     if (lnc2paw) then
+        call errore('ld1_readin', &
+             'You have chosen to generating PAW on top of NC', -1)
+        do ns=1,nwfs
+           if (rcutnc2paw(ns) <= 0._dp) rcutnc2paw(ns)=rcut(ns)
+        end do
+     end if
+
   end if
   !
   !    reading input for PP testing
@@ -447,13 +455,6 @@ subroutine ld1_readin
           'Latter correction not implemented in PAW' ,latt)
      call errore('ld1_readin', &
           'PAW dataset generation and test is experimental' ,-1)
-     if (lnc2paw) then
-        call errore('ld1_readin', &
-             'Generating PAW dataset on top of a NC pseudopotential', -1)
-        do ns=1,nwfs
-           if (rcutnc2paw(ns) <= 0._dp) rcutnc2paw(ns)=rcut(ns)
-        end do
-     end if
   end if
 
   return
