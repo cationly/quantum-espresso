@@ -1,3 +1,4 @@
+!#define __DESCREEN_WITH_ORIG_PHIS
 !
 ! Copyright (C) 2004 PWSCF group
 ! This file is distributed under the terms of the
@@ -75,6 +76,8 @@ subroutine descreening
      nbf=nbeta
   endif
 
+#ifdef __DESCREEN_WITH_ORIG_PHIS
+#else
   do ns=1,nwfts
      if (octs(ns).gt.0.0_dp) then
         is=iswts(ns)
@@ -100,6 +103,7 @@ subroutine descreening
         !            write(6,*) ns, nnts(ns),llts(ns), jjts(ns), enls(ns)
      endif
   enddo
+#endif
   !
   !    descreening the D coefficients
   !
@@ -127,8 +131,12 @@ subroutine descreening
   !    descreening the local pseudopotential
   !
   iwork=1
+#ifdef __DESCREEN_WITH_ORIG_PHIS
+  call chargeps(nwfs, lls, jjs, ocs, iwork)
+#else
   call normalize
   call chargeps(nwfts,llts,jjts,octs,iwork)
+#endif
 
   call new_potential(ndm,mesh,r,r2,sqr,dx,0.0_dp,vxt,lsd,nlcc,latt,enne, &
        rhoc,rhos,vh,vaux)

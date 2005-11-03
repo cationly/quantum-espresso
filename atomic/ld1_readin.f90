@@ -13,7 +13,7 @@ subroutine ld1_readin
   !
   use ld1inc
   use funct
-  use atomic_paw, only : paw2us
+  use atomic_paw, only : paw_to_ld1
   use read_pseudo_module, only : paw_io
   implicit none
 
@@ -403,8 +403,8 @@ subroutine ld1_readin
 50      call errore('ld1_readin','open error on file '//file_pseudo,abs(ios))
         call paw_io(pawsetup,111,"INP",ndm,nwfsx,lmaxx)
         close(111)
-        call paw2us ( pawsetup, zval, mesh, r, r2, sqr, dx, nbeta, lls, &
-             ikk, betas, qq, qvan, pseudotype )
+        call paw_to_ld1 ( pawsetup, zval, mesh, r, r2, sqr, dx, nbeta, lls, &
+             ikk, betas, qq, qvan, vpsloc, bmat, rhos, pseudotype )
         !
      else if ( matches('.rrkj3', file_pseudo) .or. &
                matches('.RRKJ3', file_pseudo)) then

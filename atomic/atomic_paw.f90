@@ -47,8 +47,8 @@ MODULE atomic_paw
   !============================================================================
   !
   PUBLIC :: paw_t
-  PUBLIC :: us2paw
-  PUBLIC :: paw2us
+  PUBLIC :: ld1_to_paw
+  PUBLIC :: paw_to_ld1
   PUBLIC :: new_paw_hamiltonian
   !
 CONTAINS
@@ -125,7 +125,7 @@ CONTAINS
   !
   ! Convert the USPP to a PAW dataset
   !
-  SUBROUTINE us2paw (pawset_,                                     &
+  SUBROUTINE ld1_to_paw (pawset_,                                     &
        symbol, zval, mesh, r, r2, sqrtr, dx, irc, ikk,            &
        nbeta, lls, ocs, enls, psipaw, phis, betas, qvan, kindiff, &
        nlcc, aerhoc, psrhoc, aevtot, psvtot, which_paw_augfun,    &
@@ -163,7 +163,7 @@ CONTAINS
     REAL(dp) :: aux(ndm), aux2(ndm,2), raux
     REAL(dp) :: aecharge(ndm,2), pscharge(ndm,2)
     REAL(dp) :: etot
-    INTEGER :: nspin=1, spin(nwfsx)=1
+    INTEGER :: nspin=1, spin(nwfsx)=1 ! PAW generat. from spin-less calculation
     CHARACTER(LEN=4) :: shortname
     !
     CALL nullify_pseudo_paw(pawset_)
@@ -226,13 +226,13 @@ CONTAINS
        ! respect to the specific shape of the radial part of the augmentation
        ! functions (the following implementation of this test is correct for
        ! spherical symmetry only, ie only the zero-th moment is conserved)
-       CALL infomsg ('us2paw','This is valid only for spherical symmetry!', -1)
-       CALL infomsg ('us2paw','You have specified: '//which_paw_augfun,-1)
+       CALL infomsg ('ld1_to_paw','This is valid only for spherical symmetry!', -1)
+       CALL infomsg ('ld1_to_paw','You have specified: '//which_paw_augfun,-1)
        ! define a gaussian
        aux(1:mesh)=EXP(-(r(1:mesh)**2)/(TWO*0.25_dp**2))
        DO ns=1,nbeta
           DO ns1=1,ns
-             IF ( (pawset_%l(ns1)==pawset_%l(ns)) .AND. (ABS(pawset_%augmom(ns,ns1,0))>eps8)) THEN
+             IF ( (ABS(pawset_%augmom(ns,ns1,0))>eps8)) THEN
                 !
                 SELECT CASE (which_paw_augfun)
                 CASE ('QVAN')
@@ -242,13 +242,13 @@ CONTAINS
                    ! ... or Gaussian Q ?
                    pawset_%augfun(1:mesh,ns,ns1) = aux(1:mesh) * pawset_%r2(1:mesh)
                 CASE DEFAULT
-                   CALL errore ('us2paw','Specified augmentation functions not allowed or coded',1)
+                   CALL errore ('ld1_to_paw','Specified augmentation functions not allowed or coded',1)
                 END SELECT
                 !
                 ! Renormalize the aug. functions so that their integral is correct
                 raux=int_0_inf_dr(pawset_%augfun(1:pawset_%irc,ns,ns1),pawset_%r,pawset_%r2,pawset_%dx,pawset_%irc,(pawset_%l(ns)+1)*2)
                 IF (ABS(raux) < eps8) THEN
-                   CALL errore('us2paw','norm of augmentation function too small',ns*100+ns1)
+                   CALL errore('ld1_to_paw','norm of augmentation function too small',ns*100+ns1)
                 END IF
                 raux=pawset_%augmom(ns,ns1,0)/raux
                 pawset_%augfun(1:mesh,ns,ns1)=raux*pawset_%augfun(1:mesh,ns,ns1)
@@ -277,6 +277,7 @@ CONTAINS
     ! and descreen them:
     CALL compute_charges(projsum, pscharge, aecharge, aux2, &
        pawset_, nbeta, lls, nspin, spin, ocs, phis )
+    pawset_%pscharge(1:mesh)=pscharge(1:mesh,1)
     CALL compute_onecenter_energy ( raux,  aux2, &
        pawset_, pscharge, pawset_%nlcc, pawset_%psccharge, nspin )
     pawset_%psloc(1:mesh)=psvtot(1:mesh)-aux2(1:mesh,1)
@@ -306,28 +307,31 @@ CONTAINS
        WRITE(6,'(6f12.5)') (dddion(ns1,ns,1),ns=1,pawset_%nwfc)
     END DO
     !
-  END SUBROUTINE us2paw
+  END SUBROUTINE ld1_to_paw
   !
   !============================================================================
   !
   ! ...
   !
-  SUBROUTINE paw2us (pawset_,zval,mesh,r,r2,sqrtr,dx,nbeta,lls,ikk, &
-       betas,qq,qvan,pseudotype)
+  SUBROUTINE paw_to_ld1 (pawset_,zval,mesh,r,r2,sqrtr,dx,nbeta,lls,ikk, &
+       betas,qq,qvan,vpsloc,bmat,rhos,pseudotype)
     USE funct, ONLY : which_dft
     IMPLICIT NONE
-    TYPE(paw_t),   INTENT(IN)  :: pawset_
+    TYPE(paw_t), INTENT(IN)  :: pawset_
     REAL(dp), INTENT(OUT) :: zval
-    INTEGER,       INTENT(OUT) :: mesh
+    INTEGER,  INTENT(OUT) :: mesh
     REAL(dp), INTENT(OUT) :: r(ndm)
     REAL(dp), INTENT(OUT) :: r2(ndm), sqrtr(ndm), dx
-    INTEGER,       INTENT(OUT) :: nbeta
-    INTEGER,       INTENT(OUT) :: lls(nwfsx)
-    INTEGER,       INTENT(OUT) :: ikk(nwfsx)
-    INTEGER,       INTENT(OUT) :: pseudotype
+    INTEGER,  INTENT(OUT) :: nbeta
+    INTEGER,  INTENT(OUT) :: lls(nwfsx)
+    INTEGER,  INTENT(OUT) :: ikk(nwfsx)
+    INTEGER,  INTENT(OUT) :: pseudotype
     REAL(dp), INTENT(OUT) :: betas(ndm,nwfsx)
     REAL(dp), INTENT(OUT) :: qq(nwfsx,nwfsx)
     REAL(dp), INTENT(OUT) :: qvan(ndm,nwfsx,nwfsx)
+    REAL(dp), INTENT(OUT) :: vpsloc(ndm)
+    REAL(dp), INTENT(OUT) :: bmat(nwfsx,nwfsx)
+    REAL(dp), INTENT(OUT) :: rhos(ndm)
     INTEGER :: ns, ns1
     !
     zval=pawset_%zval
@@ -353,11 +357,16 @@ CONTAINS
        END DO
     END DO
     !
+    vpsloc(1:mesh)=pawset_%psloc(1:mesh)
+    bmat(1:nbeta,1:nbeta)=pawset_%dion(1:nbeta,1:nbeta)
+    !
+    rhos(1:mesh)=pawset_%pscharge(1:mesh)
+    !
     betas(1:mesh,1:nbeta)=pawset_%proj(1:mesh,1:nbeta)
     pseudotype=3
     !
     CALL which_dft (pawset_%dft)
-  END SUBROUTINE paw2us
+  END SUBROUTINE paw_to_ld1
   !
   !============================================================================
   !                          PRIVATE ROUTINES                               !!!

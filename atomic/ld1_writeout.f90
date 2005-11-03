@@ -59,6 +59,13 @@ subroutine ld1_writeout
      !
      call paw_io(pawsetup,iunps,"OUT")
      !
+     ! and the corresponding PP
+     !
+     open(unit=iunps+1, file=trim(file_pseudopw)//".UPF", status='unknown',  &
+          form='formatted', err=50, iostat=ios)
+     call write_upf(iunps+1)
+     close(iunps+1)
+     !
   else if (oldformat) then
      !
      if (pseudotype == 1) then

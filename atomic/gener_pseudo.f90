@@ -30,7 +30,7 @@ subroutine gener_pseudo
   !     The construction of a PAW dataset can also be done (experimental)
   !      
   use ld1inc
-  use atomic_paw, only : us2paw, paw2us
+  use atomic_paw, only : ld1_to_paw, paw_to_ld1
   implicit none
 
   integer ::   &
@@ -297,7 +297,7 @@ subroutine gener_pseudo
      !    compute the Q functions
      !
      do ns=1,nbeta
-        do ns1=1,ns
+        do ns1=1,nbeta
            ikl=max(ikk(ns),ikk(ns1))
            do n=1, ikl
               qvan(n,ns,ns1) = psipsus(n,ns) * psipsus(n,ns1) &
@@ -318,18 +318,27 @@ subroutine gener_pseudo
            !     set the bmat with the eigenvalue part
            !
            bmat(ns,ns1)=bmat(ns,ns1)+enls(ns1)*qq(ns,ns1)
-           !
-           !    Use symmetry of the n,ns1 indeces to set qvan and qq and bmat
-           !
-           if (ns.ne.ns1) then
-              do n=1,mesh
-                 qvan(n,ns1,ns)=qvan(n,ns,ns1)
-              enddo
-              qq(ns1,ns)=qq(ns,ns1)
-              bmat(ns1,ns)=bmat(ns1,ns)+enls(ns)*qq(ns1,ns)
-           endif
         enddo
      enddo
+     !
+     write(6,'(/5x,'' The bmat matrix before symmetrization'')')
+     do ns1=1,nbeta
+        write(6,'(6f12.5)') (bmat(ns1,ns),ns=1,nbeta)
+     end do
+     !
+     !     symmetrize the B matrix, qvan, qq
+     !
+     do ns=1,nbeta
+        do ns1=1,ns-1
+           bmat(ns,ns1)=0.5_dp*(bmat(ns,ns1)+bmat(ns1,ns))
+           bmat(ns1,ns)=bmat(ns,ns1)
+           qq(ns,ns1)=0.5_dp*(qq(ns,ns1)+qq(ns1,ns))
+           qq(ns1,ns)=qq(ns,ns1)
+           qvan(1:mesh,ns,ns1)=0.5_dp*(qvan(1:mesh,ns,ns1)+qvan(1:mesh,ns1,ns))
+           qvan(1:mesh,ns1,ns)=qvan(1:mesh,ns,ns1)
+        enddo
+     enddo
+     !
      write(6,'(/5x,'' The bmat matrix'')')
      do ns1=1,nbeta
         write(6,'(6f12.5)') (bmat(ns1,ns),ns=1,nbeta)
@@ -357,7 +366,7 @@ subroutine gener_pseudo
      ! AE:   T |psi> = (e - Vae) |psi>
      ! PS:   T |phi> = (e - Vps) |phi> - |chi>
      do ns=1,nbeta
-        do ns1=1,ns
+        do ns1=1,nbeta
            if (lls(ns)==lls(ns1)) then
               ikl=max(ikk(ns),ikk(ns1))
               nst=2*(lls(ns)+1)
@@ -374,29 +383,39 @@ subroutine gener_pseudo
               pskin(ns,ns1)=0._dp
            end if
            kindiff(ns,ns1)=aekin(ns,ns1)-pskin(ns,ns1)
-           kindiff(ns1,ns)=aekin(ns,ns1)-pskin(ns,ns1)
+        end do
+     end do
+     !
+     !     symmetrize kindiff
+     !
+     do ns=1,nbeta
+        do ns1=1,ns-1
+           kindiff(ns,ns1)=0.5_dp*(kindiff(ns,ns1)+kindiff(ns1,ns))
+           kindiff(ns1,ns)=kindiff(ns,ns1)
         end do
      end do
      !
      ! create the 'pawsetup' object containing the atomic setup for PAW
-     call us2paw ( pawsetup,                                             &
+     call ld1_to_paw ( pawsetup,                                         &
           symbol, zval, mesh, r, r2, sqr, dx, maxval(ikk(1:nbeta)), ikk, &
           nbeta, lls, ocs, enls, psipaw, phis, betas, qvan, kindiff,     &
           nlcc, aeccharge, psccharge, vpotpaw, vpsloc, which_paw_augfun )
-     !
-     ! the augmentation functions can be changed in 'pawsetup': read from it
-     call paw2us ( pawsetup, zval, mesh, r, r2, sqr, dx, nbeta, lls, &
-          ikk, betas, qq, qvan, pseudotype )
      !
   endif
   !
   !    unscreen the local potential and the D coefficients
   !
-  call descreening
+  if (lpaw) then
+     ! reread augmentation functions and descreened potentials from PAW
+     call paw_to_ld1 ( pawsetup, zval, mesh, r, r2, sqr, dx, nbeta, lls, &
+          ikk, betas, qq, qvan, vpsloc, bmat, rhos, pseudotype )
+  else
+     call descreening
+  end if
   !
   !     print the main functions on files
   !
-if (file_wavefunctionsps .ne. ' ') then
+  if (file_wavefunctionsps .ne. ' ') then
      open(unit=19,file=file_wavefunctionsps, status='unknown', iostat=ios, &
           err=300)
 300  call errore('gener_pseudo','opening file '//file_wavefunctionsps,&
