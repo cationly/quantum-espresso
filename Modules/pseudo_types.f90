@@ -55,6 +55,7 @@ TYPE :: paw_t
         augmom(:,:,:), &!augmom(nwfsx,nwfsx,0:2*lmaxx) , & ! moments of the augmentation functions
         aeccharge(:), &!aeccharge (ndm),  & ! AE core charge * 4PI r^2
         psccharge(:), &!psccharge (ndm),  & ! PS core charge * 4PI r^2
+        pscharge(:), &!pscharge (ndm),  & ! PS charge * 4PI r^2
         aeloc(:), &!aeloc (ndm),     & ! descreened AE potential: v_AE-v_H[n1]-v_XC[n1+nc]
         psloc(:), &!psloc (ndm),     & ! descreened local PS potential: v_PS-v_H[n~+n^]-v_XC[n~+n^+n~c]
         kdiff(:,:), &!kdiff (nwfsx,nwfsx) ,&      ! kinetic energy differences
@@ -171,7 +172,7 @@ SUBROUTINE nullify_pseudo_paw( paw )
   NULLIFY( paw%r, paw%r2, paw%sqrtr )
   NULLIFY( paw%l, paw%ikk )
   NULLIFY( paw%oc, paw%enl, paw%aewfc, paw%pswfc, paw%proj )
-  NULLIFY( paw%augfun, paw%augmom, paw%aeccharge, paw%psccharge )
+  NULLIFY( paw%augfun, paw%augmom, paw%aeccharge, paw%psccharge, paw%pscharge )
   NULLIFY( paw%aeloc, paw%psloc, paw%kdiff, paw%dion )
   RETURN
 END SUBROUTINE nullify_pseudo_paw
@@ -193,6 +194,7 @@ SUBROUTINE allocate_pseudo_paw( paw, size_mesh, size_nwfc, size_lmax )
   ALLOCATE ( paw%augmom(size_nwfc,size_nwfc,0:2*size_lmax+1) )
   ALLOCATE ( paw%aeccharge(size_mesh) )
   ALLOCATE ( paw%psccharge(size_mesh) )
+  ALLOCATE ( paw%pscharge(size_mesh) )
   ALLOCATE ( paw%aeloc(size_mesh) )
   ALLOCATE ( paw%psloc(size_mesh) )
   ALLOCATE ( paw%kdiff(size_nwfc,size_nwfc) )
@@ -215,6 +217,7 @@ SUBROUTINE deallocate_pseudo_paw( paw )
   IF( ASSOCIATED( paw%augmom ) ) DEALLOCATE( paw%augmom )
   IF( ASSOCIATED( paw%aeccharge ) ) DEALLOCATE( paw%aeccharge )
   IF( ASSOCIATED( paw%psccharge ) ) DEALLOCATE( paw%psccharge )
+  IF( ASSOCIATED( paw%pscharge ) ) DEALLOCATE( paw%pscharge )
   IF( ASSOCIATED( paw%aeloc ) ) DEALLOCATE( paw%aeloc )
   IF( ASSOCIATED( paw%psloc ) ) DEALLOCATE( paw%psloc )
   IF( ASSOCIATED( paw%kdiff ) ) DEALLOCATE( paw%kdiff )

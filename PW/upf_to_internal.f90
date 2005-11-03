@@ -260,14 +260,7 @@ subroutine set_pseudo_paw (is, pawset)
      rho_atc(:,is) = 0._dp
   end if
   !
-  ! compute atomic charge instead of reading from file (not saved)
-  !
-  rho_at (1:pawset%mesh, is) = 0.d0
-  do ir=1,pawset%nwfc
-     rho_at (1:pawset%mesh, is) = rho_at (1:pawset%mesh, is) + pawset%oc(ir)*&
-          (pawset%pswfc(1:pawset%mesh,ir)*pawset%pswfc(1:pawset%mesh,ir) +   &
-          pawset%augfun(1:pawset%mesh,ir,ir))
-  end do
+  rho_at (1:pawset%mesh, is) = pawset%pscharge(1:pawset%mesh)
 
   !!! TEMP       !!! this was already present in set_pseudo_upf. what does it mean?
   lloc(is) = 0
