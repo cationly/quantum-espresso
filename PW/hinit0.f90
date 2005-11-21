@@ -21,6 +21,7 @@ subroutine hinit0
   USE vlocal,    ONLY : strf
   USE wvfct,     ONLY : npw, g2kin, igk, igk_l2g
   USE io_files,  ONLY : iunigk
+  USE grid_paw_routines, ONLY : init_prad
   !
   implicit none
   !
@@ -34,6 +35,7 @@ subroutine hinit0
   !   k-point independent parameters of non-local pseudopotentials
   !
   call init_us_1
+  call init_prad !!PAW!!
   call init_at_1
   !
   rewind (iunigk)

@@ -13,6 +13,7 @@ SUBROUTINE init_run()
   USE force_mod,   ONLY : force
   USE wvfct,       ONLY : gamma_only
   USE mp_global, ONLY : MPIME
+  USE grid_paw_routines, ONLY : allocate_paw_internals
   !
   IMPLICIT NONE
   !
@@ -30,6 +31,7 @@ SUBROUTINE init_run()
   CALL ggen()
   CALL summary()
   CALL allocate_nlpot()
+  CALL allocate_paw_internals()
   CALL allocate_locpot()
   CALL allocate_wfc()
   !

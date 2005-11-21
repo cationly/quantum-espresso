@@ -3,6 +3,8 @@
 include ../make.sys
 
 PWOBJS = \
+grid_paw_routines.o \
+grid_paw_variables.o \
 add_bfield.o \
 add_efield.o \
 add_vuspsi.o \
@@ -319,12 +321,12 @@ TLDEPS=bindir mods libs libiotk
 all : tldeps memory.x pw.x
 
 memory.x : memory.o $(PWOBJS) $(LIBOBJS)
-	$(MPIF90) $(LDFLAGS) -o $@ \
+	$(F90) $(LDFLAGS) -o $@ \
 		memory.o $(PWOBJS) $(MODULES) $(LIBOBJS) $(LIBS)
 	- ( cd ../bin; ln -fs ../PW/$@ . )
 
 pw.x : pwscf.o $(PWOBJS) $(LIBOBJS)
-	$(MPIF90) $(LDFLAGS) -o $@ \
+	$(F90) $(LDFLAGS) -o $@ \
 		pwscf.o $(PWOBJS) $(MODULES) $(LIBOBJS) $(LIBS)
 	- ( cd ../bin; ln -fs ../PW/$@ . )
 

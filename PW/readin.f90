@@ -22,6 +22,7 @@ subroutine readpp
   USE read_pseudo_module, ONLY: paw_io                       !!PAW
   USE upf_to_internal,    ONLY: set_pseudo_paw               !!PAW
   USE parameters,         ONLY: nchix, ndmx, lmaxx           !!PAW
+  USE grid_paw_variables, ONLY: tpawp                        !!PAW
   !
   implicit none
   !
@@ -36,6 +37,7 @@ subroutine readpp
   iunps = 4
   l = len_trim (pseudo_dir)
   do nt = 1, ntyp
+     tpawp(nt)=.false.
      !
      ! iver, xmin, dx are not read from UPF format
      !

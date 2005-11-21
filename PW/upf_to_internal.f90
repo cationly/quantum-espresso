@@ -163,6 +163,9 @@ subroutine set_pseudo_paw (is, pawset)
   USE pseudo_types
   USE constants, ONLY: FPI
   !
+  USE grid_paw_variables, ONLY : tpawp, pfunc, ptfunc
+  USE grid_paw_routines, ONLY : step_f
+  !
   implicit none
   !
   real(DP), parameter :: rcut = 10.d0
@@ -172,12 +175,21 @@ subroutine set_pseudo_paw (is, pawset)
   !
   integer :: nb
   TYPE (paw_t) :: pawset
-  integer :: i,j
+  integer :: i,j, nrc, nrs
+  real (DP) :: aux (ndmx), pow
   !
+  ! Cutoffing: WARNING: arbitrary right now, for grid calculation
+  pow = 1.d0
+  nrs =  Count(pawset%r(1:pawset%mesh).le. (pawset%r(pawset%irc)*1.2d0))
+  nrc =  Count(pawset%r(1:pawset%mesh).le. (pawset%r(pawset%irc)*1.8d0))
+  write (*,*) pawset%irc, pawset%r(pawset%irc)
+  write (*,*) nrs, pawset%r(nrs)
+  write (*,*) nrc, pawset%r(nrc)
   !
   zp(is)  = pawset%zval
   psd (is)= pawset%symbol
   tvanp(is)=.true.
+  tpawp(is)=.true.
   nlcc(is) = pawset%nlcc
   dft = pawset%dft
   call which_dft( pawset%dft )
@@ -233,6 +245,28 @@ subroutine set_pseudo_paw (is, pawset)
   end do
   qfunc (1:pawset%mesh, 1:pawset%nwfc, 1:pawset%nwfc, is) = &
        pawset%augfun(1:pawset%mesh,1:pawset%nwfc,1:pawset%nwfc)
+  !
+  do i=1,pawset%nwfc
+     do j=1,pawset%nwfc
+!!$        pfunc (1:pawset%mesh, i, j, is) = &
+!!$             pawset%aewfc(1:pawset%mesh, i) * pawset%aewfc(1:pawset%mesh, j)
+!!$        ptfunc (1:pawset%mesh, i, j, is) = &
+!!$             pawset%pswfc(1:pawset%mesh, i) * pawset%pswfc(1:pawset%mesh, j)
+        aux(1:pawset%mesh) = pawset%aewfc(1:pawset%mesh, i) * &
+             pawset%aewfc(1:pawset%mesh, j)
+        CALL step_f( pfunc(1:pawset%mesh,i,j,is), aux(1:pawset%mesh), &
+             pawset%r(1:pawset%mesh), nrs, nrc, pow, pawset%mesh)
+        !aux(1:pawset%mesh) = 1.d0*FPI*pawset%r2(1:pawset%mesh) !!gf
+        aux(1:pawset%mesh) = pawset%pswfc(1:pawset%mesh, i) * &
+             pawset%pswfc(1:pawset%mesh, j)
+        CALL step_f( ptfunc(1:pawset%mesh,i,j,is), aux(1:pawset%mesh), &
+             pawset%r(1:pawset%mesh), nrs, nrc, pow, pawset%mesh)
+        !ptfunc(1:pawset%mesh,i,j,is)=aux(1:pawset%mesh)
+        !if ((i==2).AND.(j==2).AND.(is==1)) write (3,'(3e15.8)') &
+        !     (pawset%r(ir), ptfunc(ir,i,j,is), aux(ir), ir=1,pawset%mesh)
+        !STOP 'upf_to_internal'
+     end do
+  end do
   !
   ! nqf is always 0 for this PAW format
   ! qfcoef(1:pawset%nqf, 1:pawset%nqlc, 1:pawset%nwfc, 1:pawset%nwfc, is ) = 0._dp
