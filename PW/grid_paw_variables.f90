@@ -43,6 +43,19 @@ module grid_paw_variables
        rho1t(:,:,:),            &! 1center PS charge density in real space
        rho1h(:,:,:)              ! 1center compensation charge in real space
 
+  ! Analogous to vr in "scf" (PW/pwcom.f90) + index scanning atoms
+  REAL(DP), ALLOCATABLE, TARGET :: &
+       vr1(:,:,:),        &! the Hartree+XC potential in real space of rho1
+       vr1t(:,:,:)         ! the Hartree+XC potential in real space of rho1t
 
+  ! Analogous to qq in "uspp_param" (Modules/uspp.f90)
+  REAL(DP), ALLOCATABLE, TARGET :: &
+       int_r2pfunc(:,:,:),   &! Integrals of r^2 * pfunc(r) (AE)
+       int_r2ptfunc(:,:,:)    ! Integrals of r^2 * pfunc(r) (PS)
+
+  ! Analogous to vloc_at in "uspp_param" (Modules/uspp.f90)
+  REAL(DP), TARGET :: &
+      aevloc_at(ndmx,npsx),               &! AE descreened potential
+      psvloc_at(ndmx,npsx)                 ! PS descreened potential
 
 end module grid_paw_variables
