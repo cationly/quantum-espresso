@@ -35,7 +35,8 @@ CONTAINS
     USE uspp_param,       ONLY : lmaxq, nhm
     !
     USE grid_paw_variables, ONLY : pp, ppt, prad, ptrad, rho1, rho1t, &
-         vr1, vr1t, int_r2pfunc, int_r2ptfunc
+         vr1, vr1t, int_r2pfunc, int_r2ptfunc, ehart1, etxc1, vtxc1, &
+         ehart1t, etxc1t, vtxc1t
     !
     IMPLICIT NONE
     !
@@ -55,6 +56,13 @@ CONTAINS
     !
     ALLOCATE(vr1(nrxx, nspin, nat))
     ALLOCATE(vr1t(nrxx, nspin, nat))
+    !
+    ALLOCATE(ehart1 (nat))
+    ALLOCATE(etxc1  (nat))
+    ALLOCATE(vtxc1  (nat))
+    ALLOCATE(ehart1t(nat))
+    ALLOCATE(etxc1t (nat))
+    ALLOCATE(vtxc1t (nat))
     !
   END SUBROUTINE allocate_paw_internals
 
@@ -85,7 +93,7 @@ CONTAINS
     USE spin_orb,   ONLY : lspinorb, rot_ylm, fcoef
     !
     USE grid_paw_variables, ONLY: tpawp, pfunc, ptfunc, pp, ppt, prad, ptrad, &
-         int_r2pfunc, int_r2ptfunc
+         int_r2pfunc, int_r2ptfunc, okpaw
     !
     IMPLICIT NONE
 
@@ -120,6 +128,8 @@ CONTAINS
     REAL(DP) :: spinor, ji, jk
 
 !!$call start_clock ('init_us_1')
+
+    IF (.NOT.okpaw) RETURN
 
     !
     !    Initialization of the variables
@@ -238,7 +248,7 @@ CONTAINS
 !!$#endif
        CALL ylmr2 (lmaxq * lmaxq, 1, g, gg, ylmk0)
        DO nt = 1, ntyp
-          IF (tvanp (nt) ) THEN
+          IF (tpawp (nt) ) THEN
 !!$          if (lspinorb) then
 !!$             ...
 !!$          else
@@ -344,8 +354,8 @@ CONTAINS
     USE wavefunctions_module, ONLY : psic
     !
     USE cell_base,          ONLY: alat, at
-    USE ions_base,          ONLY: tau, atm
-    USE grid_paw_variables, ONLY: prad, ptrad, rho1, rho1t, pp
+    USE ions_base,          ONLY: tau, atm, ityp
+    USE grid_paw_variables, ONLY: prad, ptrad, rho1, rho1t, pp, tpawp, okpaw
     USE us,                 ONLY: qrad
     !
     IMPLICIT NONE
@@ -367,6 +377,8 @@ CONTAINS
     REAL(DP), POINTER :: rho1_(:,:,:), prad_(:,:,:,:)
     INTEGER :: i_what
     REAL(DP) :: charge
+
+    IF (.NOT.okpaw) RETURN
 
     !ALLOCATE (aux ( ngm, nspin))    
     ALLOCATE (aux ( ngm, nspin, nat))    
@@ -407,7 +419,7 @@ CONTAINS
        charge = 0.d0
 
        DO nt = 1, ntyp
-          IF (tvanp (nt) ) THEN
+          IF (tpawp (nt) ) THEN
              ijh = 0
              DO ih = 1, nh (nt)
                 DO jh = ih, nh (nt)
@@ -447,15 +459,17 @@ CONTAINS
        !     convert aux to real space
        !
        DO na = 1, nat
-          DO is = 1, nspin
-             !!rho1_(:,is,na)=0.d0  
-             psic(:) = (0.d0, 0.d0)
-             psic( nl(:) ) = aux(:,is,na)
-             IF (gamma_only) psic( nlm(:) ) = CONJG(aux(:,is,na))
-             CALL cft3 (psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, 1)
-             ! Notice: in addusdens augmentation charge is ADDED to rho:
-             rho1_ (:, is, na) = DBLE (psic (:) )
-          ENDDO
+          IF (tpawp(ityp(na))) THEN
+             DO is = 1, nspin
+                !!rho1_(:,is,na)=0.d0  
+                psic(:) = (0.d0, 0.d0)
+                psic( nl(:) ) = aux(:,is,na)
+                IF (gamma_only) psic( nlm(:) ) = CONJG(aux(:,is,na))
+                CALL cft3 (psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, 1)
+                ! Notice: in addusdens augmentation charge is ADDED to rho:
+                rho1_ (:, is, na) = DBLE (psic (:) )
+             ENDDO
+          END IF
        END DO
        !
 #if defined  __DEBUG_COMPUTE_ONECENTER_CHARGES
@@ -494,20 +508,27 @@ CONTAINS
          nrxx, nl, g, gg
     !
     USE grid_paw_variables, ONLY: rho1, rho1t, vr1, vr1t, &
-         int_r2pfunc, int_r2ptfunc
+         int_r2pfunc, int_r2ptfunc, tpawp, okpaw, ehart1, etxc1, vtxc1, &
+         ehart1t, etxc1t, vtxc1t
     USE uspp, ONLY: indv, becsum, nhtolm
     USE uspp_param, ONLY: nh
     USE constants, ONLY: PI
     IMPLICIT NONE
     !
-    REAL(DP) :: ehart, charge, alpha, spheropole
+    REAL(DP), POINTER :: etxc1_(:), vtxc1_(:), ehart1_(:)
+    REAL(DP) :: rho_core(nrxx), charge, alpha, spheropole
     INTEGER :: na, ih, jh, ijh, nb, mb, is, nt
     !
     REAL(DP), POINTER :: rho1_(:,:,:), vr1_(:,:,:), int_r2pfunc_(:,:,:)
     INTEGER :: i_what
     !
+    IF (.NOT.okpaw) RETURN
+    !
     CALL infomsg ('compute_onecenter_potentials','alpha set manually',-1)
-    alpha = 0.1d0
+    alpha = 0.1_DP
+    !
+    CALL infomsg ('compute_onecenter_potentials','rho_core set to zero',-1)
+    rho_core = 0._DP
     !
     whattodo: DO i_what=1, 2
        NULLIFY(rho1_,vr1_)
@@ -515,47 +536,57 @@ CONTAINS
           rho1_ => rho1
           vr1_  => vr1
           int_r2pfunc_ => int_r2pfunc
+          etxc1_ => etxc1
+          vtxc1_ => vtxc1
+          ehart1_ => ehart1
        ELSE IF (i_what==2) THEN
           rho1_ => rho1t
           vr1_  => vr1t
           int_r2pfunc_ => int_r2ptfunc
+          etxc1_ => etxc1t
+          vtxc1_ => vtxc1t
+          ehart1_ => ehart1t
        END IF
        DO na = 1, nat
-          !
-          vr1_(:,:,na)=0._DP
-          !
-          !call v_xc....
-          !
-          spheropole=0.d0
-          DO nt = 1, ntyp
-             ijh = 0
-             DO ih = 1, nh (nt)
-                nb = indv(ih,nt)
-                DO jh = ih, nh (nt)
-                   mb = indv(jh,nt)
-                   ijh = ijh + 1
-                   IF (nhtolm(ih,nt)==nhtolm(jh,nt)) THEN
-                      IF (ityp(na)==nt) THEN
-                         DO is = 1, nspin
-                            spheropole = spheropole + &
-                                 int_r2pfunc_(nb,mb,nt) * becsum(ijh,na,is)
+          IF (tpawp(ityp(na))) THEN
+             !
+             vr1_(:,:,na)=0._DP
+             !
+             CALL v_xc( rho1_, rho_core, nr1, nr2, nr3, nrx1, nrx2, nrx3, &
+                  nrxx, nl, ngm, g, nspin, alat, omega, etxc1_(na), vtxc1_(na), vr1_(:,:,na) )
+             PRINT '(A,2f20.10)', 'XC', etxc1_(na), vtxc1_(na)
+             !
+             spheropole=0.d0
+             DO nt = 1, ntyp
+                ijh = 0
+                DO ih = 1, nh (nt)
+                   nb = indv(ih,nt)
+                   DO jh = ih, nh (nt)
+                      mb = indv(jh,nt)
+                      ijh = ijh + 1
+                      IF (nhtolm(ih,nt)==nhtolm(jh,nt)) THEN
+                         IF (ityp(na)==nt) THEN
+                            DO is = 1, nspin
+                               spheropole = spheropole + &
+                                    int_r2pfunc_(nb,mb,nt) * becsum(ijh,na,is)
 #if defined __DEBUG_ONECENTER_POTENTIALS
-                            WRITE (4,'(3i5,f20.10,2i5,f20.10)') ih, jh, ijh, &
-                                 becsum(ijh,na,is), nb, mb, int_r2pfunc_(nb,mb,nt)
+                               WRITE (4,'(3i5,f20.10,2i5,f20.10)') ih, jh, ijh, &
+                                    becsum(ijh,na,is), nb, mb, int_r2pfunc_(nb,mb,nt)
 #endif
-                         END DO
+                            END DO
+                         END IF
                       END IF
-                   END IF
+                   END DO
                 END DO
              END DO
-          END DO
-          !
+             !
 #if defined __DEBUG_ONECENTER_POTENTIALS
-          PRINT *, 'SPHEROPOLE:',spheropole
+             PRINT *, 'SPHEROPOLE:',spheropole
 #endif
-          CALL v_h_grid( rho1_(:,:,na), nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, &
-               nl, ngm, gg, gstart, nspin, alat, omega, ehart, charge, vr1_(:,:,na), &
-               alpha, spheropole, na)
+             CALL v_h_grid( rho1_(:,:,na), nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, &
+                  nl, ngm, gg, gstart, nspin, alat, omega, ehart1_(na), charge, vr1_(:,:,na), &
+                  alpha, spheropole, na)
+          END IF
        END DO
 
        !CALL xsf_struct (alat, at, nat, tau, atm, ityp, 93000+i_what)
@@ -758,7 +789,7 @@ CONTAINS
     !
     USE cell_base,          ONLY: alat, at
     USE ions_base,          ONLY: tau, atm
-    USE grid_paw_variables, ONLY: prad, ptrad
+    USE grid_paw_variables, ONLY: prad, ptrad, tpawp, okpaw
     !
     IMPLICIT NONE
     INTEGER, INTENT(in) :: ih_, jh_, na_, unit_
@@ -778,7 +809,7 @@ CONTAINS
 
     REAL(DP) :: rhor(nrxx)
 
-    IF (.NOT.okvan) RETURN
+    IF (.NOT.okpaw) RETURN
 
     ALLOCATE (aux ( ngm, nspin))    
     ALLOCATE (qmod( ngm))    
@@ -792,7 +823,7 @@ CONTAINS
     ENDDO
 
     DO nt = 1, ntyp
-       IF (tvanp (nt) ) THEN
+       IF (tpawp (nt) ) THEN
           ijh = 0
           DO ih = 1, nh (nt)
              DO jh = ih, nh (nt)
@@ -862,7 +893,8 @@ CONTAINS
 
 
 
-! taken from PW/v_of_rho.f90 and adapted to add and substract gaussian charges
+! taken from PW/v_of_rho.f90 and adapted to add and substract gaussian charges,
+! this gives the hartree potential of isolated atom.
 !----------------------------------------------------------------------------
 #define __DEBUG_V_H_GRID
 SUBROUTINE v_h_grid( rho, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, &
@@ -938,7 +970,7 @@ SUBROUTINE v_h_grid( rho, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, &
   DO ig = gstart, ngm
      !
      ! Define a gaussian distribution of charge, to be substracted
-     skk = eigts1 (ig1 (ig), na) * eigts2 (ig2 (ig), na) * eigts3 (ig3 (ig), na)
+     skk = eigts1(ig1(ig),na) * eigts2(ig2(ig),na) * eigts3(ig3(ig),na)
      gaussrho = charge * EXP(-alpha*gg(ig)*tpiba2) / omega
      !
      fac = 1.D0 / gg(ig)

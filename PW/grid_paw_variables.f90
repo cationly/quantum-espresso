@@ -59,4 +59,14 @@ module grid_paw_variables
       aevloc_at(ndmx,npsx),               &! AE descreened potential
       psvloc_at(ndmx,npsx)                 ! PS descreened potential
 
+  ! One-center energies
+  REAL(DP), ALLOCATABLE, TARGET :: &
+       ehart1 (:),                & ! Hartree energy (AE)
+       etxc1  (:),                & ! XC: energy (AE)
+       vtxc1  (:),                & ! XC: Int V*rho (AE)
+       ehart1t(:),                & ! Hartree energy (PS)
+       etxc1t (:),                & ! XC: energy (PS)
+       vtxc1t (:)                   ! XC: Int V*rho (PS)
+  
+
 end module grid_paw_variables
