@@ -78,6 +78,8 @@ SUBROUTINE setup()
 #if defined (EXX)
   USE exx             , ONLY : lexx, exxalfa, exx_grid_init
 #endif
+
+  USE grid_paw_variables, ONLY : okpaw, tpawp
   !
   IMPLICIT NONE
   !
@@ -850,6 +852,7 @@ SUBROUTINE setup()
   ! ... okvan = .TRUE. : at least one pseudopotential is US
   !
   okvan = ANY( tvanp(:) )
+  okpaw = ANY( tpawp(:) )
   !
   ! ... initialize parameters for charge density extrapolation during dynamics
   !

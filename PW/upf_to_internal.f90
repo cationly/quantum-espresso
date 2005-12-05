@@ -142,6 +142,7 @@ subroutine set_pseudo_upf (is, upf)
 end subroutine set_pseudo_upf
 
 !---------------------------------------------------------------------
+#define __DO_NOT_CUTOFF_PAW_FUNC
 subroutine set_pseudo_paw (is, pawset)
   !---------------------------------------------------------------------
   !
@@ -163,7 +164,7 @@ subroutine set_pseudo_paw (is, pawset)
   USE pseudo_types
   USE constants, ONLY: FPI
   !
-  USE grid_paw_variables, ONLY : tpawp, pfunc, ptfunc
+  USE grid_paw_variables, ONLY : tpawp, pfunc, ptfunc, aevloc_at, psvloc_at
   USE grid_paw_routines, ONLY : step_f
   !
   implicit none
@@ -178,13 +179,18 @@ subroutine set_pseudo_paw (is, pawset)
   integer :: i,j, nrc, nrs
   real (DP) :: aux (ndmx), pow
   !
+#if defined __DO_NOT_CUTOFF_PAW_FUNC
+  PRINT '(A)', 'WARNING __DO_NOT_CUTOFF_PAW_FUNC'
+#endif
+  !
   ! Cutoffing: WARNING: arbitrary right now, for grid calculation
   pow = 1.d0
   nrs =  Count(pawset%r(1:pawset%mesh).le. (pawset%r(pawset%irc)*1.2d0))
   nrc =  Count(pawset%r(1:pawset%mesh).le. (pawset%r(pawset%irc)*1.8d0))
-  write (*,*) pawset%irc, pawset%r(pawset%irc)
-  write (*,*) nrs, pawset%r(nrs)
-  write (*,*) nrc, pawset%r(nrc)
+  PRINT *, 'PAW CUTOFF parameters'
+  PRINT *, pawset%irc, pawset%r(pawset%irc)
+  PRINT *, nrs, pawset%r(nrs)
+  PRINT *, nrc, pawset%r(nrc)
   !
   zp(is)  = pawset%zval
   psd (is)= pawset%symbol
@@ -248,25 +254,31 @@ subroutine set_pseudo_paw (is, pawset)
   !
   do i=1,pawset%nwfc
      do j=1,pawset%nwfc
-!!$        pfunc (1:pawset%mesh, i, j, is) = &
-!!$             pawset%aewfc(1:pawset%mesh, i) * pawset%aewfc(1:pawset%mesh, j)
-!!$        ptfunc (1:pawset%mesh, i, j, is) = &
-!!$             pawset%pswfc(1:pawset%mesh, i) * pawset%pswfc(1:pawset%mesh, j)
+#if defined __DO_NOT_CUTOFF_PAW_FUNC
+        pfunc (1:pawset%mesh, i, j, is) = &
+             pawset%aewfc(1:pawset%mesh, i) * pawset%aewfc(1:pawset%mesh, j)
+        ptfunc (1:pawset%mesh, i, j, is) = &
+             pawset%pswfc(1:pawset%mesh, i) * pawset%pswfc(1:pawset%mesh, j)
+#else
         aux(1:pawset%mesh) = pawset%aewfc(1:pawset%mesh, i) * &
              pawset%aewfc(1:pawset%mesh, j)
         CALL step_f( pfunc(1:pawset%mesh,i,j,is), aux(1:pawset%mesh), &
              pawset%r(1:pawset%mesh), nrs, nrc, pow, pawset%mesh)
-        !aux(1:pawset%mesh) = 1.d0*FPI*pawset%r2(1:pawset%mesh) !!gf
         aux(1:pawset%mesh) = pawset%pswfc(1:pawset%mesh, i) * &
              pawset%pswfc(1:pawset%mesh, j)
         CALL step_f( ptfunc(1:pawset%mesh,i,j,is), aux(1:pawset%mesh), &
              pawset%r(1:pawset%mesh), nrs, nrc, pow, pawset%mesh)
-        !ptfunc(1:pawset%mesh,i,j,is)=aux(1:pawset%mesh)
-        !if ((i==2).AND.(j==2).AND.(is==1)) write (3,'(3e15.8)') &
-        !     (pawset%r(ir), ptfunc(ir,i,j,is), aux(ir), ir=1,pawset%mesh)
-        !STOP 'upf_to_internal'
+#endif
      end do
   end do
+  !
+  ! ... Add augmentation charge to ptfunc already here.
+  ! ... One should not need \tilde{n}^1 alone in any case.
+  !
+  ptfunc(1:pawset%mesh, 1:pawset%nwfc, 1:pawset%nwfc, is) =         &
+       ptfunc (1:pawset%mesh, 1:pawset%nwfc, 1:pawset%nwfc, is) +   &
+       qfunc  (1:pawset%mesh, 1:pawset%nwfc, 1:pawset%nwfc, is)
+  !
   !
   ! nqf is always 0 for this PAW format
   ! qfcoef(1:pawset%nqf, 1:pawset%nqlc, 1:pawset%nwfc, 1:pawset%nwfc, is ) = 0._dp
@@ -300,6 +312,8 @@ subroutine set_pseudo_paw (is, pawset)
   lloc(is) = 0
   !!!
   vloc_at(1:pawset%mesh,is) = pawset%psloc(1:pawset%mesh)
+  aevloc_at(1:pawset%mesh,is) = pawset%aeloc(1:pawset%mesh)
+  psvloc_at(1:pawset%mesh,is) = pawset%psloc(1:pawset%mesh)
 
   do ir = 1, mesh (is)
     if (r (ir, is) .gt.rcut) then

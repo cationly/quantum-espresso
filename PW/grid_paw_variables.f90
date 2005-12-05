@@ -40,8 +40,9 @@ module grid_paw_variables
   ! Analogous to rho in "scf" (PW/pwcom.f90) + index scanning atoms
   REAL(DP), ALLOCATABLE, TARGET :: &
        rho1(:,:,:),             &! 1center AE charge density in real space
-       rho1t(:,:,:),            &! 1center PS charge density in real space
-       rho1h(:,:,:)              ! 1center compensation charge in real space
+       rho1t(:,:,:)              ! 1center PS charge density in real space
+!!! No more needed since ptfunc already contains the augmentation charge qfunc
+!!!    rho1h(:,:,:)              ! 1center compensation charge in real space
 
   ! Analogous to vr in "scf" (PW/pwcom.f90) + index scanning atoms
   REAL(DP), ALLOCATABLE, TARGET :: &

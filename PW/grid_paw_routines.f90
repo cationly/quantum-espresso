@@ -34,19 +34,27 @@ CONTAINS
     USE us,               ONLY : nqxq
     USE uspp_param,       ONLY : lmaxq, nhm
     !
-    USE grid_paw_variables, ONLY : pp, ppt, prad, ptrad, rho1, rho1t, rho1h
+    USE grid_paw_variables, ONLY : pp, ppt, prad, ptrad, rho1, rho1t, &
+         vr1, vr1t, int_r2pfunc, int_r2ptfunc
     !
     IMPLICIT NONE
     !
     ALLOCATE (pp(   nhm, nhm, nsp))
     ALLOCATE (ppt(  nhm, nhm, nsp))
     !
+    ALLOCATE (int_r2pfunc(   nhm, nhm, nsp))
+    ALLOCATE (int_r2ptfunc(  nhm, nhm, nsp))
+    !
     IF (lmaxq > 0) ALLOCATE (prad( nqxq, nbrx*(nbrx+1)/2, lmaxq, nsp))
     IF (lmaxq > 0) ALLOCATE (ptrad( nqxq, nbrx*(nbrx+1)/2, lmaxq, nsp))
     !
     ALLOCATE(rho1(nrxx, nspin, nat))
     ALLOCATE(rho1t(nrxx, nspin, nat))
-    ALLOCATE(rho1h(nrxx, nspin, nat))
+!!! No more needed since ptfunc already contains the augmentation charge qfunc
+!!! ALLOCATE(rho1h(nrxx, nspin, nat))
+    !
+    ALLOCATE(vr1(nrxx, nspin, nat))
+    ALLOCATE(vr1t(nrxx, nspin, nat))
     !
   END SUBROUTINE allocate_paw_internals
 
@@ -55,12 +63,16 @@ CONTAINS
 
 
   ! Analogous to part of PW/init_us_1.f90
+  !   Notice integration performed not only up to r(kkbeta(:)) but up to r(msh(:))
+  !   because pfunc may extend further than qfunc (see comments "!!kk!!")
+  ! + Evaluation of int_r2pfunc
+!#define __DEBUG_INIT_PRAD
   SUBROUTINE init_prad
     !
     USE kinds,      ONLY : DP
-    USE parameters, ONLY : lmaxx, nbrx, lqmax
+    USE parameters, ONLY : lmaxx, nbrx, lqmax, ndmx
     USE constants,  ONLY : fpi
-    USE atom,       ONLY : r, rab
+    USE atom,       ONLY : r, rab, mesh, msh
     USE ions_base,  ONLY : ntyp => nsp
     USE cell_base,  ONLY : omega, tpiba
     USE gvect,      ONLY : g, gg
@@ -72,16 +84,17 @@ CONTAINS
          kkbeta, nqf, nqlc, lll, jjj, lmaxkb, nh, tvanp, nhm
     USE spin_orb,   ONLY : lspinorb, rot_ylm, fcoef
     !
-    USE grid_paw_variables, ONLY : tpawp, pfunc, ptfunc, pp, ppt, prad, ptrad
+    USE grid_paw_variables, ONLY: tpawp, pfunc, ptfunc, pp, ppt, prad, ptrad, &
+         int_r2pfunc, int_r2ptfunc
     !
     IMPLICIT NONE
 
     ! NEW
     !
-    REAL(DP), POINTER :: pfunc_(:,:,:,:), prad_(:,:,:,:), pp_(:,:,:)
+    REAL(DP), POINTER :: pfunc_(:,:,:,:), prad_(:,:,:,:), pp_(:,:,:), int_r2pfunc_(:,:,:)
     !
     INTEGER :: i_what
-
+    REAL(DP) :: aux2(ndmx)
     !
     !     here a few local variables
     !
@@ -111,11 +124,12 @@ CONTAINS
     !
     !    Initialization of the variables
     !
-    ndm = MAXVAL (kkbeta(1:ntyp))
+    !!kk!! ndm = MAXVAL (kkbeta(1:ntyp))
+    ndm = MAXVAL (msh(1:ntyp))
     ALLOCATE (aux ( ndm))    
     ALLOCATE (aux1( ndm))    
     ALLOCATE (besr( ndm))    
-    ALLOCATE (qtot( ndm , nbrx , nbrx))    
+    ALLOCATE (qtot( ndm , nbrx , nbrx))
     ALLOCATE (ylmk0( lmaxq * lmaxq))    
 
     whattodo: DO i_what=1, 2
@@ -125,10 +139,12 @@ CONTAINS
           pfunc_=> pfunc
           pp_   => pp
           prad_ => prad
+          int_r2pfunc_ => int_r2pfunc
        ELSE IF (i_what==2) THEN
           pfunc_=> ptfunc
           pp_   => ppt
           prad_ => ptrad
+          int_r2pfunc_ => int_r2ptfunc
        END IF
 
        IF (lmaxq > 0) prad_(:,:,:,:)= 0.d0
@@ -157,8 +173,10 @@ CONTAINS
                       IF ( (l >= ABS (lll (nb, nt) - lll (mb, nt) ) ) .AND. &
                            (l <= lll (nb, nt) + lll (mb, nt) )        .AND. &
                            (MOD (l + lll (nb, nt) + lll (mb, nt), 2) == 0) ) THEN
-                         DO ir = 1, kkbeta (nt)
+                         !!kk!!DO ir = 1, kkbeta (nt)
+                         DO ir = 1, msh (nt)
                             !!if (r (ir, nt) >= rinner (l + 1, nt) ) then
+!!!                            qtot (ir, nb, mb) = pfunc_ (ir, nb, mb, nt)
                             qtot (ir, nb, mb) = pfunc_ (ir, nb, mb, nt)
                             !!else
                             !!   ilast = ir
@@ -175,7 +193,8 @@ CONTAINS
                 !
                 DO iq = startq, lastq
                    q = (iq - 1) * dq * tpiba
-                   CALL sph_bes (kkbeta (nt), r (1, nt), q, l, aux)
+                   !!kk!! CALL sph_bes (kkbeta (nt), r (1, nt), q, l, aux)
+                   CALL sph_bes (msh (nt), r (1, nt), q, l, aux)
                    !
                    !   and then we integrate with all the Q functions
                    !
@@ -188,10 +207,12 @@ CONTAINS
                          IF ( (l >= ABS (lll (nb, nt) - lll (mb, nt) ) ) .AND. &
                               (l <= lll (nb, nt) + lll (mb, nt) )        .AND. &
                               (MOD (l + lll(nb, nt) + lll(mb, nt), 2) == 0) ) THEN
-                            DO ir = 1, kkbeta (nt)
+                            !!kk!! DO ir = 1, kkbeta (nt)
+                            DO ir = 1, msh (nt)
                                aux1 (ir) = aux (ir) * qtot (ir, nb, mb)
                             ENDDO
-                            CALL simpson (kkbeta(nt), aux1, rab(1, nt), &
+                            !!kk!! CALL simpson (kkbeta(nt), aux1, rab(1, nt), &
+                            CALL simpson (msh(nt), aux1, rab(1, nt), &
                                  prad_(iq,nmb,l + 1, nt) )
                          ENDIF
                       ENDDO
@@ -219,31 +240,13 @@ CONTAINS
        DO nt = 1, ntyp
           IF (tvanp (nt) ) THEN
 !!$          if (lspinorb) then
-!!$             do ih=1,nh(nt)
-!!$                do jh=1,nh(nt)
-!!$                   call qvan2 (1, ih, jh, nt, gg, qgm, ylmk0)
-!!$                   do kh=1,nh(nt)
-!!$                      do lh=1,nh(nt)
-!!$                         ijs=0
-!!$                         do is1=1,2
-!!$                            do is2=1,2
-!!$                               ijs=ijs+1
-!!$                               do is=1,2
-!!$                                  pp__so(kh,lh,ijs,nt) = pp__so(kh,lh,ijs,nt)       &
-!!$                                       + omega* DBLE(qgm(1))*fcoef(kh,ih,is1,is,nt)&
-!!$                                       *fcoef(jh,lh,is,is2,nt)
-!!$                               enddo
-!!$                            enddo
-!!$                         enddo
-!!$                      enddo
-!!$                   enddo
-!!$                enddo
-!!$             enddo
+!!$             ...
 !!$          else
              DO ih = 1, nh (nt)
                 DO jh = ih, nh (nt)
                    !call qvan2 (1, ih, jh, nt, gg, qgm, ylmk0)
-                   CALL pvan2 (1, ih, jh, nt, gg, qgm, ylmk0, prad_, SIZE(prad_,1), SIZE(prad_,2), SIZE(prad_,3), SIZE(prad_,4))
+                   CALL pvan2 (1, ih, jh, nt, gg, qgm, ylmk0, prad_, &
+                        SIZE(prad_,1),SIZE(prad_,2),SIZE(prad_,3),SIZE(prad_,4))
                    pp_ (ih, jh, nt) = omega *  DBLE (qgm (1) )
                    pp_ (jh, ih, nt) = pp_ (ih, jh, nt)
                 ENDDO
@@ -260,6 +263,25 @@ CONTAINS
 !!$    endif
 !!$#endif
 
+       ! Compute the integrals of pfunc*r^2   (not in init_us_1)
+       DO nt = 1, ntyp
+          IF (tpawp (nt) ) THEN
+             DO nb = 1, nbeta (nt)
+                DO mb = nb, nbeta (nt)
+                   aux2(1:msh(nt)) = pfunc_(1:msh(nt), nb, mb, nt) * &
+                        r(1:msh(nt),nt) * r(1:msh(nt),nt)
+                   CALL simpson (msh(nt), aux2, rab(1,nt), &
+                        int_r2pfunc_(nb,mb,nt))
+#if defined __DEBUG_INIT_PRAD
+                   WRITE (200000+10000*i_what+100*nb+mb,'(3e20.10)') &
+                        (aux2(ir),rab(ir,nt),r(ir,nt),ir=1,mesh(nt))
+                   WRITE (*,*)200000+10000*i_what+100*nb+mb, &
+                        int_r2pfunc_(nb,mb,nt)
+#endif
+                END DO
+             END DO
+          END IF
+       END DO
     END DO whattodo
 
     DEALLOCATE (ylmk0)
@@ -268,17 +290,19 @@ CONTAINS
     DEALLOCATE (aux1)
     DEALLOCATE (aux)
 
+#if defined __DEBUG_INIT_PRAD
     ! Check the integrals
-    WRITE (*,*) 'INTEGRALS OF Q, P, Ptilde'
+    PRINT *, 'INTEGRALS OF Q, P, Ptilde'
     DO nt = 1, ntyp
        DO ih = 1, nh (nt)
           DO jh = ih, nh (nt)
-             WRITE (*,'(3i5,4e15.8)') nt,ih,jh, &
+             PRINT '(3i5,4e15.8)', nt,ih,jh, &
                   qq(ih,jh,nt), pp(ih,jh,nt), ppt(ih,jh,nt), &
-                  qq(ih,jh,nt)-(pp(ih,jh,nt)-ppt(ih,jh,nt))
+                  pp(ih,jh,nt)-ppt(ih,jh,nt)
           END DO
        END DO
     END DO
+#endif
 
 !!$    ! Look at the radial fourier transforms
 !!$    do nt = 1, ntyp
@@ -290,15 +314,22 @@ CONTAINS
 !!$    end do
 
 !!$  call stop_clock ('init_us_1')
-    !CALL plot_augfun(2,2,1,1000,'QVAN')
-    !CALL plot_augfun(2,2,1,2000,'P1AE')
-    !CALL plot_augfun(2,2,1,3000,'P1PS')
-    !STOP 'init_prad'
+#if defined __DEBUG_INIT_PRAD
+    PRINT '(A)', 'Writing files with some Q, P1, P1t without structure factor'
+    CALL plot_augfun(1,1,1,1000,'QVAN')
+    CALL plot_augfun(1,1,1,2000,'P1AE')
+    CALL plot_augfun(1,1,1,3000,'P1PS')
+#endif
+    !
+#if defined __DEBUG_INIT_PRAD
+    STOP 'STOP __DEBUG_INIT_PRAD'
+#endif
     RETURN
   END SUBROUTINE init_prad
 
 
   ! Analogous to PW/addusdens.f90
+#define __DEBUG_COMPUTE_ONECENTER_CHARGES
   SUBROUTINE compute_onecenter_charges
     USE kinds,                ONLY : DP
     USE ions_base,            ONLY : nat, ntyp => nsp, ityp
@@ -314,7 +345,8 @@ CONTAINS
     !
     USE cell_base,          ONLY: alat, at
     USE ions_base,          ONLY: tau, atm
-    USE grid_paw_variables, ONLY: prad, ptrad, rho1, rho1t, rho1h
+    USE grid_paw_variables, ONLY: prad, ptrad, rho1, rho1t, pp
+    USE us,                 ONLY: qrad
     !
     IMPLICIT NONE
     !INTEGER, INTENT(in) :: ih_, jh_, na_, unit_
@@ -334,6 +366,7 @@ CONTAINS
 
     REAL(DP), POINTER :: rho1_(:,:,:), prad_(:,:,:,:)
     INTEGER :: i_what
+    REAL(DP) :: charge
 
     !ALLOCATE (aux ( ngm, nspin))    
     ALLOCATE (aux ( ngm, nspin, nat))    
@@ -341,13 +374,23 @@ CONTAINS
     ALLOCATE (qgm( ngm))    
     ALLOCATE (ylmk0( ngm, lmaxq * lmaxq))    
     
-    aux (:,:,:) = (0.d0, 0.d0)
+    !aux (:,:,:) = (0.d0, 0.d0)
     CALL ylmr2 (lmaxq * lmaxq, ngm, g, gg, ylmk0)
     DO ig = 1, ngm
        qmod (ig) = SQRT (gg (ig) )
     ENDDO
 
-    whattodo: DO i_what=1, 2!3
+#if defined  __DEBUG_COMPUTE_ONECENTER_CHARGES
+    PRINT '(A)', 'WARNING manually fixing occupation'
+    !!2s2 2p4 occupation, for O pseudopotential
+    becsum=0.d0
+    becsum(1,1,1)=2.d0
+    becsum(16,1,1)=4.d0/3
+    becsum(22,1,1)=4.d0/3
+    becsum(27,1,1)=4.d0/3
+#endif
+
+    whattodo: DO i_what=1, 2
        NULLIFY(prad_,rho1_)
        IF (i_what==1) THEN
           prad_ => prad
@@ -355,10 +398,13 @@ CONTAINS
        ELSE IF (i_what==2) THEN
           prad_ => ptrad
           rho1_ => rho1t
-!       ELSE IF (i_what==3) THEN
-!          prad_ => qrad
-!          rho1_ => rho1h
+!!! No more needed since ptfunc already contains the augmentation charge qfunc
+!!!    ELSE IF (i_what==3) THEN
+!!!       prad_ => qrad
+!!!       rho1_ => rho1h
        END IF
+       aux (:,:,:) = (0.d0, 0.d0)
+       charge = 0.d0
 
        DO nt = 1, ntyp
           IF (tvanp (nt) ) THEN
@@ -370,11 +416,14 @@ CONTAINS
                    !CALL qvan2 (ngm, ih, jh, nt, qmod, qgm, ylmk0)
                    CALL pvan2 (ngm, ih, jh, nt, qmod, qgm, ylmk0, prad_, &
                         SIZE(prad_,1),SIZE(prad_,2),SIZE(prad_,3),SIZE(prad_,4))
-
                    DO na = 1, nat
 
                       IF (ityp (na) .EQ.nt) THEN
                          DO is = 1, nspin
+#if defined  __DEBUG_COMPUTE_ONECENTER_CHARGES
+                            WRITE (3,*) ih,jh,ijh,becsum(ijh,na,is)
+                            charge=charge+becsum(ijh,na,is)*pp(ih,jh,nt)
+#endif
                             DO ig = 1, ngm
                                skk = eigts1 (ig1 (ig), na) * &
                                     eigts2 (ig2 (ig), na) * &
@@ -391,35 +440,139 @@ CONTAINS
              ENDDO
           ENDIF
        ENDDO
-       !
-       DEALLOCATE (ylmk0)
-       DEALLOCATE (qgm)
-       DEALLOCATE (qmod)
+#if defined  __DEBUG_COMPUTE_ONECENTER_CHARGES
+       PRINT *, '1c_charges, ', i_what, 'charge=', charge
+#endif
        !
        !     convert aux to real space
        !
        DO na = 1, nat
           DO is = 1, nspin
+             !!rho1_(:,is,na)=0.d0  
              psic(:) = (0.d0, 0.d0)
              psic( nl(:) ) = aux(:,is,na)
              IF (gamma_only) psic( nlm(:) ) = CONJG(aux(:,is,na))
              CALL cft3 (psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, 1)
-             rho1_ (:, is, na) = rho1_ (:, is, na) +  DBLE (psic (:) )
+             ! Notice: in addusdens augmentation charge is ADDED to rho:
+             rho1_ (:, is, na) = DBLE (psic (:) )
           ENDDO
        END DO
        !
-       !CALL xsf_struct (alat, at, nat, tau, atm, ityp, unit_+999)
-       !CALL xsf_fast_datagrid_3d &
-       !     (rhor, nr1, nr2, nr3, nrx1, nrx2, nrx3, at, alat, unit_+999)
+#if defined  __DEBUG_COMPUTE_ONECENTER_CHARGES
+       PRINT '(A)', 'Writing files with charges of selected atoms'
+       CALL xsf_struct (alat, at, nat, tau, atm, ityp, 9870+i_what)
+       CALL xsf_fast_datagrid_3d &
+            (rho1_(:,1,1), nr1, nr2, nr3, nrx1, nrx2, nrx3, at, alat, 9870+i_what)
+#endif
        !
 
     END DO whattodo
+    !
+    DEALLOCATE (ylmk0)
+    DEALLOCATE (qgm)
+    DEALLOCATE (qmod)
 
     DEALLOCATE (aux)
+
+!!! No more needed since ptfunc already contains the augmentation charge qfunc
+!!! ! Add compensation charge to rho1t:
+!!! rho1t(:,:,:) = rho1t(:,:,:) + rho1h(:,:,:)
+
   END SUBROUTINE compute_onecenter_charges
 
 
+  ! Analogous to PW/v_of_rho.f90
+  ! + evaluation of the spheropole: Int dr r^2 rho(r)
+#define __DEBUG_ONECENTER_POTENTIALS
+  SUBROUTINE compute_onecenter_potentials
+    USE kinds,            ONLY : DP
+    USE cell_base,        ONLY : at, alat, omega
+    USE ions_base,          ONLY: tau, atm, ityp, ntyp=>nsp
+    USE ions_base,        ONLY : nat
+    USE lsda_mod,         ONLY : nspin
+    USE gvect,            ONLY : ngm, gstart, nr1, nr2, nr3, nrx1, nrx2, nrx3,&
+         nrxx, nl, g, gg
+    !
+    USE grid_paw_variables, ONLY: rho1, rho1t, vr1, vr1t, &
+         int_r2pfunc, int_r2ptfunc
+    USE uspp, ONLY: indv, becsum, nhtolm
+    USE uspp_param, ONLY: nh
+    USE constants, ONLY: PI
+    IMPLICIT NONE
+    !
+    REAL(DP) :: ehart, charge, alpha, spheropole
+    INTEGER :: na, ih, jh, ijh, nb, mb, is, nt
+    !
+    REAL(DP), POINTER :: rho1_(:,:,:), vr1_(:,:,:), int_r2pfunc_(:,:,:)
+    INTEGER :: i_what
+    !
+    CALL infomsg ('compute_onecenter_potentials','alpha set manually',-1)
+    alpha = 0.1d0
+    !
+    whattodo: DO i_what=1, 2
+       NULLIFY(rho1_,vr1_)
+       IF (i_what==1) THEN
+          rho1_ => rho1
+          vr1_  => vr1
+          int_r2pfunc_ => int_r2pfunc
+       ELSE IF (i_what==2) THEN
+          rho1_ => rho1t
+          vr1_  => vr1t
+          int_r2pfunc_ => int_r2ptfunc
+       END IF
+       DO na = 1, nat
+          !
+          vr1_(:,:,na)=0._DP
+          !
+          !call v_xc....
+          !
+          spheropole=0.d0
+          DO nt = 1, ntyp
+             ijh = 0
+             DO ih = 1, nh (nt)
+                nb = indv(ih,nt)
+                DO jh = ih, nh (nt)
+                   mb = indv(jh,nt)
+                   ijh = ijh + 1
+                   IF (nhtolm(ih,nt)==nhtolm(jh,nt)) THEN
+                      IF (ityp(na)==nt) THEN
+                         DO is = 1, nspin
+                            spheropole = spheropole + &
+                                 int_r2pfunc_(nb,mb,nt) * becsum(ijh,na,is)
+#if defined __DEBUG_ONECENTER_POTENTIALS
+                            WRITE (4,'(3i5,f20.10,2i5,f20.10)') ih, jh, ijh, &
+                                 becsum(ijh,na,is), nb, mb, int_r2pfunc_(nb,mb,nt)
+#endif
+                         END DO
+                      END IF
+                   END IF
+                END DO
+             END DO
+          END DO
+          !
+#if defined __DEBUG_ONECENTER_POTENTIALS
+          PRINT *, 'SPHEROPOLE:',spheropole
+#endif
+          CALL v_h_grid( rho1_(:,:,na), nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, &
+               nl, ngm, gg, gstart, nspin, alat, omega, ehart, charge, vr1_(:,:,na), &
+               alpha, spheropole, na)
+       END DO
 
+       !CALL xsf_struct (alat, at, nat, tau, atm, ityp, 93000+i_what)
+       !CALL xsf_fast_datagrid_3d &
+       !     (vr1_(:,1,1), nr1, nr2, nr3, nrx1, nrx2, nrx3, at, alat, 93000+i_what)
+
+    END DO whattodo
+#if defined __DEBUG_ONECENTER_POTENTIALS
+    WRITE (93000,'(i5,4f20.10)') (na,rho1(na,1,1),vr1(na,1,1),rho1t(na,1,1),vr1t(na,1,1),na=1,nr1)
+    WRITE (93000,*)
+#endif
+
+#if defined __DEBUG_ONECENTER_POTENTIALS
+    STOP 'STOP __DEBUG_ONECENTER_POTENTIALS'
+#endif
+
+  END SUBROUTINE compute_onecenter_potentials
 
 
   
@@ -706,6 +859,229 @@ CONTAINS
     !
     DEALLOCATE (aux)
   END SUBROUTINE plot_augfun
+
+
+
+! taken from PW/v_of_rho.f90 and adapted to add and substract gaussian charges
+!----------------------------------------------------------------------------
+#define __DEBUG_V_H_GRID
+SUBROUTINE v_h_grid( rho, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, &
+                ngm, gg, gstart, nspin, alat, omega, ehart, charge, v, &
+                alpha, spheropole, na )
+  !----------------------------------------------------------------------------
+  !
+  ! ... Hartree potential VH(r) from n(r)
+  !
+  USE constants, ONLY : fpi, e2
+  USE kinds,     ONLY : DP
+  USE gvect,     ONLY : nlm
+  USE wvfct,     ONLY : gamma_only
+  USE cell_base, ONLY : tpiba2
+  !
+  USE constants, ONLY : PI, EPS8
+  USE cell_base, ONLY : at
+  USE ions_base, ONLY : tau, atm, ityp, ntyp=>nsp
+  USE ions_base, ONLY : nat
+  USE gvect,     ONLY : eigts1, eigts2, eigts3, ig1, ig2, ig3
+  !
+  IMPLICIT NONE
+  !
+  INTEGER, INTENT(IN) :: nspin, nr1, nr2, nr3, nrx1, nrx2, nrx3, &
+                         nrxx, ngm, gstart, nl(ngm)
+  !
+  REAL (DP), INTENT(IN) :: rho(nrxx,nspin), gg(ngm), alat, omega
+  !
+  REAL(DP), INTENT(IN) :: alpha, spheropole
+  INTEGER, INTENT(IN) :: na
+  !
+  REAL (DP), INTENT(OUT) :: v(nrxx,nspin), ehart, charge
+  !
+  ! ... local variables
+  !
+  REAL (DP)              :: fac
+  REAL (DP), ALLOCATABLE :: aux(:,:), aux1(:,:)
+  INTEGER                     :: ir, is, ig
+  !
+  REAL(DP) :: dummyx, c(3), r2, gaussrho
+  INTEGER :: ir1,ir2,ir3, i,j,k
+  COMPLEX(DP) :: skk
+  !
+  !
+  ALLOCATE( aux( 2, nrxx ), aux1( 2, ngm ) )
+  !
+  ! ... copy total rho in aux
+  !
+  aux(2,:) = 0.D0
+  aux(1,:) = rho(:,1)
+  !
+  IF ( nspin == 2 ) aux(1,:) = aux(1,:) + rho(:,2)
+  !
+  ! ... bring rho (aux) to G space
+  !
+  CALL cft3( aux, nr1, nr2, nr3, nrx1, nrx2, nrx3, -1 )
+  !
+  charge = 0.D0
+  !
+  IF ( gstart == 2 ) charge = omega * aux(1,nl(1))
+  !
+  CALL reduce( 1, charge )
+  !
+#if defined __DEBUG_V_H_GRID
+  PRINT *, 'charge=', charge
+#endif
+  !
+  ! ... calculate hartree potential in G-space (NB: only G/=0 )
+  !
+  ehart     = 0.D0
+  aux1(:,:) = 0.D0
+  !
+  DO ig = gstart, ngm
+     !
+     ! Define a gaussian distribution of charge, to be substracted
+     skk = eigts1 (ig1 (ig), na) * eigts2 (ig2 (ig), na) * eigts3 (ig3 (ig), na)
+     gaussrho = charge * EXP(-alpha*gg(ig)*tpiba2) / omega
+     !
+     fac = 1.D0 / gg(ig)
+     !
+     ehart = ehart + ( aux(1,nl(ig))**2 + aux(2,nl(ig))**2 - gaussrho**2 ) * fac
+     !
+     aux1(1,ig) = ( aux(1,nl(ig)) - gaussrho * REAL(skk,DP) ) * fac
+     aux1(2,ig) = ( aux(2,nl(ig)) - gaussrho * AIMAG(skk)   ) * fac
+     !
+  ENDDO
+  !
+  fac = e2 * fpi / tpiba2
+  !
+  ehart = ehart * fac
+  !
+  aux1 = aux1 * fac
+  !
+  IF (gamma_only) THEN
+     !
+     ehart = ehart * omega
+     !
+  ELSE
+     !
+     ehart = ehart * 0.5D0 * omega
+     !
+  END IF
+  !
+  CALL reduce( 1, ehart )
+  !
+  ! ... Set G=0 terms
+  !
+  aux1(1,1) = e2 * (FPI*alpha*charge - 2*PI/3*spheropole) / omega
+  ! Add G=0 contribution to Hartree energy
+  ehart = ehart + charge * aux1(1,1)
+  ! Add analytic contribution from gaussian charges to Hartree energy
+  ehart = ehart + 0.5_DP * e2 * charge**2 / SQRT(2*PI*alpha)
+  !
+#if defined __DEBUG_V_H_GRID
+  PRINT '(A,3f20.10)', 'V_G=0:              ', aux1(1,1), &
+       e2*(FPI*alpha*charge)/omega, e2*(2*PI/3*spheropole)/omega
+  PRINT '(A,3f20.10)', 'Hartree self-energy:', ehart, &
+     charge * aux1(1,1),    0.5_DP * e2 * charge**2 / SQRT(2*PI*alpha)
+#endif
+  ! 
+  aux(:,:) = 0.D0
+  !
+  DO ig = 1, ngm
+     !
+     aux(1,nl(ig)) = aux1(1,ig)
+     aux(2,nl(ig)) = aux1(2,ig)
+     !
+  END DO
+  !
+  IF ( gamma_only ) THEN
+     !
+     DO ig = 1, ngm
+        !
+        aux(1,nlm(ig)) =   aux1(1,ig)
+        aux(2,nlm(ig)) = - aux1(2,ig)
+        !
+     END DO
+     !
+  END IF
+  !
+  ! ... transform hartree potential to real space
+  !
+  CALL cft3( aux, nr1, nr2, nr3, nrx1, nrx2, nrx3, 1 )
+  !
+  ! ... Add potential corresponding to gaussian charge (ie, erf(r))
+  ! ... in the most inefficient way.
+  !
+#if defined __DEBUG_V_H_GRID
+  PRINT *, at(:,1)
+  PRINT *, at(:,2)
+  PRINT *, at(:,3)
+  PRINT *, tau(1:3,na)
+#endif
+  ir=0
+  zzz: DO ir3=1,nr3
+     c(3)=REAL(ir3-1,DP)/nr3 - tau(3,na)
+     IF (c(3)>+0.5d0) c(3)=c(3)-1.d0
+     IF (c(3)<-0.5d0) c(3)=c(3)+1.d0
+     !
+     yyy: DO ir2=1,nr2
+        c(2)=REAL(ir2-1,DP)/nr2 - tau(2,na)
+        IF (c(2)>+0.5d0) c(2)=c(2)-1.d0
+        IF (c(2)<-0.5d0) c(2)=c(2)+1.d0
+        !
+        xxx: DO ir1=1,nr1
+           c(1)=REAL(ir1-1,DP)/nr1 - tau(1,na)
+           IF (c(1)>+0.5d0) c(1)=c(1)-1.d0
+           IF (c(1)<-0.5d0) c(1)=c(1)+1.d0
+           !
+           ir=ir+1
+           !
+           ! \mathbf{r} = Sum_i c_i \mathbf{a}_i
+           ! r^2 = Sum_{ij} c_i c_j Sum_k (\mathbf{a}_i)_k (\mathbf{a}_j)_k
+           r2=0.d0
+           DO i=1,3
+              DO j=1,3
+                 DO k=1,3
+                    r2 = r2 + c(i) * c(j) * at(k,i) * at(k,j)
+                 END DO
+              END DO
+           END DO
+           r2=SQRT(r2)*alat
+           !
+           IF (r2 < EPS8) THEN
+              aux(1,ir)=aux(1,ir)+e2*charge/SQRT(PI*alpha)
+           ELSE
+              aux(1,ir)=aux(1,ir)+e2*charge/r2*erf(r2/2/SQRT(alpha))
+           END IF
+           !
+        END DO xxx
+     END DO yyy
+  END DO zzz
+  !
+  ! ... add hartree potential to the xc potential
+  !
+  IF ( nspin == 4 ) THEN
+     !
+     v(:,1) = v(:,1) + aux(1,:)
+     !
+  ELSE
+     !
+     DO is = 1, nspin
+        !
+        v(:,is) = v(:,is) + aux(1,:)
+        !
+     END DO
+     !
+  END IF
+  !
+  DEALLOCATE( aux, aux1 )
+  !
+  RETURN
+  !
+END SUBROUTINE v_h_grid
+
+
+
+
+
 
 
 
