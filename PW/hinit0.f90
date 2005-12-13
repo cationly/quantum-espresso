@@ -21,7 +21,7 @@ subroutine hinit0
   USE vlocal,    ONLY : strf
   USE wvfct,     ONLY : npw, g2kin, igk, igk_l2g
   USE io_files,  ONLY : iunigk
-  USE grid_paw_routines, ONLY : init_prad
+  USE grid_paw_routines, ONLY : init_prad, set_paw_rhoc
   !
   implicit none
   !
@@ -80,6 +80,7 @@ subroutine hinit0
   !  calculate the core charge (if any) for the nonlinear core correction
   !
   call set_rhoc
+  call set_paw_rhoc !!PAW!!
   !
   return
 end subroutine hinit0

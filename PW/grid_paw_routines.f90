@@ -25,18 +25,19 @@ MODULE grid_paw_routines
 !!!=========================================================================
 CONTAINS
 
-  ! Analogous to PW/allocate_nlpot.f90
+  ! Analogous to PW/allocate_nlpot.f90 
   SUBROUTINE allocate_paw_internals
-    USE gvect,     ONLY : nrxx
-    USE lsda_mod,  ONLY : nspin
-    USE parameters,       ONLY : nbrx
-    USE ions_base,        ONLY : nsp, nat
-    USE us,               ONLY : nqxq
-    USE uspp_param,       ONLY : lmaxq, nhm
+    USE gvect,              ONLY : nrxx
+    USE lsda_mod,           ONLY : nspin
+    USE parameters,         ONLY : nbrx
+    USE ions_base,          ONLY : nsp, nat, ntyp => nsp
+    USE us,                 ONLY : nqxq
+    USE uspp_param,         ONLY : lmaxq, nhm
+    USE gvect,              ONLY : ngl
     !
     USE grid_paw_variables, ONLY : pp, ppt, prad, ptrad, rho1, rho1t, &
          vr1, vr1t, int_r2pfunc, int_r2ptfunc, ehart1, etxc1, vtxc1, &
-         ehart1t, etxc1t, vtxc1t
+         ehart1t, etxc1t, vtxc1t, aerho_core, psrho_core
     !
     IMPLICIT NONE
     !
@@ -63,6 +64,8 @@ CONTAINS
     ALLOCATE(ehart1t(nat))
     ALLOCATE(etxc1t (nat))
     ALLOCATE(vtxc1t (nat))
+    ALLOCATE (aerho_core(nrxx, nat))
+    ALLOCATE (psrho_core(nrxx, nat))
     !
   END SUBROUTINE allocate_paw_internals
 
@@ -735,7 +738,164 @@ CONTAINS
     RETURN
   END SUBROUTINE pvan2
 
+  ! From PW/set_rhoc.f90
+#define __DEBUG_SET_PAW_RHOC
+  SUBROUTINE set_paw_rhoc
+    !-----------------------------------------------------------------------
+    !
+    !    This routine computes the core charge on the real space 3D mesh
+    !
+    !
+    USE io_global, ONLY : stdout
+    USE kinds,     ONLY : DP
+    USE atom,      ONLY : rho_atc, numeric, msh, r, rab, nlcc
+    USE ions_base, ONLY : nat, ityp, ntyp => nsp
+    USE cell_base, ONLY : omega, tpiba2, alat
+    USE ener,      ONLY : etxcc
+    USE gvect,     ONLY : ngm, nr1, nr2, nr3, nrx1, nrx2, nrx3, &
+                          nrxx, nl, nlm, ngl, gl, igtongl,      &
+                          eigts1, eigts2, eigts3, ig1, ig2, ig3
+    USE pseud,     ONLY : a_nlcc, b_nlcc, alpha_nlcc
+    USE scf,       ONLY : rho_core
+    USE vlocal,    ONLY : strf
+    USE wvfct,     ONLY : gamma_only
+    !
+    USE grid_paw_variables, ONLY : aerho_atc, psrho_atc, aerho_core, psrho_core
+    !
+    IMPLICIT NONE
+
+    !
+    ! NEW
+    !
+    REAL(DP), POINTER :: rho_atc_(:,:)
+    REAL(DP), POINTER :: rho_core_(:,:)
+    !
+    INTEGER :: i_what
+    !
+    !     here the local variables
+    !
+    REAL(DP), PARAMETER :: eps = 1.d-10
+
+    COMPLEX(DP) , ALLOCATABLE :: aux (:)
+    ! used for the fft of the core charge
+
+    COMPLEX(DP) :: skk
+    ! exp(I*G*R_j) for atom j
+
+    REAL(DP) , ALLOCATABLE ::  rhocg(:)
+    ! the radial fourier trasform
+    REAL(DP) ::  rhoima, rhoneg, rhorea
+    ! used to check the core charge
+    REAL(DP) ::  vtxcc
+    ! dummy xc energy term
+    REAL(DP) , ALLOCATABLE ::  dum(:,:)
+    ! dummy array containing rho=0
   
+    INTEGER :: ir, nt, na, ng
+    ! counter on mesh points
+    ! counter on atomic types
+    ! counter on atoms
+    ! counter on g vectors
+
+    etxcc = 0.d0
+!!$    DO nt = 1, ntyp
+!!$       IF (nlcc (nt) ) GOTO 10
+!!$    ENDDO
+!!$    aerho_core(:,:) = 0.d0
+!!$    psrho_core(:,:) = 0.d0
+!!$    RETURN
+!!$
+!!$10  CONTINUE
+    !
+    ALLOCATE (aux( nrxx))    
+    ALLOCATE (rhocg( ngl))
+    !    
+    whattodo: DO i_what=1, 2
+       NULLIFY(rho_atc_,rho_core_)
+       IF (i_what==1) THEN
+          rho_atc_ => aerho_atc
+          rho_core_ => aerho_core
+       ELSE IF (i_what==2) THEN
+          rho_atc_ => psrho_atc
+          rho_core_ => psrho_core
+       END IF    
+       aux (:) = 0.d0
+       !
+       !    the sum is on atom types
+       !
+       typ_loop: DO nt = 1, ntyp
+          !
+          !     drhoc compute the radial fourier transform for each shell of g vec
+          !
+          CALL drhoc (ngl, gl, omega, tpiba2, numeric (nt), a_nlcc (nt), &
+               b_nlcc (nt), alpha_nlcc (nt), msh (nt), r (1, nt), rab (1, nt), &
+               rho_atc_ (1, nt), rhocg)
+          !
+          IF ((i_what==2).AND.(.NOT.nlcc(nt))) THEN
+             DO na = 1, nat
+                IF (ityp (na) .EQ.nt) THEN
+                   rho_core_(:,na)=0.d0
+                END IF
+             END DO
+          END IF
+          !
+          at_loop: DO na = 1, nat
+             at_if: IF (ityp (na) .EQ.nt) THEN
+                DO ng = 1, ngm
+                   skk = eigts1 (ig1 (ng), na) * &
+                        eigts2 (ig2 (ng), na) * &
+                        eigts3 (ig3 (ng), na)
+                   aux(nl(ng)) = aux(nl(ng)) + skk * rhocg(igtongl(ng))
+                ENDDO
+!!$       IF (gamma_only) THEN
+!!$          DO ng = 1, ngm
+!!$             aux(nlm(ng)) = CONJG(aux(nl (ng)))
+!!$          END DO
+!!$       END IF
+                !
+                !   the core charge in real space
+                !
+                CALL cft3 (aux, nr1, nr2, nr3, nrx1, nrx2, nrx3, 1)
+                !
+                !    test on the charge and computation of the core energy
+                !
+                rhoneg = 0.d0
+                rhoima = 0.d0
+                DO ir = 1, nrxx
+                   rhoneg = rhoneg + min (0.d0,  DBLE (aux (ir) ) )
+                   rhoima = rhoima + abs (AIMAG (aux (ir) ) )
+                   rho_core_(ir,na) =  DBLE (aux(ir))
+                ENDDO
+                rhoneg = rhoneg / (nr1 * nr2 * nr3)
+                rhoima = rhoima / (nr1 * nr2 * nr3)
+!!$#ifdef __PARA
+!!$       CALL reduce (1, rhoneg)
+!!$       CALL reduce (1, rhoima)
+!!$#endif
+                IF (rhoneg < -1.0d-6 .OR. rhoima > 1.0d-6) &
+                     WRITE( stdout, '(/5x,"Check: atom number ", i12)') na
+                WRITE( stdout, '(/5x,"       negative/imaginary core charge ", 2f12.6)')&
+                     rhoneg, rhoima
+                !
+             END IF at_if
+          END DO at_loop
+       END DO typ_loop
+    END DO whattodo
+#if defined __DEBUG_SET_PAW_RHOC
+    PRINT '(A)', 'Writing file fort.770'
+    WRITE (770,'(3f20.10)') ((ir-1)*alat/nr1,aerho_core(ir,1),psrho_core(ir,1),ir=1,nr1)
+    STOP 'STOP __DEBUG_SET_PAW_RHOC'
+#endif
+    !
+    DEALLOCATE (rhocg)
+    DEALLOCATE (aux)
+    !
+    RETURN
+
+  9000 FORMAT (5x,'core-only xc energy         = ',f15.8,' ryd')
+
+  END SUBROUTINE set_paw_rhoc
+
   
   ! From PW/init_paw_1.f90
   SUBROUTINE step_f(f2,f,r,nrs,nrc,pow,mesh)

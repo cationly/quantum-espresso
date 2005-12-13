@@ -164,7 +164,8 @@ subroutine set_pseudo_paw (is, pawset)
   USE pseudo_types
   USE constants, ONLY: FPI
   !
-  USE grid_paw_variables, ONLY : tpawp, pfunc, ptfunc, aevloc_at, psvloc_at
+  USE grid_paw_variables, ONLY : tpawp, pfunc, ptfunc, aevloc_at, psvloc_at, &
+                                 aerho_atc, psrho_atc
   USE grid_paw_routines, ONLY : step_f
   !
   implicit none
@@ -300,10 +301,18 @@ subroutine set_pseudo_paw (is, pawset)
 !!$  endif
   !
   if ( pawset%nlcc) then
-     rho_atc(1:pawset%mesh, is) = pawset%psccharge(1:pawset%mesh) &
-                                  / FPI / pawset%r2(1:pawset%mesh)
+     rho_atc(1:pawset%mesh, is) = pawset%psccharge(1:pawset%mesh)
   else
-     rho_atc(:,is) = 0._dp
+     rho_atc(:,is) = 0.d0
+  end if
+
+  aerho_atc(1:pawset%mesh, is) = pawset%aeccharge(1:pawset%mesh) &
+                               / FPI / pawset%r2(1:pawset%mesh)
+  if ( pawset%nlcc) then
+     psrho_atc(1:pawset%mesh, is) = pawset%psccharge(1:pawset%mesh) &
+          / FPI / pawset%r2(1:pawset%mesh)
+  else
+     psrho_atc(:,is) = 0._dp
   end if
   !
   rho_at (1:pawset%mesh, is) = pawset%pscharge(1:pawset%mesh)

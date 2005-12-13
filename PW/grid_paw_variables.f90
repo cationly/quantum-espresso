@@ -54,6 +54,16 @@ module grid_paw_variables
        int_r2pfunc(:,:,:),   &! Integrals of r^2 * pfunc(r) (AE)
        int_r2ptfunc(:,:,:)    ! Integrals of r^2 * pfunc(r) (PS)
 
+  ! Analogous to rho_atc in "atom" (Modules/atom.f90)
+  REAL(DP), TARGET :: &
+       aerho_atc(ndmx,npsx),        &! radial AE core charge density
+       psrho_atc(ndmx,npsx)          ! radial PS core charge density          
+  
+  ! Analogous to rho_core in "scf" (PW/pwcom.f90)
+  REAL(DP), ALLOCATABLE, TARGET :: &
+       aerho_core(:,:),            &! AE core charge density in real space
+       psrho_core(:,:)              ! PS core charge density in real space
+
   ! Analogous to vloc_at in "uspp_param" (Modules/uspp.f90)
   REAL(DP), TARGET :: &
       aevloc_at(ndmx,npsx),               &! AE descreened potential
@@ -68,5 +78,4 @@ module grid_paw_variables
        etxc1t (:),                & ! XC: energy (PS)
        vtxc1t (:)                   ! XC: Int V*rho (PS)
   
-
 end module grid_paw_variables
