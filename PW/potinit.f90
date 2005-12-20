@@ -46,6 +46,8 @@ SUBROUTINE potinit()
   USE mp_global,        ONLY : intra_image_comm
   USE io_global,        ONLY : ionode, ionode_id
   !
+  USE grid_paw_routines,ONLY : atomic_becsum, compute_onecenter_charges, compute_onecenter_potentials
+  !
   IMPLICIT NONE
   !
   ! ... local variables
@@ -207,6 +209,13 @@ SUBROUTINE potinit()
   END IF
   !
   IF ( report /= 0 .AND. noncolin .AND. domag .AND. lscf ) CALL report_mag()
+  !
+  ! ... PAW initialization: from atomic augmentation channel occupations
+  ! ... compute corresponding one-center charges and potentials
+  !
+  CALL atomic_becsum()
+  CALL compute_onecenter_charges()
+  CALL compute_onecenter_potentials()
   !
   RETURN
   !

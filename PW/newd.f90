@@ -23,17 +23,21 @@ SUBROUTINE newd()
                                    eigts1, eigts2, eigts3, nl
   USE lsda_mod,             ONLY : nspin
   USE scf,                  ONLY : vr, vltot
-  USE uspp,                 ONLY : deeq, dvan, deeq_nc, dvan_so, okvan
+  USE uspp,                 ONLY : deeq, dvan, deeq_nc, dvan_so, okvan, indv
   USE uspp_param,           ONLY : lmaxq, nh, nhm, tvanp
   USE wvfct,                ONLY : gamma_only
   USE wavefunctions_module, ONLY : psic
   USE spin_orb,             ONLY : lspinorb
   USE noncollin_module,     ONLY : noncolin
   !
+  USE grid_paw_variables,   ONLY : okpaw, tpawp, kdiff, dpaw_ae, dpaw_ps
+  USE grid_paw_routines,    ONLY : newd_paw_grid
+  USE uspp,                 ONLY : nhtol, nhtolm
+  !
   IMPLICIT NONE
   !
-  INTEGER :: ig, nt, ih, jh, na, is, nht
-    ! counters on g vectors, atom type, beta functions x 2, atoms, spin
+  INTEGER :: ig, nt, ih, jh, na, is, nht, nb, mb
+    ! counters on g vectors, atom type, beta functions x 2, atoms, spin, ..., beta x2
   COMPLEX(DP), ALLOCATABLE :: aux(:,:), qgm(:), qgm_na(:)
     ! work space
   REAL(DP), ALLOCATABLE :: ylmk0(:,:), qmod(:)
@@ -174,6 +178,10 @@ SUBROUTINE newd()
   !
   CALL reduce( nhm * nhm * nat * nspin, deeq )
   !
+!!$  PRINT *, 'D - D~'
+!!$  PRINT '(8f11.3)', ((deeq(jh,ih,1,1),jh=1,nh(1)),ih=1,nh(1))
+!!$  PRINT *, 'D - Dion'
+!!$  PRINT '(8f11.3)', ((dvan(jh,ih,1),jh=1,nh(1)),ih=1,nh(1))
   IF ( lspinorb ) THEN
      !
      CALL newd_so()
@@ -184,24 +192,63 @@ SUBROUTINE newd()
      !
   ELSE
      !
+     IF (okpaw) CALL newd_paw_grid()
+!!$  PRINT *, 'D - D1 - D~1'
+!!$  PRINT '(8f11.3)', ((dpaw_ae(jh,ih,1,1)-dpaw_ps(jh,ih,1,1),jh=1,nh(1)),ih=1,nh(1))
+     !
      DO na = 1, nat
         !
         nt = ityp(na)
-        !
-        DO is = 1, nspin
+        if_not_paw: IF (.NOT.tpawp(nt)) THEN
            !
-           DO ih = 1, nh(nt)
+           DO is = 1, nspin
               !
-              DO jh = ih, nh(nt)
+              DO ih = 1, nh(nt)
                  !
-                 deeq(ih,jh,na,is) = deeq(ih,jh,na,is) + dvan(ih,jh,nt)
-                 deeq(jh,ih,na,is) = deeq(ih,jh,na,is)
+                 DO jh = ih, nh(nt)
+                    !
+                    deeq(ih,jh,na,is) = deeq(ih,jh,na,is) + dvan(ih,jh,nt)
+                    deeq(jh,ih,na,is) = deeq(ih,jh,na,is)
+                    !
+                 END DO
                  !
               END DO
               !
            END DO
            !
-        END DO
+        ELSE    ! ... PAW atom
+!!$        PRINT *, 'D - US screened'
+!!$        PRINT '(8f11.3)', ((deeq(jh,ih,1,1)+dvan(ih,jh,nt),jh=1,nh(1)),ih=1,nh(1))
+           !
+           DO is = 1, nspin
+              !
+              DO ih = 1, nh(nt)
+                 nb = indv(ih,nt)
+                 !
+                 DO jh = ih, nh(nt)
+                    mb = indv(jh,nt)
+                    !
+                    IF ( nhtol (ih, nt) == nhtol (jh, nt) .AND. &
+                         nhtolm(ih, nt) == nhtolm(jh, nt)       ) THEN
+                       deeq(ih,jh,na,is) = deeq(ih,jh,na,is) + &
+                            kdiff(nb,mb,nt)
+                    END if
+                    !
+                    deeq(ih,jh,na,is) = deeq(ih,jh,na,is) + &
+                         dpaw_ae (ih,jh,na,is) - dpaw_ps (ih,jh,na,is)
+                    !
+                    deeq(jh,ih,na,is) = deeq(ih,jh,na,is)
+                    !
+                 END DO
+                 !
+              END DO
+              !
+           END DO
+           !
+!!$        PRINT *, 'D - PAW screened'
+!!$        PRINT '(8f11.3)', ((deeq(jh,ih,1,1),jh=1,nh(1)),ih=1,nh(1))
+           !
+        END IF if_not_paw
         !
      END DO
      !

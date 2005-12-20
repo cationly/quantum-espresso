@@ -15,6 +15,7 @@ MODULE grid_paw_routines
   ! NO EXX
   ! NO Parallelism
   ! NO rinner > 0
+  ! NO Gamma (?)
   !
   !USE temp_PAW_variables
   !
@@ -37,7 +38,9 @@ CONTAINS
     !
     USE grid_paw_variables, ONLY : pp, ppt, prad, ptrad, rho1, rho1t, &
          vr1, vr1t, int_r2pfunc, int_r2ptfunc, ehart1, etxc1, vtxc1, &
-         ehart1t, etxc1t, vtxc1t, aerho_core, psrho_core
+         ehart1t, etxc1t, vtxc1t, aerho_core, psrho_core, &
+         dpaw_ae, dpaw_ps, &
+         aevloc, psvloc, aevloc_r, psvloc_r
     !
     IMPLICIT NONE
     !
@@ -49,6 +52,12 @@ CONTAINS
     !
     IF (lmaxq > 0) ALLOCATE (prad( nqxq, nbrx*(nbrx+1)/2, lmaxq, nsp))
     IF (lmaxq > 0) ALLOCATE (ptrad( nqxq, nbrx*(nbrx+1)/2, lmaxq, nsp))
+    !
+    ALLOCATE (aevloc( ngl, ntyp))
+    ALLOCATE (psvloc( ngl, ntyp))  
+    !
+    ALLOCATE (aevloc_r(nrxx,nat))
+    ALLOCATE (psvloc_r(nrxx,nat))
     !
     ALLOCATE(rho1(nrxx, nspin, nat))
     ALLOCATE(rho1t(nrxx, nspin, nat))
@@ -66,6 +75,9 @@ CONTAINS
     ALLOCATE(vtxc1t (nat))
     ALLOCATE (aerho_core(nrxx, nat))
     ALLOCATE (psrho_core(nrxx, nat))
+    !
+    ALLOCATE(dpaw_ae( nhm, nhm, nat, nspin))
+    ALLOCATE(dpaw_ps( nhm, nhm, nat, nspin))
     !
   END SUBROUTINE allocate_paw_internals
 
@@ -342,7 +354,7 @@ CONTAINS
 
 
   ! Analogous to PW/addusdens.f90
-#define __DEBUG_COMPUTE_ONECENTER_CHARGES
+!#define __DEBUG_COMPUTE_ONECENTER_CHARGES
   SUBROUTINE compute_onecenter_charges
     USE kinds,                ONLY : DP
     USE ions_base,            ONLY : nat, ntyp => nsp, ityp
@@ -395,15 +407,15 @@ CONTAINS
        qmod (ig) = SQRT (gg (ig) )
     ENDDO
 
-#if defined  __DEBUG_COMPUTE_ONECENTER_CHARGES
-    PRINT '(A)', 'WARNING manually fixing occupation'
-    !!2s2 2p4 occupation, for O pseudopotential
-    becsum=0.d0
-    becsum(1,1,1)=2.d0
-    becsum(16,1,1)=4.d0/3
-    becsum(22,1,1)=4.d0/3
-    becsum(27,1,1)=4.d0/3
-#endif
+!!$#if defined  __DEBUG_COMPUTE_ONECENTER_CHARGES
+!!$    PRINT '(A)', 'WARNING manually fixing occupation'
+!!$    !!2s2 2p4 occupation, for O pseudopotential
+!!$    becsum=0.d0
+!!$    becsum(1,1,1)=2.d0
+!!$    becsum(16,1,1)=4.d0/3
+!!$    becsum(22,1,1)=4.d0/3
+!!$    becsum(27,1,1)=4.d0/3
+!!$#endif
 
     whattodo: DO i_what=1, 2
        NULLIFY(prad_,rho1_)
@@ -500,7 +512,7 @@ CONTAINS
 
   ! Analogous to PW/v_of_rho.f90
   ! + evaluation of the spheropole: Int dr r^2 rho(r)
-#define __DEBUG_ONECENTER_POTENTIALS
+!#define __DEBUG_ONECENTER_POTENTIALS
   SUBROUTINE compute_onecenter_potentials
     USE kinds,            ONLY : DP
     USE cell_base,        ONLY : at, alat, omega
@@ -512,17 +524,18 @@ CONTAINS
     !
     USE grid_paw_variables, ONLY: rho1, rho1t, vr1, vr1t, &
          int_r2pfunc, int_r2ptfunc, tpawp, okpaw, ehart1, etxc1, vtxc1, &
-         ehart1t, etxc1t, vtxc1t
+         ehart1t, etxc1t, vtxc1t, aerho_core, psrho_core
     USE uspp, ONLY: indv, becsum, nhtolm
     USE uspp_param, ONLY: nh
     USE constants, ONLY: PI
     IMPLICIT NONE
     !
     REAL(DP), POINTER :: etxc1_(:), vtxc1_(:), ehart1_(:)
-    REAL(DP) :: rho_core(nrxx), charge, alpha, spheropole
+    !REAL(DP) :: rho_core(nrxx)
+    REAL(DP) :: charge, alpha, spheropole
     INTEGER :: na, ih, jh, ijh, nb, mb, is, nt
     !
-    REAL(DP), POINTER :: rho1_(:,:,:), vr1_(:,:,:), int_r2pfunc_(:,:,:)
+    REAL(DP), POINTER :: rho1_(:,:,:), rho_core_(:,:), vr1_(:,:,:), int_r2pfunc_(:,:,:)
     INTEGER :: i_what
     !
     IF (.NOT.okpaw) RETURN
@@ -530,13 +543,14 @@ CONTAINS
     CALL infomsg ('compute_onecenter_potentials','alpha set manually',-1)
     alpha = 0.1_DP
     !
-    CALL infomsg ('compute_onecenter_potentials','rho_core set to zero',-1)
-    rho_core = 0._DP
+    !CALL infomsg ('compute_onecenter_potentials','rho_core set to zero',-1)
+    !rho_core = 0._DP
     !
     whattodo: DO i_what=1, 2
-       NULLIFY(rho1_,vr1_)
+       NULLIFY(rho1_,rho_core_,vr1_,int_r2pfunc_,etxc1_,vtxc1_,ehart1_)
        IF (i_what==1) THEN
           rho1_ => rho1
+          rho_core_ => aerho_core
           vr1_  => vr1
           int_r2pfunc_ => int_r2pfunc
           etxc1_ => etxc1
@@ -544,6 +558,7 @@ CONTAINS
           ehart1_ => ehart1
        ELSE IF (i_what==2) THEN
           rho1_ => rho1t
+          rho_core_ => psrho_core
           vr1_  => vr1t
           int_r2pfunc_ => int_r2ptfunc
           etxc1_ => etxc1t
@@ -555,9 +570,11 @@ CONTAINS
              !
              vr1_(:,:,na)=0._DP
              !
-             CALL v_xc( rho1_, rho_core, nr1, nr2, nr3, nrx1, nrx2, nrx3, &
+             CALL v_xc( rho1_, rho_core_, nr1, nr2, nr3, nrx1, nrx2, nrx3, &
                   nrxx, nl, ngm, g, nspin, alat, omega, etxc1_(na), vtxc1_(na), vr1_(:,:,na) )
+#if defined __DEBUG_ONECENTER_POTENTIALS
              PRINT '(A,2f20.10)', 'XC', etxc1_(na), vtxc1_(na)
+#endif
              !
              spheropole=0.d0
              DO nt = 1, ntyp
@@ -602,9 +619,9 @@ CONTAINS
     WRITE (93000,*)
 #endif
 
-#if defined __DEBUG_ONECENTER_POTENTIALS
-    STOP 'STOP __DEBUG_ONECENTER_POTENTIALS'
-#endif
+!!$#if defined __DEBUG_ONECENTER_POTENTIALS
+!!$    STOP 'STOP __DEBUG_ONECENTER_POTENTIALS'
+!!$#endif
 
   END SUBROUTINE compute_onecenter_potentials
 
@@ -739,7 +756,7 @@ CONTAINS
   END SUBROUTINE pvan2
 
   ! From PW/set_rhoc.f90
-#define __DEBUG_SET_PAW_RHOC
+!#define __DEBUG_SET_PAW_RHOC
   SUBROUTINE set_paw_rhoc
     !-----------------------------------------------------------------------
     !
@@ -837,6 +854,7 @@ CONTAINS
                    rho_core_(:,na)=0.d0
                 END IF
              END DO
+             CYCLE typ_loop
           END IF
           !
           at_loop: DO na = 1, nat
@@ -1056,7 +1074,7 @@ CONTAINS
 ! taken from PW/v_of_rho.f90 and adapted to add and substract gaussian charges,
 ! this gives the hartree potential of isolated atom.
 !----------------------------------------------------------------------------
-#define __DEBUG_V_H_GRID
+!#define __DEBUG_V_H_GRID
 SUBROUTINE v_h_grid( rho, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, &
                 ngm, gg, gstart, nspin, alat, omega, ehart, charge, v, &
                 alpha, spheropole, na )
@@ -1271,8 +1289,503 @@ SUBROUTINE v_h_grid( rho, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, &
 END SUBROUTINE v_h_grid
 
 
+! Analogous to PW/newd.f90
+!#define __DEBUG_NEWD_PAW_GRID
+SUBROUTINE newd_paw_grid
+  !
+  USE grid_paw_variables,   ONLY : okpaw, prad, ptrad, vr1, vr1t, dpaw_ae, dpaw_ps, aevloc_r, psvloc_r
+  !
+  IMPLICIT NONE
+  !
+  IF ( .NOT. okpaw ) RETURN
+  !
+  !PRINT '(A)', 'WARNING newd_paw_grid contains only H+xc potentials'
+  !
+  CALL integrate_potential_x_charge (prad,  vr1,  aevloc_r, dpaw_ae,  &
+       SIZE(prad,1),SIZE(prad,2),SIZE(prad,3),SIZE(prad,4), &
+       SIZE(vr1,1),SIZE(vr1,2),SIZE(vr1,3),                 &
+       SIZE(aevloc_r,1),SIZE(aevloc_r,2),                   &
+       SIZE(dpaw_ae,1),SIZE(dpaw_ae,2),SIZE(dpaw_ae,3),SIZE(dpaw_ae,4))
+  CALL integrate_potential_x_charge (ptrad, vr1t, psvloc_r, dpaw_ps,  &
+       SIZE(prad,1),SIZE(prad,2),SIZE(prad,3),SIZE(prad,4), &
+       SIZE(vr1,1),SIZE(vr1,2),SIZE(vr1,3),                 &
+       SIZE(aevloc_r,1),SIZE(aevloc_r,2),                   &
+       SIZE(dpaw_ae,1),SIZE(dpaw_ae,2),SIZE(dpaw_ae,3),SIZE(dpaw_ae,4))
+!!$#if defined __DEBUG_NEWD_PAW_GRID
+!!$  STOP 'STOP __DEBUG_NEWD_PAW_GRID'
+!!$#endif
+  !
+CONTAINS
+  !
+  SUBROUTINE integrate_potential_x_charge (prad_, vr_, vl_, dpaw_, &
+       sp1,sp2,sp3,sp4, sv1,sv2,sv3, sl1,sl2, sd1,sd2,sd3,sd4)
+    USE kinds,                ONLY : DP
+    USE ions_base,            ONLY : nat, ntyp => nsp, ityp
+    USE cell_base,            ONLY : omega
+    USE gvect,                ONLY : nr1, nr2, nr3, nrx1, nrx2, nrx3, &
+         g, gg, ngm, gstart, ig1, ig2, ig3, &
+         eigts1, eigts2, eigts3, nl
+    USE lsda_mod,             ONLY : nspin
+    USE scf,                  ONLY : vr, vltot
+    USE uspp,                 ONLY : deeq, dvan, deeq_nc, dvan_so, okvan
+    USE uspp_param,           ONLY : lmaxq, nh, nhm, tvanp
+    USE wvfct,                ONLY : gamma_only
+    USE wavefunctions_module, ONLY : psic
+    USE spin_orb,             ONLY : lspinorb
+    USE noncollin_module,     ONLY : noncolin
+    !
+    USE grid_paw_variables,   ONLY : tpawp
+    !
+    IMPLICIT NONE
+    INTEGER,  INTENT(IN) :: sp1,sp2,sp3,sp4, sv1,sv2,sv3, sl1,sl2, sd1,sd2,sd3,sd4
+    REAL(DP), INTENT(IN) :: prad_(sp1,sp2,sp3,sp4)
+    REAL(DP), INTENT(IN) :: vr_(sv1,sv2,sv3)
+    REAL(DP), INTENT(IN) :: vl_(sl1,sl2)
+    REAL(DP), INTENT(OUT):: dpaw_(sd1,sd2,sd3,sd4)
+    !
+    INTEGER :: ig, nt, ih, jh, na, is, nht
+    ! counters on g vectors, atom type, beta functions x 2, atoms, spin
+    COMPLEX(DP), ALLOCATABLE :: aux(:,:), qgm(:), qgm_na(:)
+    ! work space
+    REAL(DP), ALLOCATABLE :: ylmk0(:,:), qmod(:)
+    ! spherical harmonics, modulus of G
+    REAL(DP) :: fact, DDOT
+    !
+    IF ( gamma_only ) THEN
+       fact = 2.D0
+    ELSE
+       fact = 1.D0
+    END IF
+    !
+    ALLOCATE( aux( ngm, nspin ), qgm_na( ngm ), &
+         qgm( ngm ), qmod( ngm ), ylmk0( ngm, lmaxq*lmaxq ) )
+    !
+    dpaw_(:,:,:,:) = 0._DP
+    !
+    CALL ylmr2( lmaxq * lmaxq, ngm, g, gg, ylmk0 )
+    !
+    qmod(1:ngm) = SQRT( gg(1:ngm) )
+    !
+    DO na=1, nat
+       !
+       ! ... fourier transform of the total effective potential
+       DO is = 1, nspin
+          psic(:) = vl_(:,na) + vr_(:,is,na)
+          CALL cft3( psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, - 1 )
+          aux(1:ngm,is) = psic( nl(1:ngm) )
+       END DO
+       !
+       ! ... here we compute the integral Q*V for atom "na",
+       ! ...       I = sum_G exp(-iR.G) Q_nm v^*
+       !
+       ! The type is fixed
+       nt = ityp(na)
+       !
+       IF ( tpawp(nt) ) THEN
+          !
+          DO ih = 1, nh(nt)
+             !
+             DO jh = ih, nh(nt)
+                !
+                ! ... The Q(r) for this atomic species without structure factor
+                !
+                !CALLqvan2( ngm, ih, jh, nt, qmod, qgm, ylmk0 )
+                CALL pvan2 (ngm, ih, jh, nt, qmod, qgm, ylmk0, prad_, &
+                     sp1,sp2,sp3,sp4)
+                !
+                !! loop on atoms is now the outer one:
+                !! DO na = 1, nat
+                !! IF ( ityp(na) == nt ) THEN
+                !
+                ! ... The Q(r) for this specific atom
+                !
+                qgm_na(1:ngm) = qgm(1:ngm) * eigts1(ig1(1:ngm),na) &
+                     * eigts2(ig2(1:ngm),na) &
+                     * eigts3(ig3(1:ngm),na)
+                !
+                ! ... and the product with the Q functions
+                !
+                DO is = 1, nspin
+                   !
+                   dpaw_(ih,jh,na,is) = fact * omega * &
+                        DDOT( 2 * ngm, aux(1,is), 1, qgm_na, 1 )
+                   !
+                   IF ( gamma_only .AND. gstart == 2 ) &
+                        dpaw_(ih,jh,na,is) = dpaw_(ih,jh,na,is) - &
+                        omega * DBLE( aux(1,is) * qgm_na(1) )
+                   !
+                   dpaw_(jh,ih,na,is) = dpaw_(ih,jh,na,is)
+                   !
+                END DO
+                !
+                !! END IF
+                !! END DO
+                !
+             END DO
+             !
+          END DO
+          !
+       END IF
+       !
+    END DO
+    !
+    CALL reduce( nhm * nhm * nat * nspin, dpaw_ )
+    !
+#if defined __DEBUG_NEWD_PAW_GRID
+    PRINT *, 'D - D1 or D1~'
+    PRINT '(8f11.3)', ((dpaw_(jh,ih,1,1),jh=1,nh(nt)),ih=1,nh(nt))
+#endif
+    !
+    DEALLOCATE( aux, qgm_na, qgm, qmod, ylmk0 )
+    !
+  END SUBROUTINE integrate_potential_x_charge
+    
+END SUBROUTINE newd_paw_grid
 
 
+! Initialize becsum with atomic occupations (for PAW atoms only)
+! Notice: requires exact correspondence chi <--> beta in the atom,
+! that is that all wavefunctions considered for PAW generation are
+! counted in chi (otherwise the array "oc" does not correspond to beta)
+!#define __DEBUG_ATOMIC_BECSUM
+SUBROUTINE atomic_becsum()
+  USE kinds,              ONLY : DP
+  USE uspp,               ONLY : becsum, nhtol, indv
+  USE uspp_param,         ONLY : nh
+  USE ions_base,          ONLY : nat, ityp
+  USE lsda_mod,           ONLY : nspin
+  USE atom,               ONLY : oc
+  USE grid_paw_variables, ONLY : tpawp, okpaw
+  IMPLICIT NONE
+  INTEGER :: ispin, na, nt, ijh, ih, jh, nb, mb
+  !
+  IF (.NOT. okpaw) RETURN
+  !
+  ispin=1
+  if (nspin.GT.1) STOP 'atomic_becsum not implemented'
+  !
+  na_loop: DO na = 1, nat
+     nt = ityp(na)
+     is_paw: IF (tpawp(nt)) THEN
+        !
+        ijh = 1
+        ih_loop: DO ih = 1, nh(nt)
+           nb = indv(ih,nt)
+           !
+#if defined __DEBUG_ATOMIC_BECSUM
+           PRINT *, ijh,ih,nb,oc(nb,nt),nhtol(ih,nt)
+#endif
+           becsum(ijh,na,ispin) = oc(nb,nt) / REAL(2*nhtol(ih,nt)+1,DP)
+           ijh = ijh + 1
+           !
+           jh_loop: DO jh = ( ih + 1 ), nh(nt)
+              !mb = indv(jh,nt)
+              becsum(ijh,na,ispin) = 0._DP
+              ijh = ijh + 1
+              !
+           END DO jh_loop
+        END DO ih_loop
+     END IF is_paw
+  END DO na_loop
+
+#if defined __DEBUG_ATOMIC_BECSUM
+  PRINT '(1f20.10)', becsum(:,1,1)
+#endif
+
+END SUBROUTINE atomic_becsum
+
+
+
+
+  ! Analogous to PW/init_vloc.f90
+  SUBROUTINE init_paw_vloc
+    !
+    USE kinds, ONLY: DP
+    USE atom,       ONLY : numeric, msh, mesh, r, rab
+!!$    USE uspp_param, ONLY : vloc_at
+    USE ions_base,  ONLY : ntyp => nsp
+    USE cell_base,  ONLY : omega, tpiba2
+!!$    USE vlocal,     ONLY : vloc
+    USE gvect,      ONLY : ngl, gl
+    USE pseud,      ONLY : lloc, lmax, cc, nlc, nnl, alpc, alps, aps, zp
+    USE grid_paw_variables, ONLY: aevloc_at, psvloc_at, aevloc, psvloc
+    !
+    USE parameters, ONLY : ndmx
+    !
+    IMPLICIT NONE
+    !
+    INTEGER :: nt
+    ! counter on atomic types
+    !
+    REAL(DP), POINTER :: vloc_at_(:,:)
+    REAL(DP), POINTER :: vloc_(:,:)
+    INTEGER :: i_what
+    !  
+!!$    open (FILE='../../aevloc_at.dat',UNIT=101,STATUS='unknown')
+!!$    open (FILE='../../psvloc_at.dat',UNIT=102,STATUS='unknown')
+!!$    do nt = 1, ntyp
+!!$       write (101,'(e15.8)') aevloc_at(1:ndmx,nt)
+!!$       write (102,'(e15.8)') psvloc_at(1:ndmx,nt)
+!!$    end do
+    whattodo: DO i_what=1, 2
+    ! associate a pointer to the AE or PS part
+       NULLIFY(vloc_at_,vloc_)
+       IF (i_what==1) THEN
+          vloc_at_ => aevloc_at
+          vloc_    => aevloc
+       ELSE IF (i_what==2) THEN
+          vloc_at_ => psvloc_at
+          vloc_    => psvloc
+       END IF
+       vloc_(:,:) = 0.d0
+       DO nt = 1, ntyp
+       !
+       ! compute V_loc(G) for a given type of atom
+       !
+       CALL vloc_of_g_noerf (lloc (nt), lmax (nt), numeric (nt), mesh (nt), &
+            msh (nt), rab (1, nt), r (1, nt), vloc_at_ (1, nt), cc (1, &
+            nt), alpc (1, nt), nlc (nt), nnl (nt), zp (nt), aps (1, 0, nt), &
+            alps (1, 0, nt), tpiba2, ngl, gl, omega, vloc_ (1, nt) )
+       END DO
+    END DO whattodo 
+!!$    open (FILE='../../aevloc.dat',UNIT=103,STATUS='unknown')
+!!$    open (FILE='../../psvloc.dat',UNIT=104,STATUS='unknown')
+!!$    do nt = 1, ntyp
+!!$       write (103,'(e15.8)') aevloc(1:ngl,nt)
+!!$       write (104,'(e15.8)') psvloc(1:ngl,nt)
+!!$    end do
+!!$    ! Look at the fourier transforms
+!!$    !CALL plot_augfun(2,2,1,1000,'QVAN')
+!!$    !CALL plot_augfun(2,2,1,2000,'P1AE')
+!!$    !CALL plot_augfun(2,2,1,3000,'P1PS')
+!!$    STOP 'ionpot'
+    !
+    RETURN
+    !
+  END SUBROUTINE init_paw_vloc
+
+
+! Adapted from vloc_of_g.f90, for bounded potentials: don't add erf(r)/r
+! because we don't assume anymore that v(r)\approx 2*e^2*zp/r at large r
+! but that it is zero beyond some r_c (see cutoffing in upf_to_internal.f90)
+!----------------------------------------------------------------------
+subroutine vloc_of_g_noerf (lloc, lmax, numeric, mesh, msh, rab, r, vloc_at, &
+     cc, alpc, nlc, nnl, zp, aps, alps, tpiba2, ngl, gl, omega, vloc)
+  !----------------------------------------------------------------------
+  !
+  !    This routine computes the Fourier transform of the local
+  !    part of the pseudopotential. Two types of local potentials
+  !    are allowed:
+  !
+  !    a) The pseudopotential is in analytic form and its fourier
+  !       transform is computed analytically
+  !    b) The pseudopotential is in numeric form and its fourier
+  !       transform is computed numerically
+  !
+  !    The local pseudopotential of the US case is always in
+  !    numerical form, expressed in Ry units.
+  !
+!#include "f_defs.h"
+  USE kinds
+  implicit none
+  !
+  !    first the dummy variables
+  !
+  integer :: nlc, nnl, ngl, lloc, lmax, mesh, msh
+  ! input: analytic, number of erf functions
+  ! input: analytic, number of gaussian functions
+  ! input: the number of shell of G vectors
+  ! input: the l taken as local part
+  ! input: the maximum non local angular momentum
+  ! input: numeric, the dimensions of the mesh
+  ! input: numeric, number of mesh points for radial integration
+
+  real(DP) :: cc (2), alpc (2), alps (3, 0:3), aps (6, 0:3), &
+       zp, rab (mesh), r (mesh), vloc_at (mesh), tpiba2, omega, gl (ngl), &
+       vloc (ngl)
+  ! input: analytic, c of the erf functions
+  ! input: analytic, alpha of the erf
+  ! input: analytic, alpha of the gaussians
+  ! input: analytic, a and b of the gaussians
+  ! input: valence pseudocharge
+  ! input: numeric, the derivative of mesh points
+  ! input: numeric, the mesh points
+  ! input: numeric, the pseudo on the radial mesh
+  ! input: 2 pi / alat
+  ! input: the volume of the unit cell
+  ! input: the moduli of g vectors for each shell
+  ! output: the fourier transform of the potential
+  logical :: numeric
+  ! input: if true the pseudo is numeric
+  !
+  real(DP), parameter :: pi = 3.14159265358979d0, fpi= 4.d0 * pi, &
+                              e2 = 2.d0, eps= 1.d-8
+  !    local variables
+  !
+  real(DP) :: vlcp, fac, den1, den2, g2a, gx
+  real(DP), allocatable :: aux (:), aux1 (:)
+  !  auxiliary variables
+  real(DP), external :: erf
+  integer :: i, igl, igl0, l, ir
+  ! counter on erf functions or gaussians
+  ! counter on g shells vectors
+  ! first shells with g != 0
+  ! the angular momentum
+  ! counter on mesh points
+
+  if (.not.numeric) then
+     STOP 'vloc_of_g_noerf not implemented'
+  else
+     !
+     ! Pseudopotentials in numerical form (Vloc_at) contain the local part)
+!!$NO! in order to perform the Fourier transform, a term erf(r)/r is
+!!$NO! subtracted in real space and added again in G space
+     !
+     allocate ( aux(mesh), aux1(mesh) )
+     if (gl (1) < eps) then
+        !
+        ! first the G=0 term
+        !
+        do ir = 1, msh
+!!$NO      aux (ir) = r (ir) * (r (ir) * vloc_at (ir) + zp * e2)
+           aux (ir) = r (ir) * (r (ir) * vloc_at (ir))
+        enddo
+        call simpson (msh, aux, rab, vlcp)
+        vloc (1) = vlcp        
+        igl0 = 2
+     else
+        igl0 = 1
+     endif
+     !
+     !   here the G<>0 terms, we first compute the part of the integrand func
+     !   indipendent of |G| in real space
+     !
+     do ir = 1, msh
+!!$NO   aux1 (ir) = r (ir) * vloc_at (ir) + zp * e2 * erf (r (ir) )
+        aux1 (ir) = r (ir) * vloc_at (ir)
+     enddo
+     fac = zp * e2 / tpiba2
+     !
+     !    and here we perform the integral, after multiplying for the |G|
+     !    dependent  part
+     !
+     do igl = igl0, ngl
+        gx = sqrt (gl (igl) * tpiba2)
+        do ir = 1, msh
+           aux (ir) = aux1 (ir) * sin (gx * r (ir) ) / gx
+        enddo
+        call simpson (msh, aux, rab, vlcp)
+        !
+!!$NO   !     here we add the analytic fourier transform of the erf function
+!!$NO   !
+!!$NO   vlcp = vlcp - fac * exp ( - gl (igl) * tpiba2 * 0.25d0) &
+!!$NO        / gl (igl)
+        vloc (igl) = vlcp
+     enddo
+     vloc (:) = vloc(:) * fpi / omega
+     deallocate (aux, aux1)
+  endif
+  return
+end subroutine vloc_of_g_noerf
+
+
+
+
+  ! Analogous to setlocal.f90
+!----------------------------------------------------------------------
+!#define __DEBUG_PAW_GRID_SETLOCAL
+subroutine paw_grid_setlocal
+  !----------------------------------------------------------------------
+  !
+  !    This routine computes the local potential in real space vltot(ir)
+  !
+  USE kinds,     ONLY : DP
+  USE ions_base, ONLY : ntyp => nsp
+  USE extfield,  ONLY : tefield, dipfield, etotefield
+  USE gvect,     ONLY : igtongl
+!!$  USE scf,       ONLY : vltot
+  USE vlocal,    ONLY : strf !!$ , vloc
+  USE wvfct,     ONLY : gamma_only
+  USE gvect,     ONLY : nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, nlm, ngm
+  USE scf,       ONLY : rho
+  !
+  USE gvect,     ONLY : eigts1, eigts2, eigts3, ig1, ig2, ig3
+  USE grid_paw_variables, ONLY : aevloc, psvloc, aevloc_r, psvloc_r
+  USE ions_base, ONLY : nat, ityp
+  !
+  implicit none
+  complex(DP), allocatable :: aux (:)
+  ! auxiliary variable
+  integer :: nt, ng, ir
+  ! counter on atom types
+  ! counter on g vectors
+  ! counter on r vectors
+  !
+  REAL(DP), POINTER :: vloc_(:,:)
+  REAL(DP), POINTER :: vltot_(:,:)
+  INTEGER :: na, i_what
+  COMPLEX(DP) :: skk
+  !
+  allocate (aux( nrxx))    
+  !
+  whattodo: DO i_what=1, 2
+     ! associate a pointer to the AE or PS part
+     NULLIFY(vloc_,vltot_)
+     IF (i_what==1) THEN
+        vloc_   => aevloc
+        vltot_  => aevloc_r
+     ELSE IF (i_what==2) THEN
+        vloc_   => psvloc
+        vltot_  => psvloc_r
+     END IF
+
+     na_loop: do na=1, nat
+
+        aux(:)=(0.d0,0.d0)
+        !
+        ! the type is fixed to the specific atom
+        nt=ityp(na)
+        ! and not ... do nt = 1, ntyp
+        do ng = 1, ngm
+           !aux (nl(ng))=aux(nl(ng)) + vloc (igtongl (ng), nt) * strf(ng,nt)
+           skk = eigts1 (ig1 (ng), na) * &
+                eigts2 (ig2 (ng), na) * &
+                eigts3 (ig3 (ng), na)
+           aux (nl(ng))=aux(nl(ng)) + vloc_ (igtongl (ng), nt) * skk
+        enddo
+        if (gamma_only) then
+           do ng = 1, ngm
+              aux (nlm(ng)) = CONJG(aux (nl(ng)))
+           enddo
+        end if
+        !
+        ! aux = potential in G-space . FFT to real space
+        !
+        call cft3 (aux, nr1, nr2, nr3, nrx1, nrx2, nrx3, 1)
+        !
+        do ir = 1, nrxx
+           vltot_ (ir,na) =  DBLE (aux (ir) )
+        enddo
+        !
+        !  If required add an electric field to the local potential 
+        !
+        if (tefield.and.(.not.dipfield)) then
+           STOP 'paw_grid_setlocal not implemented'
+!!$     call add_efield(rho,vltot,etotefield,0)
+!!$! NB rho is not actually used by add_efield in this case ...
+!!$!    it should be fixed and removed from this routine
+        endif
+     end do na_loop
+#if defined __DEBUG_PAW_GRID_SETLOCAL
+     write (95000+i_what,'(f20.10)') (vltot_(ir,1),ir=1,nr1)
+#endif
+  end DO whattodo
+#if defined __DEBUG_PAW_GRID_SETLOCAL
+  STOP 'STOP __DEBUG_PAW_GRID_SETLOCAL'
+#endif
+  deallocate(aux)
+  return
+end subroutine paw_grid_setlocal
 
 
 

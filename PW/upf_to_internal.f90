@@ -1,3 +1,4 @@
+!#define __DEBUG_UPF_TO_INTERNAL
 !
 ! Copyright (C) 2004 Quantum-ESPRESSO group
 ! This file is distributed under the terms of the
@@ -142,7 +143,7 @@ subroutine set_pseudo_upf (is, upf)
 end subroutine set_pseudo_upf
 
 !---------------------------------------------------------------------
-#define __DO_NOT_CUTOFF_PAW_FUNC
+!#define __DO_NOT_CUTOFF_PAW_FUNC
 subroutine set_pseudo_paw (is, pawset)
   !---------------------------------------------------------------------
   !
@@ -165,7 +166,7 @@ subroutine set_pseudo_paw (is, pawset)
   USE constants, ONLY: FPI
   !
   USE grid_paw_variables, ONLY : tpawp, pfunc, ptfunc, aevloc_at, psvloc_at, &
-                                 aerho_atc, psrho_atc
+                                 aerho_atc, psrho_atc, kdiff
   USE grid_paw_routines, ONLY : step_f
   !
   implicit none
@@ -213,16 +214,24 @@ subroutine set_pseudo_paw (is, pawset)
   IF ( mesh(is) > ndmx ) &
      CALL errore('upf_to_internal', 'too many grid points', 1)
   !
-  ! take only occupied wfcs (not necessary, but to have exactly the same as for US)
+  ! ... Copy wavefunctions used for PAW construction.
+  ! ... Copy also the unoccupied ones, e.g.
+  ! ... corresponding to second energy for the same channel
+  ! ... (necessary to set starting occupations correctly)
   !
   nchi(is)=0
   do i=1, pawset%nwfc
+#if defined __DEBUG_UPF_TO_INTERNAL
+     ! take only occupied wfcs (to have exactly the same as for US)
      if (pawset%oc(i)>0._dp) then
+#endif
         nchi(is)=nchi(is)+1
         lchi(nchi(is),is)=pawset%l(i)
-        oc(nchi(is),is)=pawset%oc(i)
+        oc(nchi(is),is)=MAX(pawset%oc(i),0._DP)
         chi(1:pawset%mesh, nchi(is), is) = pawset%pswfc(1:pawset%mesh, i)
+#if defined __DEBUG_UPF_TO_INTERNAL
      end if
+#endif
   end do
   !
   nbeta(is)= pawset%nwfc
@@ -232,6 +241,8 @@ subroutine set_pseudo_paw (is, pawset)
   end do
   betar(1:pawset%mesh, 1:pawset%nwfc, is) = pawset%proj(1:pawset%mesh, 1:pawset%nwfc)
   dion(1:pawset%nwfc, 1:pawset%nwfc, is) = pawset%dion(1:pawset%nwfc, 1:pawset%nwfc)
+  kdiff(1:pawset%nwfc, 1:pawset%nwfc, is) = pawset%kdiff(1:pawset%nwfc, 1:pawset%nwfc)
+
   !
   lmax(is) = pawset%lmax
   nqlc(is) = 2*pawset%lmax+1
@@ -301,16 +312,17 @@ subroutine set_pseudo_paw (is, pawset)
 !!$  endif
   !
   if ( pawset%nlcc) then
-     rho_atc(1:pawset%mesh, is) = pawset%psccharge(1:pawset%mesh)
+     rho_atc(1:pawset%mesh, is) = pawset%psccharge(1:pawset%mesh) &
+          &                       / FPI / pawset%r2(1:pawset%mesh)
   else
      rho_atc(:,is) = 0.d0
   end if
 
   aerho_atc(1:pawset%mesh, is) = pawset%aeccharge(1:pawset%mesh) &
-                               / FPI / pawset%r2(1:pawset%mesh)
+       &                         / FPI / pawset%r2(1:pawset%mesh)
   if ( pawset%nlcc) then
      psrho_atc(1:pawset%mesh, is) = pawset%psccharge(1:pawset%mesh) &
-          / FPI / pawset%r2(1:pawset%mesh)
+          &                         / FPI / pawset%r2(1:pawset%mesh)
   else
      psrho_atc(:,is) = 0._dp
   end if
@@ -321,8 +333,17 @@ subroutine set_pseudo_paw (is, pawset)
   lloc(is) = 0
   !!!
   vloc_at(1:pawset%mesh,is) = pawset%psloc(1:pawset%mesh)
+#if defined __DO_NOT_CUTOFF_PAW_FUNC
   aevloc_at(1:pawset%mesh,is) = pawset%aeloc(1:pawset%mesh)
   psvloc_at(1:pawset%mesh,is) = pawset%psloc(1:pawset%mesh)
+#else
+  aux(1:pawset%mesh) = pawset%aeloc(1:pawset%mesh)
+  CALL step_f( aevloc_at(1:pawset%mesh,is), aux(1:pawset%mesh), &
+       pawset%r(1:pawset%mesh), nrs, nrc, pow, pawset%mesh)
+  aux(1:pawset%mesh) = pawset%psloc(1:pawset%mesh)
+  CALL step_f( psvloc_at(1:pawset%mesh,is), aux(1:pawset%mesh), &
+       pawset%r(1:pawset%mesh), nrs, nrc, pow, pawset%mesh)
+#endif
 
   do ir = 1, mesh (is)
     if (r (ir, is) .gt.rcut) then
@@ -402,7 +423,7 @@ subroutine write_internals(un,is)
         write (un+3000+i*10+j,'(f20.10)') qfunc (1:mesh(is), i, j, is)
      end do
   end do
-  write (un+200,*) qfcoef(nqf(is), 1:nqlc(is), 1:nbeta(is), 1:nbeta(is), is )
+  write (un+200,*) qfcoef(1:nqf(is), 1:nqlc(is), 1:nbeta(is), 1:nbeta(is), is )
   !
   write (un+4000+1,'(f20.10)') r  (1:mesh(is), is)
   write (un+4000+2,'(f20.10)') rab(1:mesh(is), is)

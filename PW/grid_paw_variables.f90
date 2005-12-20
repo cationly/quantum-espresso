@@ -69,6 +69,16 @@ module grid_paw_variables
       aevloc_at(ndmx,npsx),               &! AE descreened potential
       psvloc_at(ndmx,npsx)                 ! PS descreened potential
 
+  ! Analogous to vloc in "vlocal" (PW/pwcom.f90)
+  REAL(DP), ALLOCATABLE, TARGET :: &
+       aevloc(:,:),            &! AE local 1-c potential for each atom type
+       psvloc(:,:)              ! PS local 1-c potential for each atom type
+
+  ! Analogous to vltot in "scf" (PW/pwcom.f90)
+  REAL(DP), ALLOCATABLE, TARGET :: &
+       aevloc_r(:,:),            &! AE local potential in real space
+       psvloc_r(:,:)              ! PS local potential in real space
+
   ! One-center energies
   REAL(DP), ALLOCATABLE, TARGET :: &
        ehart1 (:),                & ! Hartree energy (AE)
@@ -77,5 +87,14 @@ module grid_paw_variables
        ehart1t(:),                & ! Hartree energy (PS)
        etxc1t (:),                & ! XC: energy (PS)
        vtxc1t (:)                   ! XC: Int V*rho (PS)
+
+  ! Analogous to dion in "uspp_param" (Modules/uspp.f90)
+  REAL(DP) :: &
+       kdiff (nbrx,nbrx,npsx)                ! Kinetic energy differences
+
+  ! Analogous to deeq in "uspp_param" (Modules/uspp.f90)
+  REAL(DP), ALLOCATABLE :: &
+       dpaw_ae(:,:,:,:),         &! AE D: D^1_{ij}         (except for K.E.)
+       dpaw_ps(:,:,:,:)           ! PS D: \tilde{D}^1_{ij} (except for K.E.)
   
 end module grid_paw_variables
