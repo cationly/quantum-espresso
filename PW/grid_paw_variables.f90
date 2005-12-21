@@ -14,7 +14,7 @@ module grid_paw_variables
   public!              <===
   save
 
-  LOGICAL, PARAMETER :: really_do_paw = .false.
+  LOGICAL, PARAMETER :: really_do_paw = .true.
 
   ! Analogous to okvan in  "uspp_param" (Modules/uspp.f90)
   LOGICAL :: &

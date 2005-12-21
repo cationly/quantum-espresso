@@ -323,7 +323,7 @@ SUBROUTINE electrons()
                     deband_paw(i_what,na)=deband_paw(i_what,na) * (-1)**(i_what-1)
                  END DO
               ELSE
-                 deband_paw(i_what,na)=0._DP
+                 deband_paw(1:2,na)=0._DP
               END IF
            END DO
         END IF
@@ -455,7 +455,7 @@ SUBROUTINE electrons()
                        descf_paw(i_what,na)=descf_paw(i_what,na) * (-1)**(i_what-1)
                     END DO
                  ELSE
-                    descf_paw(i_what,na)=0._DP
+                    descf_paw(1:2,na)=0._DP
                  END IF
               END DO
            END IF
