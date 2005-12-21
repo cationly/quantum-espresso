@@ -30,7 +30,8 @@ SUBROUTINE newd()
   USE spin_orb,             ONLY : lspinorb
   USE noncollin_module,     ONLY : noncolin
   !
-  USE grid_paw_variables,   ONLY : okpaw, tpawp, kdiff, dpaw_ae, dpaw_ps
+  USE grid_paw_variables,   ONLY : really_do_paw, okpaw, tpawp, &
+       &                           kdiff, dpaw_ae, dpaw_ps
   USE grid_paw_routines,    ONLY : newd_paw_grid
   USE uspp,                 ONLY : nhtol, nhtolm
   !
@@ -199,7 +200,7 @@ SUBROUTINE newd()
      DO na = 1, nat
         !
         nt = ityp(na)
-        if_not_paw: IF (.NOT.tpawp(nt)) THEN
+        if_not_paw: IF ((.NOT.tpawp(nt)) .OR. (.NOT.really_do_paw)) THEN
            !
            DO is = 1, nspin
               !

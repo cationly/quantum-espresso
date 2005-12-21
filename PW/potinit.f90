@@ -46,6 +46,7 @@ SUBROUTINE potinit()
   USE mp_global,        ONLY : intra_image_comm
   USE io_global,        ONLY : ionode, ionode_id
   !
+  USE grid_paw_variables,ONLY: rho1, rho1t
   USE grid_paw_routines,ONLY : atomic_becsum, compute_onecenter_charges, compute_onecenter_potentials
   !
   IMPLICIT NONE
@@ -215,7 +216,7 @@ SUBROUTINE potinit()
   !
   CALL atomic_becsum()
   CALL compute_onecenter_charges()
-  CALL compute_onecenter_potentials()
+  CALL compute_onecenter_potentials(rho1,rho1t)
   !
   RETURN
   !

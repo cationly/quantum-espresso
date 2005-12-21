@@ -181,7 +181,6 @@ SUBROUTINE sum_band()
   IF ( okvan ) CALL addusdens()
   !
   IF ( okpaw ) CALL compute_onecenter_charges()
-  IF ( okpaw ) CALL compute_onecenter_potentials()
   !
   IF ( noncolin .AND. .NOT. domag ) rho(:,2:4)=0.D0
   !

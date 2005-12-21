@@ -64,6 +64,15 @@ SUBROUTINE electrons()
   USE funct,                ONLY : dft, which_dft, iexch, icorr, igcx, igcc
 #endif
   !
+  !!PAW]
+  USE grid_paw_variables, ONLY : really_do_paw, okpaw, tpawp, &
+       ehart1, ehart1t, etxc1, etxc1t, deband_paw, descf_paw, &
+       rho1, rho1t, rho1new, rho1tnew
+  USE grid_paw_routines,  ONLY : compute_onecenter_potentials, &
+       delta_e_1, delta_e_1scf, &
+       mix_rho2, mix_rho3 !TEMP
+  !!PAW]
+  !
   IMPLICIT NONE
   !
   ! ... a few local variables
@@ -111,6 +120,12 @@ SUBROUTINE electrons()
   COMPLEX (DP), ALLOCATABLE :: rhognew(:,:)
   REAL (DP), ALLOCATABLE :: rhonew(:,:)
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!PAW[  And this for PAW  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  COMPLEX (DP), ALLOCATABLE :: rhog1(:,:,:)
+  COMPLEX (DP), ALLOCATABLE :: rhog1t(:,:,:)
+  INTEGER :: na, i_what
+  REAL (DP) :: correction1c
+  !!PAW]  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  
  !
   ! PU added for electric field
   COMPLEX(DP), ALLOCATABLE  :: psi(:,:)
@@ -197,6 +212,26 @@ SUBROUTINE electrons()
      call cft3 (psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, -1)
      rhog(:, is) = psic ( nl(:) )
   end do
+  !!PAW[
+  IF (okpaw) THEN
+     IF ( .not. ALLOCATED(rhog1)  ) ALLOCATE (rhog1 (ngm, nspin, nat))
+     IF ( .not. ALLOCATED(rhog1t) ) ALLOCATE (rhog1t(ngm, nspin, nat))
+     DO na = 1, nat
+        IF (tpawp(ityp(na))) THEN
+           DO is = 1, nspin
+              psic(:) = rho1 (:, is, na)
+              CALL cft3 (psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, -1)
+              rhog1(:, is, na) = psic ( nl(:) )
+           END DO
+           DO is = 1, nspin
+              psic(:) = rho1t (:, is, na)
+              CALL cft3 (psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, -1)
+              rhog1t(:, is, na) = psic ( nl(:) )
+           END DO
+        END IF
+     END DO
+  END IF
+  !!PAW]
   !TEMP
   DO idum = 1, niter
      !
@@ -256,6 +291,7 @@ SUBROUTINE electrons()
         !
         IF ( check_stop_now() ) RETURN
         !
+        !!PAW : sum_band also computes new one-center charges
         CALL sum_band()
         !
         IF ( lda_plus_u )  THEN
@@ -278,9 +314,49 @@ SUBROUTINE electrons()
         ! ... delta_e = - int rho(r) (V_H + V_xc)(r) dr
         !
         deband = delta_e()
+        !!PAW[
+        IF (okpaw) THEN
+           DO na = 1, nat
+              IF (tpawp(ityp(na))) THEN
+                 DO i_what = 1, 2
+                    deband_paw(i_what,na)=delta_e_1 ( na, i_what )
+                    deband_paw(i_what,na)=deband_paw(i_what,na) * (-1)**(i_what-1)
+                 END DO
+              ELSE
+                 deband_paw(i_what,na)=0._DP
+              END IF
+           END DO
+        END IF
+        !!PAW]
         !
         !TEMP
         ALLOCATE (rhognew(ngm, nspin))
+        !!PAW[
+        !!PAW : mix rho1 and rho1t in G-space
+        IF (okpaw) THEN
+           CALL infomsg ('electrons','mixing several times ns if lda_plus_U',-1)
+           IF (lda_plus_U) STOP 'electrons - not implemented'
+           DO na = 1, nat
+              IF (tpawp(ityp(na))) THEN
+                 DO is = 1, nspin
+                    psic(:) = rho1 (:, is, na)
+                    CALL cft3 (psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, -1)
+                    rhognew(:, is) = psic ( nl(:) )
+                 END DO
+                 CALL mix_rho2( rhognew, rhog1(:,:,na), nsnew, ns, mixing_beta, &
+                      dr2, tr2_min, iter, nmix, flmix, conv_elec )
+                 DO is = 1, nspin
+                    psic(:) = rho1t (:, is, na)
+                    CALL cft3 (psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, -1)
+                    rhognew(:, is) = psic ( nl(:) )
+                 END DO
+                 CALL mix_rho3( rhognew, rhog1t(:,:,na), nsnew, ns, mixing_beta, &
+                      dr2, tr2_min, iter, nmix, flmix, conv_elec )
+              END IF
+           END DO
+        END IF
+        !!PAW]
+        !
         do is = 1, nspin
            psic(:) = rho (:, is)
            call cft3 (psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, - 1)
@@ -319,7 +395,7 @@ SUBROUTINE electrons()
         END IF             
         !
         IF ( .NOT. conv_elec ) THEN
-        !TEMP
+           !TEMP
            ALLOCATE (rhonew (nrxx, nspin) )
            do is = 1, nspin
               psic( :) = (0.d0, 0.d0)
@@ -330,6 +406,32 @@ SUBROUTINE electrons()
            end do
            !TEMP
            !
+           !!PAW[
+           !!PAW : bring back new one-center charges to R-space
+           IF (okpaw) THEN
+              ALLOCATE (rho1new (nrxx, nspin, na) )
+              ALLOCATE (rho1tnew(nrxx, nspin, na) )
+              DO na = 1, nat
+                 IF (tpawp(ityp(na))) THEN
+                    DO is = 1, nspin
+                       psic( :) = (0.d0, 0.d0)
+                       psic( nl(:) ) = rhog1 (:, is, na)
+                       IF (gamma_only) psic( nlm(:) ) = CONJG (rhog1 (:, is, na))
+                       CALL cft3 (psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, +1)
+                       rho1new (:, is, na) = psic (:)
+                    END DO
+                    DO is = 1, nspin
+                       psic( :) = (0.d0, 0.d0)
+                       psic( nl(:) ) = rhog1t(:, is, na)
+                       IF (gamma_only) psic( nlm(:) ) = CONJG (rhog1t(:, is, na))
+                       CALL cft3 (psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, +1)
+                       rho1tnew(:, is, na) = psic (:)
+                    END DO
+                 END IF
+              END DO
+           END IF
+           !!PAW]
+           !
            ! ... no convergence yet: calculate new potential from 
            ! ... new estimate of the charge density 
            !
@@ -337,9 +439,27 @@ SUBROUTINE electrons()
                           nrx3, nrxx, nl, ngm, gstart, nspin, g, gg, alat, &
                           omega, ehart, etxc, vtxc, etotefield, charge, vr )
            !
+           !!PAW[
+           CALL compute_onecenter_potentials(rho1new,rho1tnew)
+           !!PAW]
+           !
            ! ... estimate correction needed to have variational energy 
            !
            descf = delta_escf()
+           !!PAW[
+           IF (okpaw) THEN
+              DO na = 1, nat
+                 IF (tpawp(ityp(na))) THEN
+                    DO i_what = 1, 2
+                       descf_paw(i_what,na)=delta_e_1scf ( na, i_what )
+                       descf_paw(i_what,na)=descf_paw(i_what,na) * (-1)**(i_what-1)
+                    END DO
+                 ELSE
+                    descf_paw(i_what,na)=0._DP
+                 END IF
+              END DO
+           END IF
+           !!PAW]
            !
            ! ... write the charge density to file
            !
@@ -347,6 +467,9 @@ SUBROUTINE electrons()
            CALL io_pot( 1, 'rho', rhonew, nspin )
            DEALLOCATE (rhonew )
            !TEMP
+           !!PAW[
+           IF (okpaw) DEALLOCATE (rho1new, rho1tnew)
+           !!PAW]
         ELSE
            !
            ! ... convergence reached: store V(out)-V(in) in vnew
@@ -356,11 +479,19 @@ SUBROUTINE electrons()
                           nrxx, nl, ngm, gstart, nspin, g, gg, alat, omega, &
                           ehart, etxc, vtxc, etotefield, charge, vnew )
            !
+           !!PAW[
+           CALL compute_onecenter_potentials(rho1,rho1t)
+           IF (okpaw) CALL infomsg ('electrons','PAW forces missing',-1)
+           !!PAW]
+           !
            vnew = vnew - vr
            !
            ! ... correction for variational energy no longer needed
            !
            descf = 0.D0
+           !!PAW[
+           IF (okpaw) descf_paw(:,:)=0._DP
+           !!PAW]
            !
         END IF
 #if defined (EXX)
@@ -397,6 +528,7 @@ SUBROUTINE electrons()
      ! ... In the US case we need to recompute the self consistent term in
      ! ... the nonlocal potential.
      !
+     !!PAW : newd contains PAW updates of NL coefficients
      CALL newd()
      !
      ! ... write the potential to file
@@ -513,13 +645,24 @@ SUBROUTINE electrons()
         !
      END IF
      !
-     IF ( ABS( charge - nelec ) / charge > 1.D-7 ) THEN
-        WRITE( stdout, 9050 ) charge, nelec
-        IF ( ABS( charge - nelec ) / charge > 1.D-3 ) &
-           CALL errore ('electrons','charge is wrong',1)
-     END IF
+     IF ( ( ABS( charge - nelec ) / charge ) > 1.D-7 ) &
+        WRITE( stdout, 9050 ) charge
      !
      etot = eband + ( etxc - etxcc ) + ewld + ehart + deband + demet + descf
+     !!PAW[
+     IF (okpaw) THEN
+        PRINT *, 'US energy before PAW additions', etot
+        DO na = 1, nat
+           IF (tpawp(ityp(na))) THEN
+              PRINT '(i3,8f9.3)', na,ehart1(na),ehart1t(na),etxc1(na),etxc1t(na),deband_paw(1:2,na),descf_paw(1:2,na)
+              correction1c = ehart1(na) -ehart1t(na) +etxc1(na) -etxc1t(na) + &
+                   SUM(deband_paw(1:2,na))+SUM(descf_paw(1:2,na))
+              PRINT '(A,i3,f20.10)', 'atom # & correction:', na, correction1c
+              IF (really_do_paw) etot = etot + correction1c
+           END IF
+        END DO
+     END IF
+     !!PAW]
 #if defined (EXX)
 
      etot = etot - 0.5d0 * fock0
@@ -678,7 +821,7 @@ SUBROUTINE electrons()
 9042 FORMAT(/'     highest occupied, lowest unoccupied level (ev): ',2F10.4 )
 9041 FORMAT(/'     the spin up/dw Fermi energies are ',2F10.4,' ev' )
 9040 FORMAT(/'     the Fermi energy is ',F10.4,' ev' )
-9050 FORMAT(/'     WARNING: integrated charge=',F15.8', expected=',F15.8 )
+9050 FORMAT(/'     integrated charge         =',F15.8 )
 9060 FORMAT(/'     band energy sum           =',  F15.8,' ryd' &
             /'     one-electron contribution =',  F15.8,' ryd' &
             /'     hartree contribution      =',  F15.8,' ryd' &

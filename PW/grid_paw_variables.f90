@@ -14,6 +14,8 @@ module grid_paw_variables
   public!              <===
   save
 
+  LOGICAL, PARAMETER :: really_do_paw = .false.
+
   ! Analogous to okvan in  "uspp_param" (Modules/uspp.f90)
   LOGICAL :: &
        okpaw              ! if .TRUE. at least one pseudo is PAW
@@ -96,5 +98,14 @@ module grid_paw_variables
   REAL(DP), ALLOCATABLE :: &
        dpaw_ae(:,:,:,:),         &! AE D: D^1_{ij}         (except for K.E.)
        dpaw_ps(:,:,:,:)           ! PS D: \tilde{D}^1_{ij} (except for K.E.)
+
+  ! TMP analogous to rhonew in PW/electrons.f90
+  REAL(DP), ALLOCATABLE, TARGET :: &
+       rho1new(:,:,:),             &! new 1center AE charge density in real space
+       rho1tnew(:,:,:)              ! new 1center PS charge density in real space
+
+  ! analogous to deband and descf in PW/electrons.f90
+  REAL(DP), ALLOCATABLE :: &
+       deband_paw(:,:), descf_paw(:,:)
   
 end module grid_paw_variables

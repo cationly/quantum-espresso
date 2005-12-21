@@ -40,7 +40,8 @@ CONTAINS
          vr1, vr1t, int_r2pfunc, int_r2ptfunc, ehart1, etxc1, vtxc1, &
          ehart1t, etxc1t, vtxc1t, aerho_core, psrho_core, &
          dpaw_ae, dpaw_ps, &
-         aevloc, psvloc, aevloc_r, psvloc_r
+         aevloc, psvloc, aevloc_r, psvloc_r, &
+         deband_paw, descf_paw
     !
     IMPLICIT NONE
     !
@@ -78,6 +79,9 @@ CONTAINS
     !
     ALLOCATE(dpaw_ae( nhm, nhm, nat, nspin))
     ALLOCATE(dpaw_ps( nhm, nhm, nat, nspin))
+    !
+    ALLOCATE(deband_paw( 2, nat))
+    ALLOCATE(descf_paw ( 2, nat))
     !
   END SUBROUTINE allocate_paw_internals
 
@@ -513,7 +517,7 @@ CONTAINS
   ! Analogous to PW/v_of_rho.f90
   ! + evaluation of the spheropole: Int dr r^2 rho(r)
 !#define __DEBUG_ONECENTER_POTENTIALS
-  SUBROUTINE compute_onecenter_potentials
+  SUBROUTINE compute_onecenter_potentials (inp_rho1, inp_rho1t)
     USE kinds,            ONLY : DP
     USE cell_base,        ONLY : at, alat, omega
     USE ions_base,          ONLY: tau, atm, ityp, ntyp=>nsp
@@ -522,13 +526,16 @@ CONTAINS
     USE gvect,            ONLY : ngm, gstart, nr1, nr2, nr3, nrx1, nrx2, nrx3,&
          nrxx, nl, g, gg
     !
-    USE grid_paw_variables, ONLY: rho1, rho1t, vr1, vr1t, &
+    USE grid_paw_variables, ONLY: vr1, vr1t, & !rho1, rho1t, &
          int_r2pfunc, int_r2ptfunc, tpawp, okpaw, ehart1, etxc1, vtxc1, &
          ehart1t, etxc1t, vtxc1t, aerho_core, psrho_core
     USE uspp, ONLY: indv, becsum, nhtolm
     USE uspp_param, ONLY: nh
     USE constants, ONLY: PI
     IMPLICIT NONE
+    !
+    REAL(DP), TARGET, INTENT(OUT) :: &
+         inp_rho1(nrxx, nspin, nat), inp_rho1t(nrxx,nspin,nat)
     !
     REAL(DP), POINTER :: etxc1_(:), vtxc1_(:), ehart1_(:)
     !REAL(DP) :: rho_core(nrxx)
@@ -549,7 +556,7 @@ CONTAINS
     whattodo: DO i_what=1, 2
        NULLIFY(rho1_,rho_core_,vr1_,int_r2pfunc_,etxc1_,vtxc1_,ehart1_)
        IF (i_what==1) THEN
-          rho1_ => rho1
+          rho1_ => inp_rho1 !rho1
           rho_core_ => aerho_core
           vr1_  => vr1
           int_r2pfunc_ => int_r2pfunc
@@ -557,7 +564,7 @@ CONTAINS
           vtxc1_ => vtxc1
           ehart1_ => ehart1
        ELSE IF (i_what==2) THEN
-          rho1_ => rho1t
+          rho1_ => inp_rho1t !rho1t
           rho_core_ => psrho_core
           vr1_  => vr1t
           int_r2pfunc_ => int_r2ptfunc
@@ -768,12 +775,12 @@ CONTAINS
     USE atom,      ONLY : rho_atc, numeric, msh, r, rab, nlcc
     USE ions_base, ONLY : nat, ityp, ntyp => nsp
     USE cell_base, ONLY : omega, tpiba2, alat
-    USE ener,      ONLY : etxcc
+    !USE ener,      ONLY : etxcc
     USE gvect,     ONLY : ngm, nr1, nr2, nr3, nrx1, nrx2, nrx3, &
                           nrxx, nl, nlm, ngl, gl, igtongl,      &
                           eigts1, eigts2, eigts3, ig1, ig2, ig3
     USE pseud,     ONLY : a_nlcc, b_nlcc, alpha_nlcc
-    USE scf,       ONLY : rho_core
+    !USE scf,       ONLY : rho_core
     USE vlocal,    ONLY : strf
     USE wvfct,     ONLY : gamma_only
     !
@@ -814,7 +821,7 @@ CONTAINS
     ! counter on atoms
     ! counter on g vectors
 
-    etxcc = 0.d0
+    !etxcc = 0.d0
 !!$    DO nt = 1, ntyp
 !!$       IF (nlcc (nt) ) GOTO 10
 !!$    ENDDO
@@ -1787,6 +1794,858 @@ subroutine paw_grid_setlocal
   return
 end subroutine paw_grid_setlocal
 
+
+! Analogous to delta_e in PW/electrons.f90
+!-----------------------------------------------------------------------
+FUNCTION delta_e_1 ( na, i_what )
+!-----------------------------------------------------------------------
+  !
+  ! ... delta_e = - \int rho(r) V_scf(r)
+  !
+  USE kinds
+  USE gvect,              ONLY : nr1, nr2, nr3
+  USE cell_base,          ONLY : omega
+  USE grid_paw_variables, ONLY: rho1, rho1t, vr1, vr1t, okpaw
+  USE lsda_mod,           ONLY : nspin
+  !
+  IMPLICIT NONE
+  !   
+  REAL (DP) :: delta_e_1
+  INTEGER :: na, i_what
+  !
+  REAL(DP), POINTER :: rho_(:,:,:), vr_(:,:,:)
+  INTEGER :: ipol
+  !
+  !
+  delta_e_1 = 0.D0
+  !
+  IF (i_what==1) THEN
+     rho_ => rho1
+     vr_  => vr1
+  ELSE IF (i_what==2) THEN
+     rho_ => rho1t
+     vr_  => vr1t
+  ELSE 
+     CALL errore('delta_e_1','wrong i_what',1)
+  END IF
+  !
+  DO ipol = 1, nspin
+     delta_e_1 = delta_e_1 - SUM( rho_(:,ipol,na) * vr_(:,ipol,na) )
+  END DO
+  !
+  delta_e_1 = omega * delta_e_1 / ( nr1 * nr2 * nr3 )
+  !
+  CALL reduce( 1, delta_e_1 )
+  !
+  RETURN
+  !
+END FUNCTION delta_e_1
+!
+
+
+! Analogous to delta_escf in PW/electrons.f90
+!-----------------------------------------------------------------------
+ FUNCTION delta_e_1scf ( na, i_what )
+!-----------------------------------------------------------------------
+  !
+  ! ... delta_e_1scf = - \int \delta rho(r) V_scf(r)
+  ! ... this is the correction needed to have variational energy
+  !
+  USE kinds
+  USE gvect,              ONLY : nr1, nr2, nr3
+  USE cell_base,          ONLY : omega
+  USE grid_paw_variables, ONLY : rho1, rho1t, vr1, vr1t, rho1new, rho1tnew
+  USE lsda_mod,           ONLY : nspin
+  !
+  IMPLICIT NONE
+  !    
+  REAL (DP) :: delta_e_1scf
+  INTEGER :: na, i_what
+  !
+  REAL(DP), POINTER :: rho_(:,:,:), rhonew_(:,:,:), vr_(:,:,:)
+  INTEGER :: ipol
+  !
+  !
+  delta_e_1scf = 0.D0
+  !
+  IF (i_what==1) THEN
+     rho_ => rho1
+     rhonew_ => rho1new
+     vr_  => vr1
+  ELSE IF (i_what==2) THEN
+     rho_ => rho1t
+     rhonew_ => rho1tnew
+     vr_  => vr1t
+  ELSE 
+     CALL errore('delta_e_1scf','wrong i_what',1)
+  END IF
+  DO ipol = 1, nspin
+     delta_e_1scf = delta_e_1scf - &
+                  SUM( ( rhonew_(:,ipol,na) - rho_(:,ipol,na) ) * vr_(:,ipol,na) )
+  END DO
+  !
+  delta_e_1scf = omega * delta_e_1scf / ( nr1 * nr2 * nr3 )
+  !
+  CALL reduce( 1, delta_e_1scf )
+  !
+  RETURN
+  !
+END FUNCTION delta_e_1scf
+
+
+!TEMP exactly equal to mix_rho
+SUBROUTINE mix_rho2( rhocout, rhocin, nsout, nsin, alphamix, &
+                    dr2, tr2_min, iter, n_iter, file_extension, conv )
+  !----------------------------------------------------------------------------
+  !
+  ! ... Modified Broyden's method for charge density mixing
+  ! ...         D.D. Johnson PRB 38, 12807 (1988)
+  !
+  ! ... On output: the mixed density is in rhocin
+  !
+  USE kinds,                ONLY : DP
+  USE io_global,            ONLY : stdout
+  USE ions_base,            ONLY : nat
+  USE gvect,                ONLY : ngm, nl, nlm, gstart
+  USE ldaU,                 ONLY : lda_plus_u, Hubbard_lmax
+  USE lsda_mod,             ONLY : nspin
+  USE control_flags,        ONLY : imix, tr2
+  USE wvfct,                ONLY : gamma_only
+  USE wavefunctions_module, ONLY : psic
+  USE parser,               ONLY : find_free_unit
+  USE cell_base,            ONLY : omega
+  !
+  IMPLICIT NONE
+  !
+  ! ... First the I/O variable
+  !
+  CHARACTER(LEN=256) :: &
+    file_extension          !  (in) I/O filename extension for mixing history
+                            !  if absent everything is kept in memory
+  INTEGER :: &
+    iter,                  &!  (in)  counter of the number of iterations
+    n_iter                  !  (in)  numb. of iterations used in mixing
+  COMPLEX(DP) :: &
+    rhocin (ngm,nspin), &
+    rhocout(ngm,nspin)
+  REAL(DP) :: &
+    nsout(2*Hubbard_lmax+1,2*Hubbard_lmax+1,nspin,nat), &!
+    nsin(2*Hubbard_lmax+1,2*Hubbard_lmax+1,nspin,nat),  &!
+    alphamix,              &! (in) mixing factor
+    dr2                     ! (out) the estimated errr on the energy
+  REAL (DP) :: &
+    tr2_min       ! estimated error from diagonalization. If the estimated scf 
+                  ! error is smaller than this, exit: a more accurate 
+                  ! diagonalization is needed
+  LOGICAL :: &
+    conv                    ! (out) if true the convergence has been reached
+  INTEGER, PARAMETER :: &
+    maxmix = 25             ! max number of iterations for charge mixing
+  !
+  ! ... Here the local variables
+  !
+  INTEGER ::    &
+    iunmix,        &! I/O unit number of charge density file
+    iunmix2,       &! I/O unit number of ns file
+    iunit,         &! counter on I/O unit numbers
+    iter_used,     &! actual number of iterations used
+    ipos,          &! index of the present iteration
+    inext,         &! index of the next iteration
+    i, j,          &! counters on number of iterations
+    is,            &! counter on spin component
+    ig,            &! counter on G-vectors
+    iwork(maxmix), &! dummy array used as output by libr. routines
+    info,          &! flag saying if the exec. of libr. routines was ok
+    ldim            ! 2 * Hubbard_lmax + 1
+  COMPLEX(DP), ALLOCATABLE :: &
+    rhoinsave(:,:),     &! rhoinsave(ngm,nspin): work space
+    rhoutsave(:,:),     &! rhoutsave(ngm,nspin): work space
+    nsinsave(:,:,:,:),  &!
+    nsoutsave(:,:,:,:)   !
+  REAL(DP) :: &
+    betamix(maxmix,maxmix), &
+    gamma0,                 &
+    work(maxmix),           &
+    charge
+  LOGICAL :: &
+    savetofile,   &! save intermediate steps on file "prefix"."file_extension"
+    exst           ! if true the file exists
+  !
+  ! ... saved variables and arrays
+  !
+  INTEGER, SAVE :: &
+    mixrho_iter = 0    ! history of mixing
+  COMPLEX(DP), ALLOCATABLE, SAVE :: &
+    df(:,:,:),        &! information from preceding iterations
+    dv(:,:,:)          !     "  "       "     "        "  "
+  REAL(DP), ALLOCATABLE, SAVE :: &
+    df_ns(:,:,:,:,:), &! idem 
+    dv_ns(:,:,:,:,:)   ! idem
+  !
+  ! ... external functions
+  !
+  REAL(DP), EXTERNAL :: rho_dot_product, ns_dot_product
+  !
+  !
+  CALL start_clock( 'mix_rho' )
+  !
+  mixrho_iter = iter
+  !
+  IF ( n_iter > maxmix ) CALL errore( 'mix_rho', 'n_iter too big', 1 )
+  !
+  IF ( lda_plus_u ) ldim = 2 * Hubbard_lmax + 1
+  !
+  savetofile = ( file_extension /= ' ' )
+  !
+  rhocout(:,:) = rhocout(:,:) - rhocin(:,:)
+  !
+  IF ( lda_plus_u ) nsout(:,:,:,:) = nsout(:,:,:,:) - nsin(:,:,:,:)
+  !
+  dr2 = rho_dot_product( rhocout, rhocout ) + ns_dot_product( nsout, nsout )
+  !
+  conv = ( dr2 < tr2 )
+  !
+  ! ... if the self-consistency error (dr2) is smaller than the estimated 
+  ! ... error due to diagonalization (tr2_min), exit and leave rhocin and 
+  ! ... rhocout unchanged
+  !
+  IF ( conv .OR. dr2 < tr2_min ) THEN
+     !
+     IF ( ALLOCATED ( df ) ) DEALLOCATE ( df )
+     IF ( ALLOCATED ( dv ) ) DEALLOCATE ( dv )
+     IF ( lda_plus_u .AND. ALLOCATED ( df_ns ) ) DEALLOCATE ( df_ns )
+     IF ( lda_plus_u .AND. ALLOCATED ( dv_ns ) ) DEALLOCATE ( dv_ns )
+     !
+     rhocout(:,:) = rhocout(:,:) + rhocin(:,:)
+     !
+     CALL stop_clock( 'mix_rho' )
+     !
+     RETURN
+     !
+  END IF
+  !
+  !
+  IF ( savetofile ) THEN
+     !
+     iunmix = find_free_unit()
+     CALL diropn( iunmix, file_extension, ( 2 * ngm * nspin ), exst )
+     !
+     IF ( lda_plus_u ) then
+        iunmix2 = find_free_unit()
+        CALL diropn( iunmix2, TRIM( file_extension ) // '.ns', &
+                     ( ldim * ldim * nspin * nat ), exst )
+     END IF
+     !
+     IF ( mixrho_iter > 1 .AND. .NOT. exst ) THEN
+        !
+        CALL infomsg( 'mix_rho','file not found, restarting', -1 )
+        mixrho_iter = 1
+        !
+     END IF
+     !
+  END IF
+  !
+  IF ( savetofile .OR. mixrho_iter == 1 ) THEN
+
+     IF ( .NOT. ALLOCATED( df ) ) ALLOCATE( df( ngm, nspin, n_iter ) )
+     IF ( .NOT. ALLOCATED( dv ) ) ALLOCATE( dv( ngm, nspin, n_iter ) )
+     !
+     IF ( lda_plus_u ) THEN
+        !
+        IF ( .NOT. ALLOCATED( df_ns ) ) &
+             ALLOCATE( df_ns( ldim, ldim, nspin, nat, n_iter ) )
+        IF ( .NOT. ALLOCATED( dv_ns ) ) &
+             ALLOCATE( dv_ns( ldim, ldim, nspin, nat, n_iter ) )
+        !
+     END IF
+     !
+  END IF
+  !
+  ! ... iter_used = mixrho_iter-1  if  mixrho_iter <= n_iter
+  ! ... iter_used = n_iter         if  mixrho_iter >  n_iter
+  !
+  iter_used = MIN( ( mixrho_iter - 1 ), n_iter )
+  !
+  ! ... ipos is the position in which results from the present iteration
+  ! ... are stored. ipos=mixrho_iter-1 until ipos=n_iter, then back to 1,2,...
+  !
+  ipos = mixrho_iter - 1 - ( ( mixrho_iter - 2 ) / n_iter ) * n_iter
+  !
+  IF ( mixrho_iter > 1 ) THEN
+     !
+     IF ( savetofile ) THEN
+        !
+        CALL davcio( df(1,1,ipos), 2*ngm*nspin, iunmix, 1, -1 )
+        CALL davcio( dv(1,1,ipos), 2*ngm*nspin, iunmix, 2, -1 )
+        !
+        IF ( lda_plus_u ) THEN
+           !
+           CALL davcio( df_ns(1,1,1,1,ipos),ldim*ldim*nspin*nat,iunmix2,1,-1 )
+           CALL davcio( dv_ns(1,1,1,1,ipos),ldim*ldim*nspin*nat,iunmix2,2,-1 )
+           !
+        END IF
+        !
+     END IF
+     !
+     df(:,:,ipos) = df(:,:,ipos) - rhocout(:,:)
+     dv(:,:,ipos) = dv(:,:,ipos) - rhocin (:,:)
+     !
+     IF ( lda_plus_u ) THEN
+        !
+        df_ns(:,:,:,:,ipos) = df_ns(:,:,:,:,ipos) - nsout
+        dv_ns(:,:,:,:,ipos) = dv_ns(:,:,:,:,ipos) - nsin
+        !
+     END IF
+     !
+  END IF
+  !
+  IF ( savetofile ) THEN
+     !
+     DO i = 1, iter_used
+        !
+        IF ( i /= ipos ) THEN
+           !
+           CALL davcio( df(1,1,i), 2*ngm*nspin, iunmix, 2*i+1, -1 )
+           CALL davcio( dv(1,1,i), 2*ngm*nspin, iunmix, 2*i+2, -1 )
+           !
+           IF ( lda_plus_u ) THEN
+              !
+              CALL davcio(df_ns(1,1,1,1,i),ldim*ldim*nspin*nat,iunmix2,2*i+1,-1)
+              CALL davcio(dv_ns(1,1,1,1,i),ldim*ldim*nspin*nat,iunmix2,2*i+2,-1)
+              !
+           END IF
+           !
+        END IF
+        !
+     END DO
+     !
+     CALL davcio( rhocout, 2*ngm*nspin, iunmix, 1, 1 )
+     CALL davcio( rhocin , 2*ngm*nspin, iunmix, 2, 1 )
+     !
+     IF ( mixrho_iter > 1 ) THEN
+        !
+        CALL davcio( df(1,1,ipos), 2*ngm*nspin, iunmix, 2*ipos+1, 1 )
+        CALL davcio( dv(1,1,ipos), 2*ngm*nspin, iunmix, 2*ipos+2, 1 )
+        !
+     END IF
+     !
+     IF ( lda_plus_u ) THEN
+        !
+        CALL davcio( nsout, ldim*ldim*nspin*nat, iunmix2, 1, 1 )
+        CALL davcio( nsin , ldim*ldim*nspin*nat, iunmix2, 2, 1 )
+        !
+        IF ( mixrho_iter > 1 ) THEN
+           !
+           CALL davcio( df_ns(1,1,1,1,ipos), ldim*ldim*nspin*nat, &
+                        iunmix2, 2*ipos+1, 1 )
+           CALL davcio( dv_ns(1,1,1,1,ipos), ldim*ldim*nspin*nat, &
+                        iunmix2, 2*ipos+2, 1 )
+        END IF
+        !
+     END IF
+     !
+  ELSE
+     !
+     !
+     ALLOCATE( rhoinsave(ngm,nspin), rhoutsave(ngm,nspin) )
+     rhoinsave = rhocin (:,:)
+     rhoutsave = rhocout(:,:)
+     !
+     IF ( lda_plus_u ) THEN
+        !
+        ALLOCATE( nsinsave (ldim,ldim,nspin,nat), &
+                  nsoutsave(ldim,ldim,nspin,nat) )
+        nsinsave  = nsin
+        nsoutsave = nsout
+        !
+     END IF
+     !
+  END IF
+  !
+  DO i = 1, iter_used
+     !
+     DO j = i, iter_used
+        !
+        betamix(i,j) = rho_dot_product( df(1,1,j), df(1,1,i) ) 
+        !
+        IF ( lda_plus_u ) &
+           betamix(i,j) = betamix(i,j) + &
+                          ns_dot_product( df_ns(1,1,1,1,j), df_ns(1,1,1,1,i) )
+        !
+     END DO
+     !
+  END DO
+  !
+  CALL DSYTRF( 'U', iter_used, betamix, maxmix, iwork, work, maxmix, info )
+  CALL errore( 'broyden', 'factorization', info )
+  !
+  CALL DSYTRI( 'U', iter_used, betamix, maxmix, iwork, work, info )
+  CALL errore( 'broyden', 'DSYTRI', info )
+  !
+  FORALL( i = 1 : iter_used, &
+          j = 1 : iter_used, j > i ) betamix(j,i) = betamix(i,j)
+  !
+  DO i = 1, iter_used
+     !
+     work(i) = rho_dot_product( df(1,1,i), rhocout )
+     !
+     IF ( lda_plus_u ) &
+        work(i) = work(i) + ns_dot_product( df_ns(1,1,1,1,i), nsout )
+     !
+  END DO
+  !
+  DO i = 1, iter_used
+     !
+     gamma0 = SUM( betamix(1:iter_used,i) * work(1:iter_used) )
+     !
+     rhocin (:,:) = rhocin (:,:) - gamma0 * dv(:,:,i)
+     rhocout(:,:) = rhocout(:,:) - gamma0 * df(:,:,i)
+     !
+     IF ( lda_plus_u ) THEN
+        !
+        nsin  = nsin  - gamma0 * dv_ns(:,:,:,:,i)
+        nsout = nsout - gamma0 * df_ns(:,:,:,:,i)
+        !
+     END IF
+     !
+  END DO
+  !
+  ! ... auxiliary vectors dv and df not needed anymore
+  !
+  IF ( savetofile ) THEN
+     !
+     IF ( lda_plus_u ) THEN
+        !
+        CLOSE( iunmix2, STATUS = 'KEEP' )
+        !
+        DEALLOCATE( df_ns, dv_ns )
+        !
+     END IF
+     !
+     CLOSE( iunmix, STATUS = 'KEEP' )
+     !
+     DEALLOCATE( df, dv )
+     !
+  ELSE
+     !
+     inext = mixrho_iter - ( ( mixrho_iter - 1 ) / n_iter ) * n_iter
+     !
+     IF ( lda_plus_u ) THEN
+        !
+        df_ns(:,:,:,:,inext) = nsoutsave
+        dv_ns(:,:,:,:,inext) = nsinsave
+        !
+        DEALLOCATE( nsinsave, nsoutsave )
+        !
+     END IF
+     !
+     df(:,:,inext) = rhoutsave(:,:)
+     dv(:,:,inext) = rhoinsave(:,:)
+     !
+     DEALLOCATE( rhoinsave, rhoutsave )
+     !
+  END IF
+  !
+  ! ... preconditioning the new search direction
+  !
+  IF ( imix == 1 ) THEN
+     !
+     CALL approx_screening( rhocout )
+     !
+  ELSE IF ( imix == 2 ) THEN
+     !
+     CALL approx_screening2( rhocout, rhocin )
+     !
+  END IF
+  !
+  ! ... set new trial density
+  !
+  rhocin = rhocin + alphamix * rhocout
+  !
+  IF ( lda_plus_u ) nsin = nsin + alphamix * nsout
+  !
+  CALL stop_clock( 'mix_rho' )
+  !
+  RETURN
+  !
+END SUBROUTINE mix_rho2
+!
+SUBROUTINE mix_rho3( rhocout, rhocin, nsout, nsin, alphamix, &
+                    dr2, tr2_min, iter, n_iter, file_extension, conv )
+  !----------------------------------------------------------------------------
+  !
+  ! ... Modified Broyden's method for charge density mixing
+  ! ...         D.D. Johnson PRB 38, 12807 (1988)
+  !
+  ! ... On output: the mixed density is in rhocin
+  !
+  USE kinds,                ONLY : DP
+  USE io_global,            ONLY : stdout
+  USE ions_base,            ONLY : nat
+  USE gvect,                ONLY : ngm, nl, nlm, gstart
+  USE ldaU,                 ONLY : lda_plus_u, Hubbard_lmax
+  USE lsda_mod,             ONLY : nspin
+  USE control_flags,        ONLY : imix, tr2
+  USE wvfct,                ONLY : gamma_only
+  USE wavefunctions_module, ONLY : psic
+  USE parser,               ONLY : find_free_unit
+  USE cell_base,            ONLY : omega
+  !
+  IMPLICIT NONE
+  !
+  ! ... First the I/O variable
+  !
+  CHARACTER(LEN=256) :: &
+    file_extension          !  (in) I/O filename extension for mixing history
+                            !  if absent everything is kept in memory
+  INTEGER :: &
+    iter,                  &!  (in)  counter of the number of iterations
+    n_iter                  !  (in)  numb. of iterations used in mixing
+  COMPLEX(DP) :: &
+    rhocin (ngm,nspin), &
+    rhocout(ngm,nspin)
+  REAL(DP) :: &
+    nsout(2*Hubbard_lmax+1,2*Hubbard_lmax+1,nspin,nat), &!
+    nsin(2*Hubbard_lmax+1,2*Hubbard_lmax+1,nspin,nat),  &!
+    alphamix,              &! (in) mixing factor
+    dr2                     ! (out) the estimated errr on the energy
+  REAL (DP) :: &
+    tr2_min       ! estimated error from diagonalization. If the estimated scf 
+                  ! error is smaller than this, exit: a more accurate 
+                  ! diagonalization is needed
+  LOGICAL :: &
+    conv                    ! (out) if true the convergence has been reached
+  INTEGER, PARAMETER :: &
+    maxmix = 25             ! max number of iterations for charge mixing
+  !
+  ! ... Here the local variables
+  !
+  INTEGER ::    &
+    iunmix,        &! I/O unit number of charge density file
+    iunmix2,       &! I/O unit number of ns file
+    iunit,         &! counter on I/O unit numbers
+    iter_used,     &! actual number of iterations used
+    ipos,          &! index of the present iteration
+    inext,         &! index of the next iteration
+    i, j,          &! counters on number of iterations
+    is,            &! counter on spin component
+    ig,            &! counter on G-vectors
+    iwork(maxmix), &! dummy array used as output by libr. routines
+    info,          &! flag saying if the exec. of libr. routines was ok
+    ldim            ! 2 * Hubbard_lmax + 1
+  COMPLEX(DP), ALLOCATABLE :: &
+    rhoinsave(:,:),     &! rhoinsave(ngm,nspin): work space
+    rhoutsave(:,:),     &! rhoutsave(ngm,nspin): work space
+    nsinsave(:,:,:,:),  &!
+    nsoutsave(:,:,:,:)   !
+  REAL(DP) :: &
+    betamix(maxmix,maxmix), &
+    gamma0,                 &
+    work(maxmix),           &
+    charge
+  LOGICAL :: &
+    savetofile,   &! save intermediate steps on file "prefix"."file_extension"
+    exst           ! if true the file exists
+  !
+  ! ... saved variables and arrays
+  !
+  INTEGER, SAVE :: &
+    mixrho_iter = 0    ! history of mixing
+  COMPLEX(DP), ALLOCATABLE, SAVE :: &
+    df(:,:,:),        &! information from preceding iterations
+    dv(:,:,:)          !     "  "       "     "        "  "
+  REAL(DP), ALLOCATABLE, SAVE :: &
+    df_ns(:,:,:,:,:), &! idem 
+    dv_ns(:,:,:,:,:)   ! idem
+  !
+  ! ... external functions
+  !
+  REAL(DP), EXTERNAL :: rho_dot_product, ns_dot_product
+  !
+  !
+  CALL start_clock( 'mix_rho' )
+  !
+  mixrho_iter = iter
+  !
+  IF ( n_iter > maxmix ) CALL errore( 'mix_rho', 'n_iter too big', 1 )
+  !
+  IF ( lda_plus_u ) ldim = 2 * Hubbard_lmax + 1
+  !
+  savetofile = ( file_extension /= ' ' )
+  !
+  rhocout(:,:) = rhocout(:,:) - rhocin(:,:)
+  !
+  IF ( lda_plus_u ) nsout(:,:,:,:) = nsout(:,:,:,:) - nsin(:,:,:,:)
+  !
+  dr2 = rho_dot_product( rhocout, rhocout ) + ns_dot_product( nsout, nsout )
+  !
+  conv = ( dr2 < tr2 )
+  !
+  ! ... if the self-consistency error (dr2) is smaller than the estimated 
+  ! ... error due to diagonalization (tr2_min), exit and leave rhocin and 
+  ! ... rhocout unchanged
+  !
+  IF ( conv .OR. dr2 < tr2_min ) THEN
+     !
+     IF ( ALLOCATED ( df ) ) DEALLOCATE ( df )
+     IF ( ALLOCATED ( dv ) ) DEALLOCATE ( dv )
+     IF ( lda_plus_u .AND. ALLOCATED ( df_ns ) ) DEALLOCATE ( df_ns )
+     IF ( lda_plus_u .AND. ALLOCATED ( dv_ns ) ) DEALLOCATE ( dv_ns )
+     !
+     rhocout(:,:) = rhocout(:,:) + rhocin(:,:)
+     !
+     CALL stop_clock( 'mix_rho' )
+     !
+     RETURN
+     !
+  END IF
+  !
+  !
+  IF ( savetofile ) THEN
+     !
+     iunmix = find_free_unit()
+     CALL diropn( iunmix, file_extension, ( 2 * ngm * nspin ), exst )
+     !
+     IF ( lda_plus_u ) then
+        iunmix2 = find_free_unit()
+        CALL diropn( iunmix2, TRIM( file_extension ) // '.ns', &
+                     ( ldim * ldim * nspin * nat ), exst )
+     END IF
+     !
+     IF ( mixrho_iter > 1 .AND. .NOT. exst ) THEN
+        !
+        CALL infomsg( 'mix_rho','file not found, restarting', -1 )
+        mixrho_iter = 1
+        !
+     END IF
+     !
+  END IF
+  !
+  IF ( savetofile .OR. mixrho_iter == 1 ) THEN
+
+     IF ( .NOT. ALLOCATED( df ) ) ALLOCATE( df( ngm, nspin, n_iter ) )
+     IF ( .NOT. ALLOCATED( dv ) ) ALLOCATE( dv( ngm, nspin, n_iter ) )
+     !
+     IF ( lda_plus_u ) THEN
+        !
+        IF ( .NOT. ALLOCATED( df_ns ) ) &
+             ALLOCATE( df_ns( ldim, ldim, nspin, nat, n_iter ) )
+        IF ( .NOT. ALLOCATED( dv_ns ) ) &
+             ALLOCATE( dv_ns( ldim, ldim, nspin, nat, n_iter ) )
+        !
+     END IF
+     !
+  END IF
+  !
+  ! ... iter_used = mixrho_iter-1  if  mixrho_iter <= n_iter
+  ! ... iter_used = n_iter         if  mixrho_iter >  n_iter
+  !
+  iter_used = MIN( ( mixrho_iter - 1 ), n_iter )
+  !
+  ! ... ipos is the position in which results from the present iteration
+  ! ... are stored. ipos=mixrho_iter-1 until ipos=n_iter, then back to 1,2,...
+  !
+  ipos = mixrho_iter - 1 - ( ( mixrho_iter - 2 ) / n_iter ) * n_iter
+  !
+  IF ( mixrho_iter > 1 ) THEN
+     !
+     IF ( savetofile ) THEN
+        !
+        CALL davcio( df(1,1,ipos), 2*ngm*nspin, iunmix, 1, -1 )
+        CALL davcio( dv(1,1,ipos), 2*ngm*nspin, iunmix, 2, -1 )
+        !
+        IF ( lda_plus_u ) THEN
+           !
+           CALL davcio( df_ns(1,1,1,1,ipos),ldim*ldim*nspin*nat,iunmix2,1,-1 )
+           CALL davcio( dv_ns(1,1,1,1,ipos),ldim*ldim*nspin*nat,iunmix2,2,-1 )
+           !
+        END IF
+        !
+     END IF
+     !
+     df(:,:,ipos) = df(:,:,ipos) - rhocout(:,:)
+     dv(:,:,ipos) = dv(:,:,ipos) - rhocin (:,:)
+     !
+     IF ( lda_plus_u ) THEN
+        !
+        df_ns(:,:,:,:,ipos) = df_ns(:,:,:,:,ipos) - nsout
+        dv_ns(:,:,:,:,ipos) = dv_ns(:,:,:,:,ipos) - nsin
+        !
+     END IF
+     !
+  END IF
+  !
+  IF ( savetofile ) THEN
+     !
+     DO i = 1, iter_used
+        !
+        IF ( i /= ipos ) THEN
+           !
+           CALL davcio( df(1,1,i), 2*ngm*nspin, iunmix, 2*i+1, -1 )
+           CALL davcio( dv(1,1,i), 2*ngm*nspin, iunmix, 2*i+2, -1 )
+           !
+           IF ( lda_plus_u ) THEN
+              !
+              CALL davcio(df_ns(1,1,1,1,i),ldim*ldim*nspin*nat,iunmix2,2*i+1,-1)
+              CALL davcio(dv_ns(1,1,1,1,i),ldim*ldim*nspin*nat,iunmix2,2*i+2,-1)
+              !
+           END IF
+           !
+        END IF
+        !
+     END DO
+     !
+     CALL davcio( rhocout, 2*ngm*nspin, iunmix, 1, 1 )
+     CALL davcio( rhocin , 2*ngm*nspin, iunmix, 2, 1 )
+     !
+     IF ( mixrho_iter > 1 ) THEN
+        !
+        CALL davcio( df(1,1,ipos), 2*ngm*nspin, iunmix, 2*ipos+1, 1 )
+        CALL davcio( dv(1,1,ipos), 2*ngm*nspin, iunmix, 2*ipos+2, 1 )
+        !
+     END IF
+     !
+     IF ( lda_plus_u ) THEN
+        !
+        CALL davcio( nsout, ldim*ldim*nspin*nat, iunmix2, 1, 1 )
+        CALL davcio( nsin , ldim*ldim*nspin*nat, iunmix2, 2, 1 )
+        !
+        IF ( mixrho_iter > 1 ) THEN
+           !
+           CALL davcio( df_ns(1,1,1,1,ipos), ldim*ldim*nspin*nat, &
+                        iunmix2, 2*ipos+1, 1 )
+           CALL davcio( dv_ns(1,1,1,1,ipos), ldim*ldim*nspin*nat, &
+                        iunmix2, 2*ipos+2, 1 )
+        END IF
+        !
+     END IF
+     !
+  ELSE
+     !
+     !
+     ALLOCATE( rhoinsave(ngm,nspin), rhoutsave(ngm,nspin) )
+     rhoinsave = rhocin (:,:)
+     rhoutsave = rhocout(:,:)
+     !
+     IF ( lda_plus_u ) THEN
+        !
+        ALLOCATE( nsinsave (ldim,ldim,nspin,nat), &
+                  nsoutsave(ldim,ldim,nspin,nat) )
+        nsinsave  = nsin
+        nsoutsave = nsout
+        !
+     END IF
+     !
+  END IF
+  !
+  DO i = 1, iter_used
+     !
+     DO j = i, iter_used
+        !
+        betamix(i,j) = rho_dot_product( df(1,1,j), df(1,1,i) ) 
+        !
+        IF ( lda_plus_u ) &
+           betamix(i,j) = betamix(i,j) + &
+                          ns_dot_product( df_ns(1,1,1,1,j), df_ns(1,1,1,1,i) )
+        !
+     END DO
+     !
+  END DO
+  !
+  CALL DSYTRF( 'U', iter_used, betamix, maxmix, iwork, work, maxmix, info )
+  CALL errore( 'broyden', 'factorization', info )
+  !
+  CALL DSYTRI( 'U', iter_used, betamix, maxmix, iwork, work, info )
+  CALL errore( 'broyden', 'DSYTRI', info )
+  !
+  FORALL( i = 1 : iter_used, &
+          j = 1 : iter_used, j > i ) betamix(j,i) = betamix(i,j)
+  !
+  DO i = 1, iter_used
+     !
+     work(i) = rho_dot_product( df(1,1,i), rhocout )
+     !
+     IF ( lda_plus_u ) &
+        work(i) = work(i) + ns_dot_product( df_ns(1,1,1,1,i), nsout )
+     !
+  END DO
+  !
+  DO i = 1, iter_used
+     !
+     gamma0 = SUM( betamix(1:iter_used,i) * work(1:iter_used) )
+     !
+     rhocin (:,:) = rhocin (:,:) - gamma0 * dv(:,:,i)
+     rhocout(:,:) = rhocout(:,:) - gamma0 * df(:,:,i)
+     !
+     IF ( lda_plus_u ) THEN
+        !
+        nsin  = nsin  - gamma0 * dv_ns(:,:,:,:,i)
+        nsout = nsout - gamma0 * df_ns(:,:,:,:,i)
+        !
+     END IF
+     !
+  END DO
+  !
+  ! ... auxiliary vectors dv and df not needed anymore
+  !
+  IF ( savetofile ) THEN
+     !
+     IF ( lda_plus_u ) THEN
+        !
+        CLOSE( iunmix2, STATUS = 'KEEP' )
+        !
+        DEALLOCATE( df_ns, dv_ns )
+        !
+     END IF
+     !
+     CLOSE( iunmix, STATUS = 'KEEP' )
+     !
+     DEALLOCATE( df, dv )
+     !
+  ELSE
+     !
+     inext = mixrho_iter - ( ( mixrho_iter - 1 ) / n_iter ) * n_iter
+     !
+     IF ( lda_plus_u ) THEN
+        !
+        df_ns(:,:,:,:,inext) = nsoutsave
+        dv_ns(:,:,:,:,inext) = nsinsave
+        !
+        DEALLOCATE( nsinsave, nsoutsave )
+        !
+     END IF
+     !
+     df(:,:,inext) = rhoutsave(:,:)
+     dv(:,:,inext) = rhoinsave(:,:)
+     !
+     DEALLOCATE( rhoinsave, rhoutsave )
+     !
+  END IF
+  !
+  ! ... preconditioning the new search direction
+  !
+  IF ( imix == 1 ) THEN
+     !
+     CALL approx_screening( rhocout )
+     !
+  ELSE IF ( imix == 2 ) THEN
+     !
+     CALL approx_screening2( rhocout, rhocin )
+     !
+  END IF
+  !
+  ! ... set new trial density
+  !
+  rhocin = rhocin + alphamix * rhocout
+  !
+  IF ( lda_plus_u ) nsin = nsin + alphamix * nsout
+  !
+  CALL stop_clock( 'mix_rho' )
+  !
+  RETURN
+  !
+END SUBROUTINE mix_rho3
+!
 
 
 
