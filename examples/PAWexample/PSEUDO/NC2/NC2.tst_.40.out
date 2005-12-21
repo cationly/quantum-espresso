@@ -1,0 +1,136 @@
+
+     program ld1 starts. version 11-Feb-05
+     today is 21Dec2005 at 16:47:41 
+
+     -------------------- All-electron run ------------------------------
+
+     O                                                                          
+
+     atomic number is  8.00
+     dft = SLA  PW   PBX  PBC   lsd =0 sic =0 latt =0  beta=0.50 tr2=1.0E-14
+     mesh =1095 r(mesh) =  99.04343 xmin = -7.00 dx = 0.01250
+
+     n l     nl                  e(Ryd)         e(Ha)          e(eV)
+     1 0     1S 1( 2.00)       -37.7973       -18.8987      -514.2628
+     2 0     2S 1( 2.00)        -1.7577        -0.8788       -23.9149
+     2 1     2P 1( 4.00)        -0.6643        -0.3321        -9.0378
+     3 2     3D 1(-1.00)         0.0000         0.0000         0.0000
+
+     eps = 2.0E-15  iter = 15
+ 
+     Etot =    -149.890997 Ry,     -74.945498 Ha,   -2039.386925 eV
+
+     Ekin =     149.468653 Ry,      74.734327 Ha,    2033.640599 eV
+     Encl =    -355.645040 Ry,    -177.822520 Ha,   -4838.835280 eV
+     Eh   =      72.821009 Ry,      36.410504 Ha,     990.788080 eV
+     Exc  =     -16.535619 Ry,      -8.267809 Ha,    -224.980324 eV
+     Evxt =       0.000000 Ry,       0.000000 Ha,       0.000000 eV
+     Epseu=       0.000000 Ry,       0.000000 Ha,       0.000000 eV
+
+
+     normalization and overlap integrals
+
+     s(1S/1S) =  1.000000  <r> =   0.1997  <r2> =    0.0539  r(max) =   0.1298
+     s(1S/2S) =  0.000000
+     s(2S/2S) =  1.000000  <r> =   1.1407  <r2> =    1.5839  r(max) =   0.8677
+     s(2P/2P) =  1.000000  <r> =   1.2656  <r2> =    2.1371  r(max) =   0.8151
+     s(3D/3D) =  0.000000  <r> =   0.0000  <r2> =    0.0000  r(max) =  99.0434
+
+     -------------------- End of All-electron run ----------------------
+
+     Core only energy     -0.37315442
+
+     -------------- Testing the pseudopotential ------------------------
+
+     O                                                                          
+
+     atomic number is  8.00   valence charge is  6.00
+     dft = SLA  PW   PBX  PBC   lsd =0 sic =0 latt =0  beta=0.50 tr2=1.0E-14
+     mesh =1095 r(mesh) =  99.04343 xmin = -7.00 dx = 0.01250
+
+     n l     nl             e AE (Ryd)       e PS (Ryd)   De AE-PS (Ryd) 
+     1 0     2S   1( 2.00)       -1.75770       -1.75785        0.00015
+     2 1     2P   1( 4.00)       -0.66426       -0.66423       -0.00004
+
+     eps = 1.0E-17  iter =  6
+ 
+     Etot =    -149.890997 Ry,     -74.945498 Ha,   -2039.386925 eV
+     Etotps =   -31.448346 Ry,     -15.724173 Ha,    -427.879905 eV
+     dEtot_ae =       0.000000 Ry
+     dEtot_ps =       0.000000 Ry,   Delta E=       0.000000
+
+     Ekin =      20.636082 Ry,      10.318041 Ha,     280.770400 eV
+     Encl =     -71.617038 Ry,     -35.808519 Ha,    -974.407095 eV
+     Ehrt =      27.109249 Ry,      13.554624 Ha,     368.843019 eV
+     Ecxc =      -6.666771 Ry,      -3.333386 Ha,     -90.706757 eV
+     Evxt =       0.000000 Ry,       0.000000 Ha,       0.000000 eV
+     Epseu=      -0.909867 Ry,      -0.454934 Ha,     -12.379472 eV
+
+     -------------- End of pseudopotential test ------------------------
+
+     -------------------- All-electron run ------------------------------
+
+     O                                                                          
+
+     atomic number is  8.00
+     dft = SLA  PW   PBX  PBC   lsd =0 sic =0 latt =0  beta=0.50 tr2=1.0E-14
+     mesh =1095 r(mesh) =  99.04343 xmin = -7.00 dx = 0.01250
+
+     n l     nl                  e(Ryd)         e(Ha)          e(eV)
+     1 0     1S 1( 2.00)       -40.1656       -20.0828      -546.4850
+     2 0     2S 1( 0.40)        -3.7009        -1.8505       -50.3540
+     2 1     2P 1( 4.00)        -2.5833        -1.2917       -35.1483
+     3 2     3D 1(-1.00)         0.0000         0.0000         0.0000
+
+     eps = 3.7E-15  iter = 16
+ 
+     Etot =    -145.583760 Ry,     -72.791880 Ha,   -1980.783521 eV
+
+     Ekin =     145.257311 Ry,      72.628655 Ha,    1976.341917 eV
+     Encl =    -333.615423 Ry,    -166.807711 Ha,   -4539.104719 eV
+     Eh   =      57.628286 Ry,      28.814143 Ha,     784.078933 eV
+     Exc  =     -14.853934 Ry,      -7.426967 Ha,    -202.099653 eV
+     Evxt =       0.000000 Ry,       0.000000 Ha,       0.000000 eV
+     Epseu=       0.000000 Ry,       0.000000 Ha,       0.000000 eV
+
+
+     normalization and overlap integrals
+
+     s(1S/1S) =  1.000000  <r> =   0.1995  <r2> =    0.0538  r(max) =   0.1298
+     s(1S/2S) =  0.000000
+     s(2S/2S) =  1.000000  <r> =   1.0563  <r2> =    1.3317  r(max) =   0.8462
+     s(2P/2P) =  1.000000  <r> =   1.0501  <r2> =    1.3879  r(max) =   0.7657
+     s(3D/3D) =  0.000000  <r> =   0.0000  <r2> =    0.0000  r(max) =  99.0434
+
+     -------------------- End of All-electron run ----------------------
+
+     Core only energy     -0.37315442
+
+     -------------- Testing the pseudopotential ------------------------
+
+     O                                                                          
+
+     atomic number is  8.00   valence charge is  6.00
+     dft = SLA  PW   PBX  PBC   lsd =0 sic =0 latt =0  beta=0.50 tr2=1.0E-14
+     mesh =1095 r(mesh) =  99.04343 xmin = -7.00 dx = 0.01250
+
+     n l     nl             e AE (Ryd)       e PS (Ryd)   De AE-PS (Ryd) 
+     1 0     2S   1( 0.40)       -3.70093       -3.71754        0.01662
+     2 1     2P   1( 4.00)       -2.58333       -2.59205        0.00872
+
+     eps = 4.2E-15  iter =  8
+ 
+     Etot =    -145.583760 Ry,     -72.791880 Ha,   -1980.783521 eV
+     Etotps =   -27.130927 Ry,     -13.565463 Ha,    -369.137966 eV
+     dEtot_ae =       4.307237 Ry
+     dEtot_ps =       4.317419 Ry,   Delta E=      -0.010182
+
+     Ekin =      23.058161 Ry,      11.529081 Ha,     313.724727 eV
+     Encl =     -57.722822 Ry,     -28.861411 Ha,    -785.365173 eV
+     Ehrt =      16.648132 Ry,       8.324066 Ha,     226.511153 eV
+     Ecxc =      -5.115772 Ry,      -2.557886 Ha,     -69.604175 eV
+     Evxt =       0.000000 Ry,       0.000000 Ha,       0.000000 eV
+     Epseu=      -3.998625 Ry,      -1.999313 Ha,     -54.404498 eV
+
+     -------------- End of pseudopotential test ------------------------
+
