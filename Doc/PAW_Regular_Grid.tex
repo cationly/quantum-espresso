@@ -1,0 +1,599 @@
+\documentclass[a4paper,twocolumn,12pt]{article}
+\usepackage{times}
+\usepackage{mathptm}
+\usepackage{rotating}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\newcommand{\var}[1]{{\tt #1}}
+\renewcommand{\phi}{\varphi}
+\renewcommand{\theta}{\vartheta}
+
+\title{PAW in \var{pw.x} using regular grids\\for computing one-center
+integrals\\WORKING NOTES, USE WITH CARE}
+
+\author{Guido Fratesi}
+
+% 21cm = 2x\hoffset + \textwidth
+\setlength{\hoffset}{-1in}\addtolength{\hoffset}{1.6cm} %GF>
+\setlength{\textwidth}{17.8cm} %GF>
+\setlength{\columnsep}{.8cm} %GF>
+% A4
+% 29.7cm = \topmargin + \textheight + \footskip + bottom margin
+\setlength{\voffset}{-1in} %<GF>
+\setlength{\topmargin}{1.5cm} %<GF>
+\setlength{\headheight}{0cm} %<GF>
+\setlength{\headsep}{0cm} %<GF>
+\setlength{\textheight}{26cm} %<GF>
+\setlength{\footskip}{0.7cm} %<GF>
+
+\begin{document}
+\maketitle
+
+
+\noindent{\bf Disclaimer:} of course one-center integrals should be
+eventually evaluated on radial grids.  But as a first step, the use of
+regular grids should enhable one to test PAW implementation
+introducing the smallest amount of new code.
+
+\begin{table*}
+%\begin{center}
+\hspace{-1.2cm}
+\begin{small}
+\begin{tabular}{|c@{}c@{}l|p{4.5cm}|p{4.5cm}|p{4.0cm}|}
+\hline
+Qt. & & Definition & Description & Variable & Routine \\
+\hline
+%
+%=================================================================
+%
+\hline $V^{PS}_{ion}(r)$ &&& PS descreened potential & \var{vloc\_at}, \var{vloc}, \var{vltot} & \var{init\_vloc}, \var{setlocal} \\
+%
+$Q_{ij}(r)$ &$\sim$& $\phi^*_i(r)\phi_j(r)-\tilde{\phi}^*_i(r)\tilde{\phi}_j(r)$ & augmentation functions (pseudized somehow) & \var{qrad}, \var{qgm} & \var{init\_us\_1}, \var{qvan2} \\
+%
+$\tilde{n}_c(r)$ && & PS core charge density & \var{rho\_core} & \var{set\_rhoc}\\
+%
+\hline
+%
+$\tilde{n}(r)$ &$=$& $\sum_n f_n |\tilde{\Psi}_n(r)^2|$ &the
+non-augmented smooth charge density&\var{rho}=$\tilde{n}$+$\hat{n}$&\var{sum\_band}\\
+%
+$\rho_{ij}$ &$=$& $\sum_n f_n
+\langle\tilde{\Psi}_n(r)|\beta_i\rangle\langle\beta_j|\tilde{\Psi}_n(r)\rangle$
+& augmentation channel occupations & \var{becsum} &\var{sum\_band} \\
+%
+$\hat{n}(r)$ &$=$& $\sum_{ij}\rho_{ij}Q_{ij}(r)$ & compensation
+charge & added to \var{rho} & \var{addusdens} \\
+%
+$\tilde{v}_{eff}(r)$ &$=$& $V^{PS}_{ion}+v_{Hxc}[\tilde{n}+\hat{n}+\tilde{n}_c]$ & effective potential &\var{vr} & \var{v\_of\_rho} \\
+%
+%=================================================================
+\hline
+%=================================================================
+%
+\hline $Q_{ij}(r)$ &$\sim$& $\phi^*_i(r)\phi_j(r)-\tilde{\phi}^*_i(r)\tilde{\phi}_j(r)$ & augmentation functions (pseudized somehow) & added to \var{ptfunc} & --\\
+%
+$P_{ij}(r)$ &$=$& $\phi^*_i(r)\phi_j(r)\theta(|r-r_c|)$ & AE atomic wavefunctions & \var{pfunc}, \var{prad} & as \var{init\_us\_1}, \var{qvan2}\\
+%
+$\tilde{P}_{ij}(r)$ &$=$& $\tilde{\phi}^*_i(r)\tilde{\phi}_j(r)\theta(|r-r_c|)$ & PS atomic & \var{ptfunc}=$\tilde{P}_{ij}$+$Q_{ij}$, \var{ptrad} & as \var{init\_us\_1}, \var{qvan2}\\
+%
+%=================================================================
+%
+\hline ${n}^1(r)$ &$=$& $\sum_{ij}\rho_{ij}{P}_{ij}(r)$ & AE 1-c charge & \var{rho1} & as \var{addusdens} \\
+%
+$\tilde{n}^1(r)$ &$=$& $\sum_{ij}\rho_{ij}\tilde{P}_{ij}(r)$ & PS 1-c charge & \var{rho1t}=$\tilde{n}^1$+$\hat{n}$& as \var{addusdens} \\
+%
+$\hat{n}(r)$ &$=$& $\sum_{ij}\rho_{ij}Q_{ij}(r)$ & compensation charge & added to \var{rho1t}
+& -- \\
+%
+%=================================================================
+%
+\hline $n_c(r)$ && & AE core charge density & \var{aerho\_atc}, \var{aerho\_core} & as \var{set\_rhoc}\\
+%
+$\tilde{n}_c(r)$ && & PS core charge density & \var{psrho\_atc}, \var{psrho\_core} & as \var{set\_rhoc}\\
+%
+%=================================================================
+%
+\hline $V^{AE}_{ion}(r)$ 
+&$\rightarrow$&$V^{AE}_{ion}(r)\theta(|r-r_c|)$ 
+& AE descreened potential &  \var{aevloc\_at}, \var{aevloc}, \var{aevloc\_r}& \var{init\_paw\_vloc}, \var{paw\_grid\_setlocal} \\
+%
+$V^{PS}_{ion}(r)$  
+&$\rightarrow$&$V^{PS}_{ion}(r)\theta(|r-r_c|)$
+& PS descreened potential &\var{psvloc\_at}, \var{psvloc}, \var{psvloc\_r}& \var{init\_paw\_vloc}, \var{paw\_grid\_setlocal} \\
+%
+%=================================================================
+%
+\hline ${v}_{Hxc}^1(r)$ &$=$& $v_{Hxc}[{n}^1+{n}_c]$ & AE 1-c H+xc
+potential & \var{vr1} & \var{v\_xc}, \var{v\_h\_grid} \\
+%
+$\tilde{v}_{Hxc}^1(r)$ &$=$& $v_{Hxc}[\tilde{n}^1+\hat{n}+\tilde{n}^c]$ & PS 1-c H+xc potential & \var{vr1t} & \var{v\_xc}, \var{v\_h\_grid} \\
+%%
+%\hline ${v}_{eff}^1(r)$ &$=$& $V^{AE}_{ion}+v_{Hxc}[{n}^1+{n}_c]$ & AE 1-c effective potential & & as \var{v\_of\_rho} \\
+%%
+%$\tilde{v}_{eff}^1(r)$ &$=$& $V^{PS}_{ion}+v_{Hxc}[\tilde{n}^1+\hat{n}+\tilde{n}^c]$ & PS 1-c effective potential & & as \var{v\_of\_rho} \\
+%
+%=================================================================
+%
+\hline $E_1$ &$=$& $E_{xc}[n^1+n_c]$ & AE 1-c XC energy & \var{etxc1} & \var{v\_xc} \\
+%
+$ $ &+& $E_{H}[n^1]$ & AE 1-c Hartree energy & \var{ehart1} & \var{v\_h\_grid} \\
+%
+$ $ &$-$& $\int{n^1 v_{Hxc}^{1}}$ & avoid double counting & {\em beware, new definition of \var{etot} by P.U.}& as \var{delta\_e} \\
+%
+$ $ &$+$& $\int{n^1 (v_{Hxc}^{1}-v_{Hxc}^{1,old})}$ & correction for self-consistency & {\em beware, new definition of \var{etot} by P.U.} & as \var{delta\_escf} \\
+%
+%=================================================================
+%
+\hline $\tilde{E}_1$ &$=$& $E_{xc}[\tilde{n}^1+\hat{n}+\tilde{n}_c]$ & PS 1-c XC energy & \var{etxc1t} & \var{v\_xc} \\
+%
+$ $ &+& $E_{H}[\tilde{n}^1+\hat{n}]$ & PS 1-c Hartree energy & \var{ehart1t} & \var{v\_h\_grid} \\
+%
+$ $ &$-$& $\int{(\tilde{n}^1+\hat{n}) \tilde{v}_{Hxc}^{1}}$ & avoid double counting & {\em beware, new definition of \var{etot} by P.U.}& as \var{delta\_e} \\
+%
+$ $ &$+$& $\int{(\tilde{n}^1+\hat{n}) (\tilde{v}_{Hxc}^{1}-\tilde{v}_{Hxc}^{1,old})}$ & correction for self-consistency & {\em beware, new definition of \var{etot} by P.U.}& as \var{delta\_escf} \\
+%
+%=================================================================
+%
+\hline $D_{ij}$ &$=$& $\int{\tilde{v}_{eff}Q_{ij}}$ & US update of NL coefficients & \var{deeq} & \var{newd} \\
+%
+$ $ &$+$& $\langle\phi_i|T|\phi_j\rangle-\langle\tilde{\phi}_i|T|\tilde{\phi}_j\rangle$ & Kinetic energy differences & \var{kdiff}, added to \var{deeq} & read from file \\
+%
+$ $ &$+$& $\int(V^{AE}_{ion}P_{ij}-V^{PS}_{ion}\tilde{P}_{ij})$ & $\langle\phi_i|V^{AE}_{ion}|\phi_j\rangle-\langle\tilde{\phi}_i|V^{PS}_{ion}|\tilde{\phi}_j\rangle$ & \var{dpaw\_ae}/\var{ps}, $\rightarrow$\var{deeq} & \var{newd\_paw\_grid}\\
+%
+$ $ &$-$& $\int{V^{PS}_{ion}Q_{ij}}$ & compensate for US update & \var{dpaw\_ae}/\var{ps}, $\rightarrow$\var{deeq} & \var{newd\_paw\_grid}\\
+%
+$ $ &$+$& $\int(v^1_{Hxc}P_{ij}-\tilde{v}^1_{Hxc}\tilde{P}_{ij})$ & $\langle\phi_i|v^1_{Hxc}|\phi_j\rangle-\langle\tilde{\phi}_i|\tilde{v}^1_{Hxc}|\tilde{\phi}_j\rangle$ & \var{dpaw\_ae}/\var{ps}, $\rightarrow$\var{deeq} & \var{newd\_paw\_grid}\\
+%
+$ $ &$-$& $\int{\tilde{v}^1_{Hxc}Q_{ij}}$ & compensate for US update & \var{dpaw\_ae}/\var{ps}, $\rightarrow$\var{deeq} & \var{newd\_paw\_grid}\\
+%
+%\hline $ $ &=& $ $ & & &\\
+\hline
+\end{tabular}
+\end{small}
+%\end{center}
+\caption{\label{tab:quantities}Quantities needed to perform PAW
+calculation on the regular grid}
+\end{table*}
+
+
+Given that the solution of Schr\"odinger equation is the same for US
+and PAW, one has mainly to implement the calculation of the total
+energy and of the hamiltonian (i.e., of nonlocal part $D_{ij}$).
+Forces will be discussed in a later stage.  One also needs for SCF
+procedure a starting point for the augmentation channel occupations
+$\rho_{ij}$ and an algorithm for mixing them, consistently with the
+corresponding charge density.
+
+To evaluate PAW corrections to $E$ and $D_{ij}$ one needs the
+quantities reported in Table~\ref{tab:quantities}.  The first group
+are quantities defining the US pseudopotential, and the second are
+quantites already used for US calculation.  In the following groups
+are quantities which should be added for PAW calculation.  Some of
+them are repeated from the first two groups to remind that their
+evaluation will eventually be performed on radial grids.  It is
+understood that all one-center (1-c) integrals have to be performed
+individually for all atoms, and then summed.
+
+Notice the spacial cutoff $\theta(|r-r_c|)$ applied to $P$,
+$\tilde{P}$, $V^{AE}_{ion}$, and $V^{PS}_{ion}$.  This will not be
+strictly needed when integrating on the radial grid, due to
+cancellations between AE and PS quantities.  Right now it is necessary
+in order to avoid overposition of functions with those of the same
+atom in periodically repeated cells.  The use of $\theta$ is purely
+symbolic, as a softer cutoff function should be used.  As a
+consequence of the cutoff, charges $n^1$, $\tilde{n}^1$ and potentials
+$v^1_{xc}$, $\tilde{v}^1_{xc}$ will also be vanishing for $r>r_c$
+since LDA/GGA are quasilocal.
+
+\section*{Hartree terms ($n^1$, $\tilde{n}^1$)}
+
+We define the Fourier transform (FT) in ${\cal{L}}^{2}(\mathbb{R}^3)$
+of a function $f(\mathbf{r})$, and the anti-FT, as
+\begin{eqnarray}
+\label{eq:FTL2R3}
+f(\mathbf{q}) &=& \int \mathrm{d}^3 \mathbf{r} \mathrm{e}^{ -\mathrm{i} \mathbf{q} \cdot \mathbf{r}} f(\mathbf{r}),\\
+f(\mathbf{r}) &=& \int \frac{\mathrm{d}^3 \mathbf{q}}{(2\pi)^3} \mathrm{e}^{ \mathrm{i} \mathbf{q} \cdot \mathbf{r}} f(\mathbf{q}).
+\end{eqnarray}
+In \var{pw.x} one adopts the slightly different notation
+$f(\mathbf{q})=\frac{1}{\Omega} \int \mathrm{d}^3 \mathbf{r}
+\mathrm{e}^ { -\mathrm{i} \mathbf{q} \cdot \mathbf{r}} f(\mathbf{r})$,
+$\Omega$ being the volume of the periodically repeated cell.
+We will discretize FT with this different convention, leading to:
+\begin{eqnarray}
+\label{eq:discFT}f_\mathbf{G}=&\frac{1}{\Omega} \sum_\mathbf{r} \frac{\Omega}{N} \mathrm{e}^ { -\mathrm{i} \mathbf{G} \cdot \mathbf{r}} f_\mathbf{r}& =\frac{1}{N} \sum_\mathbf{r} \mathrm{e}^ { -\mathrm{i} \mathbf{G} \cdot \mathbf{r}} f_\mathbf{r},\\
+f_\mathbf{r}=&{\Omega} \sum_\mathbf{r} \frac{\Omega'}{(2\pi)^3N} \mathrm{e}^ { \mathrm{i} \mathbf{G} \cdot \mathbf{r}} f_\mathbf{r}& = \sum_\mathbf{r} \mathrm{e}^ { \mathrm{i} \mathbf{G} \cdot \mathbf{r}} f_\mathbf{G},
+\end{eqnarray}
+where $\Omega'=\frac{(2\pi)^3N}{\Omega}$ is as usual the volume in
+reciprocal space.  Now notice that
+\begin{eqnarray}
+f_\mathbf{r} &\equiv& f(\mathbf{r}),\\
+f_\mathbf{G} &=& \frac{1}{\Omega} f(\mathbf{q}=\mathbf{G}),\\
+f_{\mathbf{G}=0} &=& \frac{1}{\Omega} \int \mathrm{d}^3\mathbf{r} f(\mathbf{r})= \frac{f_\text{Tot}}{\Omega}=f_\text{Av}.
+\end{eqnarray}
+
+As for Coulomb potential related functions, we remind the following equations:
+\begin{eqnarray}
+f(\mathbf{r})=\frac{1}{r}&\Rightarrow& f(\mathbf{q})=\frac{4\pi}{q^2}\\
+\nabla^2\frac{1}{|\mathbf{r}-\mathbf{r}'|}&=&-4\pi\delta^{(3)}(\mathbf{r}-\mathbf{r}').
+\end{eqnarray}
+We define ($\frac{1}{2}\times$) Hartree energy density as
+\begin{eqnarray}
+V_\text{H}(\mathbf{r})&\equiv&\frac{e^2}{4\pi\epsilon_0} \int \mathrm{d}^3\mathbf{r}' \frac{n(\mathbf{r}')}{|\mathbf{r}-\mathbf{r}'|}\nonumber\\
+\label{eq:VHcont}&=& \frac{e^2}{4\pi\epsilon_0} \int \frac{\mathrm{d}^3\mathbf{q}}{(2\pi)^3} n(\mathbf{q}) \frac{4\pi}{q^2} \mathrm{e}^{ \mathrm{i} \mathbf{q} \cdot \mathbf{r}},
+\end{eqnarray}
+where $n(\mathbf{r})$ is the electron {\em number} density (not the
+{\em charge} density).  Following this definition, Hartree energy is
+simply given as $E_\text{H}=\frac{1}{2} \int \mathrm{d}^3\mathbf{r}
+n(\mathbf{r}) V_\text{H}(\mathbf{r})$, with all constants embedded
+into $V_\text{H}$.
+
+Now we want to evaluate $V_\text{H}$ for a spacially-bounded charge
+distribution, taking advantage of discretized FT, but without
+introducing spurious effect due to periodically repeated replicas.
+Mathematically, there is the problem that one cannot straightforwardly
+discretize Eq.~(\ref{eq:VHcont}) using Eq.~(\ref{eq:discFT}) because
+of the singularity of Coulomb potential at $q=0$ (the singularity is
+not a problem in the continuous formulation because it is canceled by
+volume element).  A possible solution is to exploit linearity in
+charge: remove gaussian charges so to cut-off the FT of the density
+and cancel singularity via $n(\mathbf{q})$; then the potential
+generated by gaussian charges is added analytically in real space.
+Let $Q$ be the total charge, $Q=n(\mathbf{q}=0)$.  We substract and
+add the charge
+\begin{eqnarray}
+n_W(\mathbf{q})&=&Q\mathrm{e}^{-\alpha q^2}, \\
+n_W(\mathbf{r})&=&Q \frac{1}{(2\pi)^3} \mathrm{e}^{-\frac{r^2}{4\alpha}}\left(\frac{\pi}{\alpha}\right)^{3/2},
+\end{eqnarray}
+which generates the potential\footnote{To derive $W(\mathbf{r})$, one
+takes FT of $W(\mathbf{q})$ and notices that $$\int_0^\infty
+\mathrm{d}q \frac{\sin{qr}}{qr}\mathrm{e}^{-\alpha q^2}
+=\frac{\pi}{2r}\text{erf}\left(\frac{r}{2\sqrt{\alpha}}\right).$$}
+\begin{eqnarray}
+W(\mathbf{q})&=&\frac{e^2}{4\pi\epsilon_0}\frac{4\pi}{q^2}Q\mathrm{e}^{-\alpha q^2},\\
+W(\mathbf{r})&=&\frac{e^2}{4\pi\epsilon_0}\frac{Q}{r}\text{erf}\left(\frac{r}{2\sqrt{\alpha}}\right).
+\end{eqnarray}
+Then we split $V$, and take advantage from the fact that
+$\lim_{q\rightarrow\mathbf{G}}(V-W)(\mathbf{q})$ is well defined also
+for $\mathbf{G}=0$:
+\begin{eqnarray}
+V(\mathbf{r})&=&W(\mathbf{r})+(V-W)(\mathbf{r})\\
+&=&W(\mathbf{r}) + \int \frac{\mathrm{d}^3\mathbf{q}}{(2\pi)^3} \mathrm{e}^{ \mathrm{i} \mathbf{q} \cdot \mathbf{r}}(V-W)(\mathbf{q})\nonumber\\
+&=&W(\mathbf{r}) + \sum_\mathbf{G} \mathrm{e}^{\mathrm{i}\mathbf{G}\cdot\mathbf{r}}\frac{1}{\Omega}\lim_{q\rightarrow\mathbf{G}}(V-W)(\mathbf{q})\nonumber\\
+%&=&W(\mathbf{r}) + \sum_\mathbf{G\neq0} \mathrm{e}^{\mathrm{i}\mathbf{G}\cdot\mathbf{r}} (V-W)_\mathbf{G} + \frac{1}{\Omega}\lim_{q\rightarrow0}(V-W)(\mathbf{q})
+&=&W(\mathbf{r}) + \sum_\mathbf{G} \mathrm{e}^{\mathrm{i}\mathbf{G}\cdot\mathbf{r}} \bar{V}_\mathbf{G},
+\end{eqnarray}
+where we introduced $\bar{V}_\mathbf{G}$, defined by
+\begin{eqnarray}
+\bar{V}_{\mathbf{G}\neq0}&=&\frac{e^2}{4\pi\epsilon_0}\frac{4\pi}{G^2} \left(n_\mathbf{G}-\frac{Q\mathrm{e}^{-\alpha G^2}}{\Omega}\right),\\
+\label{eq:VbG=0}\bar{V}_{\mathbf{G}=0}&=&\frac{1}{\Omega}\lim_{q\rightarrow0}(V-W)(\mathbf{q}).
+\end{eqnarray}
+(Notice that the distance $r$ is ill-defined in PBC.)  Finally, we
+have to evaluate $\lim_{q\rightarrow0}(V-W)(\mathbf{q})$.  Let us
+first expand $n(\mathbf{q})$ in powers of $q$:
+\begin{eqnarray}
+\nabla_\mu n(\mathbf{q}) = -\mathrm{i} \int \mathrm{d}^3\mathbf{r} r_\mu \mathrm{e}^{\mathrm{i}\mathbf{q}\cdot\mathbf{r}} n(\mathbf{r});
+\end{eqnarray}
+(this term vanishes for $q=0$ {\bf if} $n(\mathbf{r})=n(-\mathbf{r})$)
+\begin{eqnarray}
+\nabla_\nu \nabla_\mu n(\mathbf{q}) &=& - \int \mathrm{d}^3\mathbf{r} r_\nu r_\mu \mathrm{e}^{\mathrm{i}\mathbf{q}\cdot\mathbf{r}} n(\mathbf{r})\\
+&=&- \int \mathrm{d}^3\mathbf{r} r_\nu r_\mu n(\mathbf{r})\text{~if $q=0$}.
+\end{eqnarray}
+Now define
+\begin{eqnarray}
+I(\mathbf{q})&=&\sum_{\mu\nu} q_\mu q_\nu \nabla_\nu \nabla_\mu
+n(\mathbf{q})_{\mathbf{q}=0} \\&=& -\int \mathrm{d}^3\mathbf{r}
+(\mathbf{q}\cdot\mathbf{r})^2 n(\mathbf{r}).
+\end{eqnarray}
+The integral of $I(\mathbf{q})$ is
+\begin{eqnarray}
+\int \mathrm{d}^3\mathbf{q}
+I(\mathbf{q})&=&-\int\mathrm{d}^3\mathbf{r}n(\mathbf{r})
+\int\mathrm{d}^3\mathbf{q} (\mathbf{q}\cdot\mathbf{r})^2 \nonumber\\&=&
+-\frac{1}{3}\int\mathrm{d}^3\mathbf{r}n(\mathbf{r})
+\int\mathrm{d}^3\mathbf{q}q^2\nonumber\\
+&=&
+\int\left(-\frac{1}{3}{\cal{M}}q^2\right)\mathrm{d}^3\mathbf{q},\\
+{\cal{M}}&\equiv&\int\mathrm{d}^3\mathbf{r}n(\mathbf{r})r^2,\\
+&=&\sum_{ij}\rho_{ij}{\cal{M}}_{ij}.
+\end{eqnarray}
+[The coefficients
+${\cal{M}}_{ij}=\int{d{\mathbf{r}}r^2P_{ij}({\mathbf{r}})}
+=\delta_{l_il_j}\delta_{m_im_j}\int{4{\pi}r^2drr^2P_{ij}(r)}$ are
+easily evaluated on the radial mesh once for all at the beginning of
+the calculation.]
+%
+So, upon integration, $I(\mathbf{q})$ is equivalent to
+$-\frac{1}{3}{\cal{M}}q^2$.  If we insert this latter quantity into the
+expansion of $n(\mathbf{q})$, we obtain for ${q\rightarrow0}$
+\begin{eqnarray}
+(V-W)(\mathbf{q})&\approx&
+\frac{e^2}{4\pi\epsilon_0}\frac{4\pi}{q^2} \left[ Q - \frac{1}{6}{\cal{M}}q^2 - Q +Q\alpha q^2\right]\nonumber\\
+&=&\frac{e^2}{4\pi\epsilon_0} \left(4\pi\alpha Q - \frac{2\pi}{3}{\cal{M}}\right),
+\end{eqnarray}
+so that
+\begin{equation}
+\bar{V}_{\mathbf{G}=0}=\frac{e^2}{4\pi\epsilon_0} \left(4\pi\alpha Q - \frac{2\pi}{3}{\cal{M}}\right)\frac{1}{\Omega}.
+\end{equation}
+
+Let us now determine the Hartree energy corresponding to
+$n(\mathbf{r})$,
+\begin{eqnarray}
+E_\text{H} &=& \frac{1}{2} \frac{e^2}{4\pi\epsilon_0} \int\mathrm{d}^3\mathbf{r}\int\mathrm{d}^3\mathbf{r}' \frac{n(\mathbf{r})n(\mathbf{r})'}{|\mathbf{r}-\mathbf{r}'|}\nonumber\\
+&=& \frac{1}{2} \frac{e^2}{4\pi\epsilon_0} \int\mathrm{d}^3\mathbf{q} \frac{4\pi n(\mathbf{q})n(\mathbf{q})}{q^2}.
+\end{eqnarray}
+Let us introduce
+\begin{equation}
+F(\mathbf{q})=\frac{1}{2}\frac{e^2}{4\pi\epsilon_0}\frac{4\pi
+n(\mathbf{q})n(\mathbf{q})}{q^2},
+\end{equation}
+so that Hartree energy can be computed as anti-FT of $F(\mathbf{q})$:
+\begin{equation}
+E_\text{H}=F(\mathbf{r}=0).
+\end{equation}
+We substract and add again $n_W$.  Define
+\begin{eqnarray}
+n(\mathbf{q})&=&a(\mathbf{q})+b(\mathbf{q}),\\
+a(\mathbf{q})&=&n(\mathbf{q})-n_W(\mathbf{q}),\\
+b(\mathbf{q})&=&n_W(\mathbf{q}).
+\end{eqnarray}
+Then we separate $F(\mathbf{q})$ into three terms:
+\begin{eqnarray}
+F(\mathbf{q})=F^{aa}(\mathbf{q})+2F^{ab}(\mathbf{q})+F^{bb}(\mathbf{q}).
+\end{eqnarray}
+Since $F^{aa}(\mathbf{q})\rightarrow0$ as $q\rightarrow0$ we can
+directly discretize the anti-FT of $F^{aa}(\mathbf{q})$ to the one of
+$F^{aa}_\mathbf{G}$ restricting the summation to $\mathbf{G}\neq0$:
+\begin{eqnarray}
+F^{aa}(\mathbf{r}=0)&=& \sum_{\mathbf{G}\neq0}F^{aa}_\mathbf{G} =
+\frac{1}{\Omega}\sum_{\mathbf{G}\neq0}F^{aa}(\mathbf{q}=\mathbf{G})\nonumber\\
+&=&\frac{1}{2}\frac{e^2}{4\pi\epsilon_0}\sum_{\mathbf{G}\neq0}\frac{4\pi}{G^2}a_\mathbf{G}^2\,\,\,\Omega,\\
+a_\mathbf{G}&=&n_\mathbf{G}-\frac{Q\mathrm{e}^{-\alpha G^2}}{\Omega}
+\end{eqnarray}
+%
+We do the same for $F^{ab}$, but now the $\mathbf{G}=0$ contribution,
+$\frac{1}{\Omega}\lim_{\mathbf{q}\rightarrow0}F^{ab}(\mathbf{q})$, is
+different from zero and has to be added as in Eq.~(\ref{eq:VbG=0}):
+\begin{eqnarray}
+F^{ab}_{\mathbf{G}=0}&=&\frac{1}{\Omega}\lim_{\mathbf{q}\rightarrow0}F^{ab}(\mathbf{q})\nonumber\\
+&=& \frac{1}{2\Omega}\lim_{\mathbf{q}\rightarrow0}
+\frac{e^2}{4\pi\epsilon_0} \frac{4\pi}{q^2} [n(\mathbf{q})-n_W(\mathbf{q})]n_W(\mathbf{q})\nonumber\\
+&=& \frac{1}{2\Omega}Q\lim_{\mathbf{q}\rightarrow0}(V-W)(\mathbf{q})\nonumber\\
+&=& \frac{1}{2\Omega}Q\frac{e^2}{4\pi\epsilon_0} \left(4\pi\alpha Q - \frac{2\pi}{3}{\cal{M}}\right).
+\end{eqnarray}
+The $\mathbf{G}\neq0$ contribution to $F^{ab}$ sums with the one of
+$F^{aa}$; the total corresponds to squared density
+$n_\mathbf{G}^2-\frac{Q^2\mathrm{e}^{-2\alpha G^2}}{\Omega^2}$.\\
+Finally, the contribution from $F^{bb}$ is analytical:
+\begin{eqnarray}
+F^{bb}(\mathbf{r}=0)&=&\frac{1}{2} \frac{e^2}{4\pi\epsilon_0}
+\int\frac{\mathrm{d}^3 \mathbf{q}}{(2\pi)^3} \frac{4\pi}{q^2} Q^2
+\mathrm{e}^{-2\alpha q^2} \nonumber\\&=& \frac{1}{2} \frac{e^2}{4\pi\epsilon_0}
+\frac{Q^2}{\sqrt{2\pi\alpha}}.
+\end{eqnarray}
+Collecting all terms, we have for $E_\text{H}^1$ and
+$\tilde{E}_\text{H}^1$
+\begin{eqnarray}
+E_\text{H}&=&
+\sum_{\mathbf{G}\neq0}\frac{1}{2}\frac{e^2}{4\pi\epsilon_0}\frac{4\pi}{G^2}
+\left(n_\mathbf{G}^2- \frac{Q^2\mathrm{e}^{-2\alpha
+G^2}}{\Omega^2}\right)\nonumber\\
+&&+\frac{1}{2\Omega}Q\frac{e^2}{4\pi\epsilon_0} \left(4\pi\alpha Q - \frac{2\pi}{3}{\cal{M}}\right) \nonumber\\
+&&+ \frac{1}{2} \frac{e^2}{4\pi\epsilon_0}
+\frac{Q^2}{\sqrt{2\pi\alpha}}.
+\end{eqnarray}
+
+
+\section*{Hartree terms ($\tilde{n}$)}
+
+
+{\bf From this point it is not completely correct, to be changed:}
+{\small\sl%
+Should Hartree potentials $v^1_{H}$, $\tilde{v}^1_{H}$ be constructed
+in order to coincide outside $r_c$, and $\tilde{v}^1_{H}$ so to
+coincide with $\tilde{v}_{H}$ inside?  Let us shift the three
+potentials by a constant (which is left free when solving Poisson's
+equation), independently:
+\begin{equation}
+\tilde{v}_{H}=\tilde{V}_{H}+\tilde{c},\ 
+\tilde{v}^1_{H}=\tilde{V}^1_{H}+\tilde{c}^1,\ 
+{v}^1_{H}={V}^1_{H}+{c}^1.
+\end{equation}
+Remember that we have to define $v^1_{H}$ and $\tilde{v}^1_{H}$ for
+each atom in the cell, thus we have $N_{at}$ couples $\{\tilde{c}^1_{\mathbf{R}},{c}^1_{\mathbf{R}}\}$.
+
+For the potential to be treated with plane waves, it is easily seen
+that
+\begin{eqnarray}
+\frac{\partial H}{\partial\tilde{c}}&=&1+
+\sum_{ij}|\beta_i\rangle\langle\beta_j|
+\frac{\partial}{\partial\tilde{c}}\int{Q_{ij}\tilde{v}_{eff}dr}
+\nonumber\\&=&1+\sum_{ij}|\beta_i\rangle\langle\beta_j|q_{ij}=S.
+\end{eqnarray}
+For $\tilde{c}^1_{\mathbf{R}}$ and $c^1_{\mathbf{R}}$ we have to
+take the derivative of the NL coefficients $D_{ij}$ corresponding to
+atom in ${\mathbf{R}}$ only:
+\begin{eqnarray}
+\frac{\partial H}{\partial\tilde{c}^1_{\mathbf{R}}}&=&-
+\sum_{ij\in{\mathbf{R}}}|\beta_i\rangle\langle\tilde{\phi}_i|\tilde{\phi}_j\rangle\langle\beta_j|
+-\sum_{ij\in{\mathbf{R}}}|\beta_i\rangle\langle\beta_j|q_{ij}
+\nonumber\\&=&
+-1_{\mathbf{R}}-\sum_{ij\in{\mathbf{R}}}|\beta_i\rangle\langle\beta_j|q_{ij}=-S_{\mathbf{R}},
+\end{eqnarray}
+where we have used the property that for a complete set of projectors
+$\sum_{i\in{\mathbf{R}}}|\tilde{\phi}_i\rangle\langle\beta_i|=1_{\mathbf{R}}$,
+the identity on the augmentation region surrounding ${\mathbf{R}}$.
+Finally,
+\begin{eqnarray}
+\frac{\partial H}{\partial{c}^1_{\mathbf{R}}}&=&
+\sum_{ij\in{\mathbf{R}}}|\beta_i\rangle\langle{\phi}_i|{\phi}_j\rangle\langle\beta_j|
+\nonumber\\&=&
+\sum_{ij}|\beta_i\rangle\langle\tilde{\phi}_i|\tilde{\phi}_j\rangle\langle\beta_j|+\sum_{ij\in{\mathbf{R}}}|\beta_i\rangle\langle\beta_j|q_{ij}
+\nonumber\\&=&
+1_{\mathbf{R}}+\sum_{ij\in{\mathbf{R}}}|\beta_i\rangle\langle\beta_j|q_{ij}=S_{\mathbf{R}}.
+\end{eqnarray}
+Having introduced $\tilde{c}$, $\tilde{c}^1$ and $c^1$, the
+generalized eigenvalue problem $H\psi=\epsilon{S}\psi$ is transformed
+into $H'\psi'=\epsilon'{S}\psi'$, with hamiltonian
+$H'=H+\tilde{c}S+\sum_{\mathbf{R}}(c^1-\tilde{c}^1)S_{\mathbf{R}}$,
+i.e. into
+\begin{equation}\label{eq:newH}
+H\psi'=[\epsilon'-\tilde{c}]S\psi'+\sum_{\mathbf{R}}(c^1_{\mathbf{R}}-\tilde{c}^1_{\mathbf{R}})S_{\mathbf{R}}\psi',
+\end{equation}
+from which we see that upon changes in $\tilde{c}$ {\em eigenfunctions
+are the same while eigenvalues are shifted to energies
+$\epsilon'=\epsilon+\tilde{c}$}.  Changes in $c^1_{\mathbf{R}}$ and
+$\tilde{c}^1_{\mathbf{R}}$ can be more dramatic, changing also the
+shape of the hamiltonian, unless one fixes
+$c^1_{\mathbf{R}}=\tilde{c}^1_{\mathbf{R}}$.
+
+We shall then consider the effect of $\tilde{c}$ constant on the
+electronic energy.  From what we have seen above, the sum of the
+eigenvalues trivially changes as
+%$\sum{(\tilde{c}+c^1-\tilde{c}^1)}=(\tilde{c}+c^1-\tilde{c}^1)N_{el}$.
+$\sum{\tilde{c}}=\tilde{c}N_{el}$.
+%
+Then consider the plane-wave (US) part: $\tilde{E}_H$ does not change,
+since it is built directly from the charge density and not the
+potential; the DC correction is affected as
+$\int{(\tilde{n}+\hat{n})\tilde{c}}=\tilde{c}N_{el}$, thus
+compensating the same term contained in the sum of eigenvalues.
+%
+%We easily get analogous results for the dependence of $E^1$ and
+%$\tilde{E}^1$ upon $c^1$ and $\tilde{c}^1$, respectively.
+%
+So also {\em electronic energy is invariant}, as it should be.
+
+Let's go back to $c^1_{\mathbf{R}}$ and $\tilde{c}^1_{\mathbf{R}}$.
+Eq.~(\ref{eq:newH}) indicates that it is necessary to have
+$v^1_{H}=\tilde{v}^1_{H}$ outside $r_c$, possibly with the addition of
+a common constant to both terms.  When performing the integration on a
+radial grid, this constant is perhaps most conveniently chosen so that
+$v(\infty)=0$.  This condition cannot be set for calculations on the
+periodically repeated finite cell of plane-wave code.  There,
+Poisson's equation is solved in $G$-space by \var{v\_of\_rho}, where
+one puts $v_G=n_G/G^2$ and $v_{G=0}=0$.  Notice that
+$c\propto{}v_{G=0}\times[{\textrm{volume}}]$.  One way of proceeding
+could be to Fourier transform the potentials back to real space and to
+shift $v^1$ so to minimize some sort of ``distance'' from
+$\tilde{v}^1$ {\em outside} the augmentation region, e.g., by
+requiring
+\begin{equation}
+\int_{^c\Omega_{\mathbf{R}}}\tilde{v}^1({\mathbf{r}})d{\mathbf{r}}=\int_{^c\Omega_{\mathbf{R}}}{v}^1({\mathbf{r}})d{\mathbf{r}}.
+\end{equation}
+For evaluating these integrals, one has to build a routine to identify
+all points in the regular grid which are outside the augmentation
+sphere.
+
+
+The problem connected to the arbitrariness of $c^1_{\mathbf{R}}$ and
+$\tilde{c}^1_{\mathbf{R}}$ is due to the fact that, rigorously, the
+Hartree potential (for the atomic densities) should be
+\begin{equation}
+v_H({\mathbf{r}})=\int{d{\mathbf{r}}'\frac{n({\mathbf{r}}')}{|{\mathbf{r}}-{\mathbf{r}}'|}},
+\end{equation}
+which also fixes the value of the constants (that is the average value
+of the potential, and hence the $v_{G=0}$).  So a better way to
+proceed is to construct $v_{G=0}$ in order to give the proper average.
+This can be done by observing that, under the hypothesis i) $n$ is
+globally neutral ii) $r^2n({\mathbf{r}})\rightarrow0$ for
+$r\rightarrow\infty$:
+\begin{equation}
+\int{d{\mathbf{r}}v_H({\mathbf{r}})}=-\frac{2\pi}{3}\int{d{\mathbf{r}}r^2n({\mathbf{r}})}\equiv-\frac{2\pi}{3}{\cal{M}},
+\end{equation}
+(this result is based on Gauss' theorem; alternatively, it can be
+derived by using Fourier Transforms and by imposing that the summation
+over discrete $G$-vectors is equivalent to integration over continous
+ones).  Hypothesis (ii) is verified by considering into $n$ also the
+positive charge (for a neutral atom), and this does not contribute to
+${\cal{M}}$---the additional term is centered in the origin.  If the
+atom is not neutral, one can force neutrality by ficticiously changing
+the nuclear charge: since the deviation from neutrality is the same
+for $n^1$ and $\tilde{n}^1$, this should change the average potential
+by the same amount (and remember $H$ depends on the {\em difference}
+of $c^1$ and $\tilde{c}^1$, not their absolute values).
+
+%To be applied to the case of $n^1$ and $\tilde{n}^1+\hat{n}$, remember
+%that we are cutoffing these functions to make them decrease well
+%within the unit cell, so the monopole of the electric field (for
+%neutral atom) should be zero and the integral of the potential
+%converged with respect to size.  (Multipolar contributions outside the
+%compensation cell are also possible, but should be the same for $n^1$
+%and $\tilde{n}^1+\hat{n}$ by construction of $\hat{n}$.)
+
+Finally, the definition of the Fourier Transform used by \var{pw.x} is
+\begin{equation}
+f_{\mathbf{G}}=\frac{1}{\Omega}\int{d{\mathbf{r}} f({\mathbf{r}})
+\exp(-i{\mathbf{G}}\cdot{\mathbf{r}})},
+\end{equation}
+so we should simply set (analogous for $\tilde{v}^1_H$)
+\begin{eqnarray}
+v^1_{H,{\mathbf{G}}=0}&=&\frac{1}{\Omega}\int{d{\mathbf{r}}v^1_H({\mathbf{r}})}=-\frac{1}{\Omega}\frac{2\pi}{3}{\cal{M}}
+\nonumber\\&=&-\frac{2\pi}{3\Omega}\sum_{ij}\rho_{ij}{\cal{M}}^1_{ij},
+\end{eqnarray}
+where the coefficients
+${\cal{M}}^1_{ij}=\int{d{\mathbf{r}}r^2P_{ij}({\mathbf{r}})}
+=\delta_{l_il_j}\delta_{m_im_j}\int{4{\pi}r^2drr^2P_{ij}(r)}$ are
+easily evaluated on the radial mesh once for all at the beginning of
+the calculation.
+}
+
+
+%{\em This have to be taken
+%care of when solving Poisson's equation.}  \var{pw.x} code is doing
+%this for $n=\tilde{n}+\hat{n}$ in $G$-space (\var{v\_of\_rho}),
+%putting $V_G=n_G/G^2$ and $V_{G=0}=0$.  If one does the same for $n^1$
+%and $\tilde{n}^1+\hat{n}$ he obtains $v_H^1$ and $\tilde{v}_H^1$
+%having the same average value (0) on the full crystal cell.  {\em Does
+%this also mean that they coincide outside compensation region?}
+
+\section*{Initialization}
+
+To start the calculation, we need a guess for density
+$\tilde{n}$=\var{rho} and augmentation channel occupations
+$\rho_{ij}$=\var{becsum}.  The following is the structure of
+\var{init\_run}, with ``\var{*}'' indicating added routines for PAW:
+\begin{verbatim}
+  setup()
+  allocate_fft()
+  ggen()
+  summary()
+  allocate_nlpot()
+ *allocate_paw_internals()
+  allocate_locpot()
+  allocate_wfc()
+  openfil()
+  hinit0()
+    local and NL PS, core charge
+   *init_paw_vloc
+   *init_prad()
+   *paw_grid_setlocal
+   *set_paw_rhoc()
+  potinit()
+    rho = sum rho_at  ->  vr
+   *atomic_becsum()
+   *compute_onecenter_charges()
+   *compute_onecenter_potentials()
+  newd()
+   *newd_paw_grid()
+  wfcinit()
+    solve H in the basis of
+    atomic wfcs
+\end{verbatim}
+Tentative idea: use as \var{becsum} at first iteration the atomic one,
+hopefully corresponding to the atomic density (new routine
+\var{atomic\_becsum}.  Notice however that this is not fully consistent
+to starting wavefunctions, which should be used only as guess for
+diagonalization, not for self-consistency.
+
+\section*{SCF loop}
+
+The only difference with US case is: we have to mix also occupations
+of augmentation channels, because they affect the new hamiltonian
+through one-center charges.  Alternatively, as first step, one can mix
+directly densities $n^1$ and $\tilde{n}^1+\hat{n}$ (to be changed
+before passing to radial grids).  This has been done right now (Dec,
+21 2005) by linear mixing, using {\em duplicate} versions of
+\var{mix\_rho} with only one mixing iteration.
+
+
+\end{document}
