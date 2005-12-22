@@ -1,6 +1,6 @@
 
      program ld1 starts. version 11-Feb-05
-     today is 21Dec2005 at 16:47:22 
+     today is 22Dec2005 at 19:16:35 
 
      -------------------- All-electron run ------------------------------
 
@@ -54,46 +54,46 @@
 
       Wfc   2S  rcut= 1.200  Estimated cut-off energy=       89.87 Ry
       This function has    0 nodes for 0 < r <    1.186
-      Wfc-us  2S rcutus= 1.700  Estimated cut-off energy=    17.92 Ry
+      Wfc-us  2S rcutus= 1.450  Estimated cut-off energy=    23.50 Ry
 
 
       Wfc   2S  rcut= 1.200  Estimated cut-off energy=       96.76 Ry
       This function has    0 nodes for 0 < r <    1.186
-      Wfc-us  2S rcutus= 1.700  Estimated cut-off energy=    33.87 Ry
+      Wfc-us  2S rcutus= 1.450  Estimated cut-off energy=    34.96 Ry
 
 
       Wfc   2P  rcut= 1.200  Estimated cut-off energy=      125.00 Ry
       This function has    0 nodes for 0 < r <    1.186
-      Wfc-us  2P rcutus= 1.700  Estimated cut-off energy=    28.04 Ry
+      Wfc-us  2P rcutus= 1.600  Estimated cut-off energy=    30.86 Ry
 
 
       Wfc   2P  rcut= 1.200  Estimated cut-off energy=      127.71 Ry
       This function has    0 nodes for 0 < r <    1.186
-      Wfc-us  2P rcutus= 1.700  Estimated cut-off energy=    35.27 Ry
+      Wfc-us  2P rcutus= 1.600  Estimated cut-off energy=    36.78 Ry
 
       The bmat matrix before symmetrization
-     1.70454    -2.30752     0.00000     0.00000
-    -2.30778     2.67723     0.00000     0.00000
-     0.00000     0.00000    -0.60782    -0.42058
-     0.00000     0.00000    -0.42057    -0.28110
+     2.14383    -2.17190     0.00000     0.00000
+    -2.17215     2.19079     0.00000     0.00000
+     0.00000     0.00000    -0.60378    -0.43213
+     0.00000     0.00000    -0.43212    -0.29841
 
       The bmat matrix
-     1.70454    -2.30765     0.00000     0.00000
-    -2.30765     2.67723     0.00000     0.00000
-     0.00000     0.00000    -0.60782    -0.42058
-     0.00000     0.00000    -0.42058    -0.28110
+     2.14383    -2.17202     0.00000     0.00000
+    -2.17202     2.19079     0.00000     0.00000
+     0.00000     0.00000    -0.60378    -0.43212
+     0.00000     0.00000    -0.43212    -0.29841
 
       The qq matrix
-    -0.06182     0.17111     0.00000     0.00000
-     0.17111    -0.29513     0.00000     0.00000
-     0.00000     0.00000     0.26804     0.21977
-     0.00000     0.00000     0.21977     0.18050
+    -0.14385     0.15374     0.00000     0.00000
+     0.15374    -0.16501     0.00000     0.00000
+     0.00000     0.00000     0.23573     0.19651
+     0.00000     0.00000     0.19651     0.16384
 
       The ddd matrix
-     1.00553    -0.67254     0.00000     0.00000
-    -0.67254    -0.10387     0.00000     0.00000
-     0.00000     0.00000     1.58814     1.40492
-     0.00000     0.00000     1.40492     1.23827
+     0.73245    -0.64224     0.00000     0.00000
+    -0.64224     0.53118     0.00000     0.00000
+     0.00000     0.00000     1.38687     1.24264
+     0.00000     0.00000     1.24264     1.11100
 
      ------------ End of pseudopotential generation --------------------
 
@@ -144,22 +144,22 @@
      mesh =1095 r(mesh) =  99.04343 xmin = -7.00 dx = 0.01250
 
      n l     nl             e AE (Ryd)       e PS (Ryd)   De AE-PS (Ryd) 
-     1 0     2S   1( 2.00)       -1.75770       -1.75783        0.00013
-     2 1     2P   1( 4.00)       -0.66426       -0.66423       -0.00003
+     1 0     2S   1( 2.00)       -1.75770       -1.75786        0.00016
+     2 1     2P   1( 4.00)       -0.66426       -0.66424       -0.00002
 
-     eps = 8.9E-15  iter =  5
+     eps = 2.1E-18  iter =  6
  
      Etot =    -149.890997 Ry,     -74.945498 Ha,   -2039.386923 eV
-     Etotps =   -31.548306 Ry,     -15.774153 Ha,    -429.239940 eV
+     Etotps =   -31.548422 Ry,     -15.774211 Ha,    -429.241519 eV
      dEtot_ae =       0.000000 Ry
      dEtot_ps =       0.000000 Ry,   Delta E=       0.000000
 
-     Ekin =      11.635655 Ry,       5.817827 Ha,     158.312389 eV
-     Encl =     -72.065724 Ry,     -36.032862 Ha,    -980.511825 eV
-     Ehrt =      27.211543 Ry,      13.605772 Ha,     370.234816 eV
-     Ecxc =      -6.693576 Ry,      -3.346788 Ha,     -91.071452 eV
+     Ekin =      12.986649 Ry,       6.493325 Ha,     176.693752 eV
+     Encl =     -72.065706 Ry,     -36.032853 Ha,    -980.511588 eV
+     Ehrt =      27.211569 Ry,      13.605785 Ha,     370.235167 eV
+     Ecxc =      -6.693578 Ry,      -3.346789 Ha,     -91.071488 eV
      Evxt =       0.000000 Ry,       0.000000 Ha,       0.000000 eV
-     Epseu=       8.363796 Ry,       4.181898 Ha,     113.796131 eV
+     Epseu=       7.012645 Ry,       3.506322 Ha,      95.412639 eV
 
      -------------- End of pseudopotential test ------------------------
 

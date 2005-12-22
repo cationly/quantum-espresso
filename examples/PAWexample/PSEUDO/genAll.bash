@@ -4,7 +4,8 @@ LD1=~/develop_PAW/bin/ld1.x
 
 RNC=1.40
 RNChard=1.20
-RUS=1.70
+RUSs=1.45
+RUSp=1.60
 Rd=1.40
 
 FUNC="PBE"
@@ -49,8 +50,8 @@ cat <<EOF > $name/$name.gen.in
   nconf=1,
  / 
 2
-2S  1  0  2.00  0.00  $RNC  $RUS  1
-2P  2  1  4.00  0.00  $RNC  $RUS  1
+2S  1  0  2.00  0.00  $RNC  $RNC  1
+2P  2  1  4.00  0.00  $RNC  $RNC  1
 EOF
 $LD1 < $name/$name.gen.in > $name/$name.gen.out
 
@@ -93,8 +94,8 @@ cat <<EOF > $name/$name.gen.in
   nconf=1,
  / 
 2
-2S  1  0  2.00  0.00  $RNC  $RUS  1
-2P  2  1  4.00  0.00  $RNC  $RUS  1
+2S  1  0  2.00  0.00  $RNChard  $RNChard  1
+2P  2  1  4.00  0.00  $RNChard  $RNChard  1
 EOF
 $LD1 < $name/$name.gen.in > $name/$name.gen.out
 
@@ -129,17 +130,17 @@ cat <<EOF > $name/$name.gen.in
    file_qvan = './$name/$name.qvan'
  /
 5
-2S  2  0  2.00  0.00  $RNC  $RUS
-2S  2  0  0.00  0.05  $RNC  $RUS
-2P  2  1  4.00  0.00  $RNC  $RUS
-2P  2  1  0.00  0.05  $RNC  $RUS
+2S  2  0  2.00  0.00  $RNC  $RUSs
+2S  2  0  0.00  0.05  $RNC  $RUSs
+2P  2  1  4.00  0.00  $RNC  $RUSp
+2P  2  1  0.00  0.05  $RNC  $RUSp
 3D  3  2 -2.00  0.15  $Rd  $Rd
  &test
   nconf=1,
  / 
 2
-2S  1  0  2.00  0.00  $RNC  $RUS  1
-2P  2  1  4.00  0.00  $RNC  $RUS  1
+2S  1  0  2.00  0.00  $RNC  $RUSs  1
+2P  2  1  4.00  0.00  $RNC  $RUSp  1
 EOF
 $LD1 < $name/$name.gen.in > $name/$name.gen.out
 
@@ -174,17 +175,17 @@ cat <<EOF > $name/$name.gen.in
    file_qvan = './$name/$name.qvan'
  /
 5
-2S  2  0  2.00  0.00  $RNChard  $RUS
-2S  2  0  0.00  0.05  $RNChard  $RUS
-2P  2  1  4.00  0.00  $RNChard  $RUS
-2P  2  1  0.00  0.05  $RNChard  $RUS
+2S  2  0  2.00  0.00  $RNChard  $RUSs
+2S  2  0  0.00  0.05  $RNChard  $RUSs
+2P  2  1  4.00  0.00  $RNChard  $RUSp
+2P  2  1  0.00  0.05  $RNChard  $RUSp
 3D  3  2 -2.00  0.15  $Rd  $Rd
  &test
   nconf=1,
  / 
 2
-2S  1  0  2.00  0.00  $RNC  $RUS  1
-2P  2  1  4.00  0.00  $RNC  $RUS  1
+2S  1  0  2.00  0.00  $RNChard  $RUSs  1
+2P  2  1  4.00  0.00  $RNChard  $RUSp  1
 EOF
 $LD1 < $name/$name.gen.in > $name/$name.gen.out
 
@@ -226,17 +227,17 @@ cat <<EOF > $name/$name.gen.in
    file_qvan = './$name/$name.qvan'
  /
 5
-2S  2  0  2.00  0.00  $RNC  $RUS
-2S  2  0  0.00  0.05  $RNC  $RUS
-2P  2  1  4.00  0.00  $RNC  $RUS
-2P  2  1  0.00  0.05  $RNC  $RUS
+2S  2  0  2.00  0.00  $RNC  $RUSs
+2S  2  0  0.00  0.05  $RNC  $RUSs
+2P  2  1  4.00  0.00  $RNC  $RUSp
+2P  2  1  0.00  0.05  $RNC  $RUSp
 3D  3  2 -2.00  0.15  $Rd  $Rd
  &test
   nconf=1,
  / 
 2
-2S  1  0  2.00  0.00  $RNC  $RUS  1
-2P  2  1  4.00  0.00  $RNC  $RUS  1
+2S  1  0  2.00  0.00  $RNC  $RUSs  1
+2P  2  1  4.00  0.00  $RNC  $RUSp  1
 EOF
 $LD1 < $name/$name.gen.in > $name/$name.gen.out
 
@@ -278,17 +279,17 @@ cat <<EOF > $name/$name.gen.in
    file_qvan = './$name/$name.qvan'
  /
 5
-2S  2  0  2.00  0.00  $RNC  $RUS
-2S  2  0  0.00  0.05  $RNC  $RUS
-2P  2  1  4.00  0.00  $RNC  $RUS
-2P  2  1  0.00  0.05  $RNC  $RUS
+2S  2  0  2.00  0.00  $RNC  $RUSs
+2S  2  0  0.00  0.05  $RNC  $RUSs
+2P  2  1  4.00  0.00  $RNC  $RUSp
+2P  2  1  0.00  0.05  $RNC  $RUSp
 3D  3  2 -2.00  0.15  $Rd  $Rd
  &test
   nconf=1,
  / 
 2
-2S  1  0  2.00  0.00  $RNC  $RUS  1
-2P  2  1  4.00  0.00  $RNC  $RUS  1
+2S  1  0  2.00  0.00  $RNC  $RUSs  1
+2P  2  1  4.00  0.00  $RNC  $RUSp  1
 EOF
 $LD1 < $name/$name.gen.in > $name/$name.gen.out
 
@@ -330,17 +331,17 @@ cat <<EOF > $name/$name.gen.in
    file_qvan = './$name/$name.qvan'
  /
 5
-2S  2  0  2.00  0.00  $RNC  $RUS
-2S  2  0  0.00  0.05  $RNC  $RUS
-2P  2  1  4.00  0.00  $RNC  $RUS
-2P  2  1  0.00  0.05  $RNC  $RUS
+2S  2  0  2.00  0.00  $RNC  $RUSs
+2S  2  0  0.00  0.05  $RNC  $RUSs
+2P  2  1  4.00  0.00  $RNC  $RUSp
+2P  2  1  0.00  0.05  $RNC  $RUSp
 3D  3  2 -2.00  0.15  $Rd  $Rd
  &test
   nconf=1,
  / 
 2
-2S  1  0  2.00  0.00  $RNC  $RUS  1
-2P  2  1  4.00  0.00  $RNC  $RUS  1
+2S  1  0  2.00  0.00  $RNC  $RUSs  1
+2P  2  1  4.00  0.00  $RNC  $RUSp  1
 EOF
 $LD1 < $name/$name.gen.in > $name/$name.gen.out
 

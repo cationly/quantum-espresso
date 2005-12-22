@@ -1,0 +1,492 @@
+
+     Program PWSCF     v.3.0    starts ...
+     Today is 22Dec2005 at 15:26: 3 
+
+     Ultrasoft (Vanderbilt) Pseudopotentials
+
+     Current dimensions of program pwscf are:
+
+     ntypx = 10   npk = 40000  lmax =  3
+     nchix =  6  ndmx =  2000  nbrx = 14  nqfx =  8
+Warning: card  H   1.000  H.PBE-RRKJUS.UPF ignored
+ PAW CUTOFF parameters
+         775   1.81404373000000     
+         789   2.16097273000000     
+         822   3.26434280700000     
+
+
+     bravais-lattice index     =            1
+     lattice parameter (a_0)   =      10.0000  a.u.
+     unit-cell volume          =    1000.0000 (a.u.)^3
+     number of atoms/cell      =            2
+     number of atomic types    =            1
+     kinetic-energy cutoff     =      25.0000  Ry
+     charge density cutoff     =     100.0000  Ry
+     convergence threshold     =      1.0E-06
+     beta                      =       0.7000
+     number of iterations used =            1  plain     mixing
+     Exchange-correlation      =  SLA  PW   PBX  PBC (1434)
+     celldm(1)=  10.000000  celldm(2)=   0.000000  celldm(3)=   0.000000
+     celldm(4)=   0.000000  celldm(5)=   0.000000  celldm(6)=   0.000000
+
+     crystal axes: (cart. coord. in units of a_0)
+               a(1) = (  1.000000  0.000000  0.000000 )  
+               a(2) = (  0.000000  1.000000  0.000000 )  
+               a(3) = (  0.000000  0.000000  1.000000 )  
+
+     reciprocal axes: (cart. coord. in units 2 pi/a_0)
+               b(1) = (  1.000000  0.000000  0.000000 )  
+               b(2) = (  0.000000  1.000000  0.000000 )  
+               b(3) = (  0.000000  0.000000  1.000000 )  
+
+
+     PSEUDO 1 is O  (US)    zval =  6.0   lmax= 1   lloc= 0
+     Version   0  0  0 of US pseudo code
+     Using log mesh of  1095 points
+     The pseudopotential has  4 beta functions with: 
+                l(1) =   0
+                l(2) =   0
+                l(3) =   1
+                l(4) =   1
+     Q(r) pseudized with  0 coefficients,  rinner =    0.000   0.000   0.000
+
+
+     atomic species   valence    mass     pseudopotential
+        O              6.00     1.00000     O ( 1.00)
+
+     16 Sym.Ops. (with inversion)
+
+
+   Cartesian axes
+
+     site n.     atom                  positions (a_0 units)
+         1           O   tau(  1) = (  -0.1600000   0.0000000   0.0000000  )
+         2           O   tau(  2) = (   0.1600000   0.0000000   0.0000000  )
+
+     number of k points=    1  gaussian broad. (ryd)=  0.0300     ngauss =   1
+                       cart. coord. in units 2pi/a_0
+        k(    1) = (   0.0000000   0.0000000   0.0000000), wk =   2.0000000
+
+     G cutoff =  253.3030  (  16879 G-vectors)     FFT grid: ( 32, 32, 32)
+
+     nbndx  =    40  nbnd   =    10  natomwfc =    16  npwx   =    2103
+     nelec  =  12.00  nkb   =    16  ngl    =     213
+
+     Check: negative/imaginary core charge    -0.000175    0.000000
+
+     Check: atom number            1
+
+            negative/imaginary core charge    -0.000116    0.000000
+
+     Check: atom number            2
+
+            negative/imaginary core charge    -0.352473    0.678855
+
+     Check: atom number            1
+
+            negative/imaginary core charge    -0.000116    0.000000
+
+     Check: atom number            2
+
+            negative/imaginary core charge    -0.352473    0.678855
+
+     Initial potential from superposition of free atoms
+     Check: negative starting charge:    -0.052517
+
+     negative rho (up, down):  0.525E-01 0.000E+00
+     from compute_onecenter_potentials : info #        -1
+     alpha set manually
+
+     negative rho (up, down):  0.155E+00 0.000E+00
+
+     negative rho (up, down):  0.155E+00 0.000E+00
+
+     negative rho (up, down):  0.767E-01 0.000E+00
+
+     negative rho (up, down):  0.767E-01 0.000E+00
+     Starting wfc are atomic
+
+     total cpu time spent up to now is      2.61 secs
+
+     Self-consistent Calculation
+
+     iteration #  1     ecut=    25.00 ryd     beta=0.70
+     Davidson diagonalization with overlap
+     ethr =  1.00E-02,  avg # of iterations =  4.0
+     from electrons : info #        -1
+     mixing several times ns if lda_plus_U
+
+     Threshold (ethr) on eigenvalues was too large:
+     Diagonalizing with lowered threshold
+
+     Davidson diagonalization with overlap
+     ethr =  5.01E-03,  avg # of iterations =  1.0
+     from electrons : info #        -1
+     mixing several times ns if lda_plus_U
+
+     negative rho (up, down):  0.486E-01 0.000E+00
+     from compute_onecenter_potentials : info #        -1
+     alpha set manually
+
+     negative rho (up, down):  0.132E+00 0.000E+00
+
+     negative rho (up, down):  0.132E+00 0.000E+00
+
+     negative rho (up, down):  0.672E-01 0.000E+00
+
+     negative rho (up, down):  0.672E-01 0.000E+00
+
+     total cpu time spent up to now is      4.18 secs
+ US energy before PAW additions  -64.5257429852810     
+  1   25.213   25.131   -6.715   -6.693  -43.006   42.854   -0.340    0.334
+atom # & correction:  1       -0.0986323683
+  2   45.774   45.669   -6.715   -6.693  -67.707   68.123    2.209   -2.219
+atom # & correction:  2        0.4886137364
+
+     total energy              =   -64.13576162 ryd
+     estimated scf accuracy    <     0.06311504 ryd
+
+     iteration #  2     ecut=    25.00 ryd     beta=0.70
+     Davidson diagonalization with overlap
+     ethr =  5.26E-04,  avg # of iterations =  2.0
+     from electrons : info #        -1
+     mixing several times ns if lda_plus_U
+
+     negative rho (up, down):  0.524E-01 0.000E+00
+     from compute_onecenter_potentials : info #        -1
+     alpha set manually
+
+     negative rho (up, down):  0.966E-01 0.000E+00
+
+     negative rho (up, down):  0.966E-01 0.000E+00
+
+     negative rho (up, down):  0.487E-01 0.000E+00
+
+     negative rho (up, down):  0.487E-01 0.000E+00
+
+     total cpu time spent up to now is      5.38 secs
+ US energy before PAW additions  -64.1975253307647     
+  1   25.218   25.152   -6.548   -6.526  -45.348   45.198    0.866   -0.908
+atom # & correction:  1       -0.1469293347
+  2   24.246   24.194   -6.548   -6.526  -76.351   76.307   -9.547    9.511
+atom # & correction:  2       -0.0499050813
+
+     total energy              =   -64.39435975 ryd
+     estimated scf accuracy    <     0.01491319 ryd
+
+     iteration #  3     ecut=    25.00 ryd     beta=0.70
+     Davidson diagonalization with overlap
+     ethr =  1.24E-04,  avg # of iterations =  2.0
+     from electrons : info #        -1
+     mixing several times ns if lda_plus_U
+
+     negative rho (up, down):  0.584E-01 0.000E+00
+     from compute_onecenter_potentials : info #        -1
+     alpha set manually
+
+     negative rho (up, down):  0.659E+00 0.000E+00
+
+     negative rho (up, down):  0.659E+00 0.000E+00
+
+     negative rho (up, down):  0.585E+00 0.000E+00
+
+     negative rho (up, down):  0.585E+00 0.000E+00
+
+     total cpu time spent up to now is      6.58 secs
+ US energy before PAW additions  -64.3048411544251     
+  1   42.194   42.070   -8.587   -8.563  -42.188   42.134  -46.048   45.793
+atom # & correction:  1       -0.2092691467
+  2   23.048   23.009   -8.587   -8.563  -26.948   26.899  -11.358   11.428
+atom # & correction:  2        0.0363068824
+
+     total energy              =   -64.47780342 ryd
+     estimated scf accuracy    <     0.01065443 ryd
+
+     iteration #  4     ecut=    25.00 ryd     beta=0.70
+     Davidson diagonalization with overlap
+     ethr =  8.88E-05,  avg # of iterations =  2.0
+     from electrons : info #        -1
+     mixing several times ns if lda_plus_U
+
+     negative rho (up, down):  0.586E-01 0.000E+00
+     from compute_onecenter_potentials : info #        -1
+     alpha set manually
+
+     negative rho (up, down):  0.983E-01 0.000E+00
+
+     negative rho (up, down):  0.983E-01 0.000E+00
+
+     negative rho (up, down):  0.492E-01 0.000E+00
+
+     negative rho (up, down):  0.492E-01 0.000E+00
+
+     total cpu time spent up to now is      7.76 secs
+ US energy before PAW additions  -64.3464149268874     
+  1   23.267   23.208   -6.349   -6.325  -26.100   26.150   -1.161    1.134
+atom # & correction:  1        0.0584793004
+  2   22.064   22.010   -6.349   -6.325  -25.912   25.807    0.621   -0.602
+atom # & correction:  2       -0.0564587594
+
+     total energy              =   -64.34439439 ryd
+     estimated scf accuracy    <     0.00053848 ryd
+
+     iteration #  5     ecut=    25.00 ryd     beta=0.70
+     Davidson diagonalization with overlap
+     ethr =  4.49E-06,  avg # of iterations =  7.0
+     from electrons : info #        -1
+     mixing several times ns if lda_plus_U
+
+     negative rho (up, down):  0.581E-01 0.000E+00
+     from compute_onecenter_potentials : info #        -1
+     alpha set manually
+
+     negative rho (up, down):  0.937E-01 0.000E+00
+
+     negative rho (up, down):  0.937E-01 0.000E+00
+
+     negative rho (up, down):  0.470E-01 0.000E+00
+
+     negative rho (up, down):  0.470E-01 0.000E+00
+
+     total cpu time spent up to now is      9.00 secs
+ US energy before PAW additions  -64.2400908551180     
+  1   21.289   21.242   -6.075   -6.054  -35.321   35.260    2.992   -2.997
+atom # & correction:  1       -0.0412837169
+  2   21.820   21.766   -6.075   -6.054  -38.047   37.940    2.568   -2.549
+atom # & correction:  2       -0.0543984334
+
+     total energy              =   -64.33577301 ryd
+     estimated scf accuracy    <     0.00052758 ryd
+
+     iteration #  6     ecut=    25.00 ryd     beta=0.70
+     Davidson diagonalization with overlap
+     ethr =  4.40E-06,  avg # of iterations =  2.0
+     from electrons : info #        -1
+     mixing several times ns if lda_plus_U
+
+     negative rho (up, down):  0.572E-01 0.000E+00
+     from compute_onecenter_potentials : info #        -1
+     alpha set manually
+
+     negative rho (up, down):  0.924E-01 0.000E+00
+
+     negative rho (up, down):  0.924E-01 0.000E+00
+
+     negative rho (up, down):  0.463E-01 0.000E+00
+
+     negative rho (up, down):  0.463E-01 0.000E+00
+
+     total cpu time spent up to now is     10.18 secs
+ US energy before PAW additions  -64.2439999747736     
+  1   21.403   21.352   -6.069   -6.047  -37.425   37.365    0.644   -0.675
+atom # & correction:  1       -0.0615826435
+  2   21.459   21.408   -6.069   -6.047  -38.411   38.307    1.144   -1.122
+atom # & correction:  2       -0.0531221178
+
+     total energy              =   -64.35870474 ryd
+     estimated scf accuracy    <     0.00014203 ryd
+
+     iteration #  7     ecut=    25.00 ryd     beta=0.70
+     Davidson diagonalization with overlap
+     ethr =  1.18E-06,  avg # of iterations =  3.0
+     from electrons : info #        -1
+     mixing several times ns if lda_plus_U
+
+     negative rho (up, down):  0.577E-01 0.000E+00
+     from compute_onecenter_potentials : info #        -1
+     alpha set manually
+
+     negative rho (up, down):  0.938E-01 0.000E+00
+
+     negative rho (up, down):  0.938E-01 0.000E+00
+
+     negative rho (up, down):  0.469E-01 0.000E+00
+
+     negative rho (up, down):  0.469E-01 0.000E+00
+
+     total cpu time spent up to now is     11.39 secs
+ US energy before PAW additions  -64.2646925660191     
+  1   21.584   21.530   -6.094   -6.072  -35.172   35.128   -0.569    0.532
+atom # & correction:  1       -0.0487758132
+  2   21.391   21.340   -6.094   -6.072  -35.658   35.558    0.915   -0.892
+atom # & correction:  2       -0.0480419956
+
+     total energy              =   -64.36151037 ryd
+     estimated scf accuracy    <     0.00018061 ryd
+
+     iteration #  8     ecut=    25.00 ryd     beta=0.70
+     Davidson diagonalization with overlap
+     ethr =  1.18E-06,  avg # of iterations =  2.0
+     from electrons : info #        -1
+     mixing several times ns if lda_plus_U
+
+     negative rho (up, down):  0.580E-01 0.000E+00
+     from compute_onecenter_potentials : info #        -1
+     alpha set manually
+
+     negative rho (up, down):  0.938E-01 0.000E+00
+
+     negative rho (up, down):  0.938E-01 0.000E+00
+
+     negative rho (up, down):  0.469E-01 0.000E+00
+
+     negative rho (up, down):  0.469E-01 0.000E+00
+
+     total cpu time spent up to now is     12.48 secs
+ US energy before PAW additions  -64.2632173277118     
+  1   21.421   21.368   -6.083   -6.061  -34.212   34.168    0.296   -0.325
+atom # & correction:  1       -0.0429991634
+  2   21.388   21.336   -6.083   -6.061  -35.467   35.365    1.396   -1.375
+atom # & correction:  2       -0.0497813576
+
+     total energy              =   -64.35599785 ryd
+     estimated scf accuracy    <     0.00002783 ryd
+
+     iteration #  9     ecut=    25.00 ryd     beta=0.70
+     Davidson diagonalization with overlap
+     ethr =  2.32E-07,  avg # of iterations =  2.0
+     from electrons : info #        -1
+     mixing several times ns if lda_plus_U
+
+     negative rho (up, down):  0.579E-01 0.000E+00
+     from compute_onecenter_potentials : info #        -1
+     alpha set manually
+
+     negative rho (up, down):  0.935E-01 0.000E+00
+
+     negative rho (up, down):  0.935E-01 0.000E+00
+
+     negative rho (up, down):  0.468E-01 0.000E+00
+
+     negative rho (up, down):  0.468E-01 0.000E+00
+
+     total cpu time spent up to now is     13.68 secs
+ US energy before PAW additions  -64.2587154008242     
+  1   21.354   21.303   -6.075   -6.053  -34.800   34.752    0.604   -0.632
+atom # & correction:  1       -0.0462358700
+  2   21.397   21.345   -6.075   -6.053  -36.107   36.005    1.474   -1.453
+atom # & correction:  2       -0.0505734795
+
+     total energy              =   -64.35552475 ryd
+     estimated scf accuracy    <     0.00000899 ryd
+
+     iteration # 10     ecut=    25.00 ryd     beta=0.70
+     Davidson diagonalization with overlap
+     ethr =  7.49E-08,  avg # of iterations =  2.0
+     from electrons : info #        -1
+     mixing several times ns if lda_plus_U
+
+     negative rho (up, down):  0.578E-01 0.000E+00
+     from compute_onecenter_potentials : info #        -1
+     alpha set manually
+
+     negative rho (up, down):  0.935E-01 0.000E+00
+
+     negative rho (up, down):  0.935E-01 0.000E+00
+
+     negative rho (up, down):  0.468E-01 0.000E+00
+
+     negative rho (up, down):  0.468E-01 0.000E+00
+
+     total cpu time spent up to now is     14.83 secs
+ US energy before PAW additions  -64.2592488520296     
+  1   21.379   21.327   -6.075   -6.054  -35.007   34.959    0.417   -0.447
+atom # & correction:  1       -0.0474155697
+  2   21.392   21.340   -6.075   -6.054  -36.148   36.047    1.364   -1.343
+atom # & correction:  2       -0.0500830859
+
+     total energy              =   -64.35674751 ryd
+     estimated scf accuracy    <     0.00000145 ryd
+
+     iteration # 11     ecut=    25.00 ryd     beta=0.70
+     Davidson diagonalization with overlap
+     ethr =  1.21E-08,  avg # of iterations =  2.0
+     from electrons : info #        -1
+     mixing several times ns if lda_plus_U
+
+     negative rho (up, down):  0.579E-01 0.000E+00
+     from compute_onecenter_potentials : info #        -1
+     alpha set manually
+
+     negative rho (up, down):  0.155E+00 0.000E+00
+
+     negative rho (up, down):  0.155E+00 0.000E+00
+
+     negative rho (up, down):  0.783E-01 0.000E+00
+
+     negative rho (up, down):  0.783E-01 0.000E+00
+     from electrons : info #        -1
+     PAW forces missing
+
+     total cpu time spent up to now is     15.96 secs
+
+     End of self-consistent calculation
+
+          k = 0.0000 0.0000 0.0000 (  2103 PWs)   bands (ev):
+
+   -24.8985 -21.1736 -10.9111  -9.1491  -9.1491  -7.0295  -7.0295  -4.3319
+    -0.1431   4.6217
+
+     the Fermi energy is    -7.0295 ev
+ US energy before PAW additions  -64.2602756642578     
+  1   30.770   30.658   -7.558   -7.530  -34.857   34.811    0.000    0.000
+atom # & correction:  1        0.0370330990
+  2   28.000   27.908   -7.558   -7.530  -35.987   35.886    0.000    0.000
+atom # & correction:  2       -0.0382179889
+
+!    total energy              =   -64.26146055 ryd
+     estimated scf accuracy    <     0.00000077 ryd
+
+     band energy sum           =   -12.09936593 ryd
+     one-electron contribution =   -72.02390886 ryd
+     hartree contribution      =    38.56349065 ryd
+     xc contribution           =   -14.21178657 ryd
+     ewald contribution        =   -16.57114520 ryd
+     correction for metals     =    -0.01692569 ryd
+
+     convergence has been achieved
+
+     Writing file          o2.save for program phonon
+ 
+     PWSCF        :    15.96s CPU time
+
+     init_run     :     2.50s CPU
+     electrons    :    13.35s CPU
+ 
+     electrons    :    13.35s CPU
+     c_bands      :     1.92s CPU (      12 calls,   0.160 s avg)
+     sum_band     :     2.54s CPU (      12 calls,   0.212 s avg)
+     v_of_rho     :     1.12s CPU (      12 calls,   0.093 s avg)
+     newd         :     2.91s CPU (      12 calls,   0.243 s avg)
+     mix_rho      :     0.19s CPU (      60 calls,   0.003 s avg)
+ 
+     c_bands      :     1.92s CPU (      12 calls,   0.160 s avg)
+     init_us_2    :     0.00s CPU (      25 calls,   0.000 s avg)
+     cegterg      :     1.92s CPU (      12 calls,   0.160 s avg)
+ 
+     sum_band     :     2.54s CPU (      12 calls,   0.212 s avg)
+     becsum       :     0.00s CPU (      12 calls,   0.000 s avg)
+     addusdens    :     0.72s CPU (      12 calls,   0.060 s avg)
+ 
+     wfcrot       :     0.09s CPU
+     cegterg      :     1.92s CPU (      12 calls,   0.160 s avg)
+     h_psi        :     1.56s CPU (      44 calls,   0.035 s avg)
+     g_psi        :     0.06s CPU (      31 calls,   0.002 s avg)
+     overlap      :     0.15s CPU (      31 calls,   0.005 s avg)
+     cdiaghg      :     0.03s CPU (      43 calls,   0.001 s avg)
+     update       :     0.11s CPU (      31 calls,   0.004 s avg)
+     last         :     0.05s CPU (      12 calls,   0.004 s avg)
+ 
+     h_psi        :     1.56s CPU (      44 calls,   0.035 s avg)
+     init         :     0.00s CPU (      44 calls,   0.000 s avg)
+     firstfft     :     0.61s CPU (     340 calls,   0.002 s avg)
+     secondfft    :     0.67s CPU (     340 calls,   0.002 s avg)
+     add_vuspsi   :     0.05s CPU (      44 calls,   0.001 s avg)
+     s_psi        :     0.03s CPU (      44 calls,   0.001 s avg)
+ 
+     General routines
+     ccalbec      :     0.15s CPU (      56 calls,   0.003 s avg)
+     cft3         :     3.81s CPU (     850 calls,   0.004 s avg)
+     cft3s        :     1.32s CPU (     800 calls,   0.002 s avg)
+     davcio       :     0.00s CPU (      12 calls,   0.000 s avg)
+ 
