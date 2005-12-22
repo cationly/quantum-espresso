@@ -54,7 +54,6 @@ subroutine set_rho_core
 !  totrho = int_0_inf_dr(rhoc,r,r2,dx,mesh,2)
 !  write(6,'("Integrated core charge",f15.10)') totrho
   rhoco(:) = rhoc(1:mesh)
-  if (lpaw.and.(.not.lnc2paw)) aeccharge(1:mesh) = rhoc(1:mesh)
   !
   if (rcore > 0.0_dp) then
      !      rcore read on input
@@ -108,12 +107,27 @@ subroutine set_rho_core
   do n=1,ik
      rhoc(n) = a*sin(b*r(n))/r(n) * r2(n)
   end do
-  if (lpaw) psccharge(1:mesh) = rhoc(1:mesh)
-  if (lpaw.and.lnc2paw) then
-     if (nlcc) then
-        aeccharge(1:mesh) = psccharge(1:mesh)
+  if (lpaw) then
+     if (lnc2paw) then
+        ! Mimic NC calculation. If NLCC, the pseudized core charge.
+        if (nlcc) then
+           aeccharge(1:mesh) = rhoc(1:mesh)
+           ! Here one could set another pseudized ccharge, for
+           ! example with a larger matching radius. Right now,
+           ! just take the same as the AE (ie NC) one:
+           psccharge(1:mesh) = rhoc(1:mesh)
+        else
+           ! Reference NC calculation does not have core charge.
+           aeccharge(1:mesh) = 0._dp
+           psccharge(1:mesh) = 0._dp
+        end if
      else
-        aeccharge(1:mesh) = 0._dp
+        aeccharge(1:mesh) = rhoco(1:mesh)
+        if (nlcc) then
+           psccharge(1:mesh) = rhoc(1:mesh)
+        else
+           psccharge(1:mesh) = 0._dp
+        end if
      end if
   end if
   write(6,'(/,5x,''  r > '',f4.2,'' : true rho core'')') r(ik)
