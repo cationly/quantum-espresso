@@ -1,3 +1,4 @@
+!#define __DEBUG_V_H_vs_SPHEROPOLE
 !
 ! Copyright (C) 2004 PWSCF group
 ! This file is distributed under the terms of the
@@ -437,6 +438,9 @@ CONTAINS
     INTEGER :: ns, i, is
     INTEGER :: lsd
     REAL(DP), EXTERNAL :: int_0_inf_dr, exc_t
+#if defined __DEBUG_V_H_vs_SPHEROPOLE
+    REAL(DP) :: dummy_charge,aux1(ndm),aux2(ndm),res1,res2
+#endif
     !
     ! Set up total valence charge
     rhovtot(1:pawset_%mesh) = vcharge_(1:pawset_%mesh,1)
@@ -445,6 +449,16 @@ CONTAINS
     !
     ! Hartree
     CALL hartree(0,2,pawset_%mesh,pawset_%r,pawset_%r2,pawset_%sqrtr,pawset_%dx,rhovtot,vh)
+#if defined __DEBUG_V_H_vs_SPHEROPOLE
+    dummy_charge=int_0_inf_dr(rhovtot,pawset_%r,pawset_%r2,pawset_%dx,pawset_%mesh,2)
+    aux1(1:pawset_%mesh) = FPI*pawset_%r2(1:pawset_%mesh)*vh(1:pawset_%mesh) - &
+         FPI*dummy_charge * pawset_%r(1:pawset_%mesh)
+    aux2(1:pawset_%mesh) = rhovtot(1:pawset_%mesh)*pawset_%r2(1:pawset_%mesh)
+    res1 = int_0_inf_dr(aux1,pawset_%r,pawset_%r2,pawset_%dx,pawset_%mesh,1)
+    res2 = int_0_inf_dr(aux2,pawset_%r,pawset_%r2,pawset_%dx,pawset_%mesh,4)
+    WRITE (*,'(4(A,1e15.7))') ' INT rho', dummy_charge,' INT V_H', &
+         res1, ' INT r^2*rho', res2, ' ERR:', (1.d0-  res1/ (-res2 * (2.d0*PI/3.d0)))
+#endif
     vh(1:pawset_%mesh) = e2 * vh(1:pawset_%mesh)
     aux(1:pawset_%mesh) = vh(1:pawset_%mesh) * rhovtot(1:pawset_%mesh)
     eh = HALF * int_0_inf_dr(aux,pawset_%r,pawset_%r2,pawset_%dx,pawset_%mesh,2)
