@@ -13,6 +13,8 @@ integrals\\WORKING NOTES, USE WITH CARE}
 
 \author{Guido Fratesi}
 
+\date{Last modified: December 23, 2005}
+
 % 21cm = 2x\hoffset + \textwidth
 \setlength{\hoffset}{-1in}\addtolength{\hoffset}{1.6cm} %GF>
 \setlength{\textwidth}{17.8cm} %GF>
@@ -29,6 +31,53 @@ integrals\\WORKING NOTES, USE WITH CARE}
 \begin{document}
 \maketitle
 
+\section*{Current status}
+
+\var{ld1.x} can generate PAW dataset.  Two modules have been added to
+perform PAW calculations with \var{pw.x}, with Kresse's notations
+adopted throughout: \var{grid\_paw\_variables} and
+\var{grid\_paw\_routines} mainly contain clones of variables and
+routines already present in \var{pw.x} at Oct. 4, 2005 (when code was
+branched with tag \var{develop\_PAW}), slightly adapted for doing
+similar things on one-center densities rather than US one
+(atom-by-atom, separately).
+
+Simple tests have been performed for non-magnetic O and O$_2$,
+obtaining agreement with reference NC calculations within 1mRyd (see
+\var{examples/PAWexample}), the origin of this small discrepancy yet
+to be investigated.
+
+\section*{Next steps to do}
+
+Numerics on grids: Check the 1mRyd accuracy; Beware that \var{alpha}
+parameter for gaussian charges added and removed is fixed.
+
+Spin calculations (should be rather ready, perhaps only for subroutine
+\var{atomic\_becsum}).
+
+Mixing scheme to be improved: currently mixing $n^1$ and $\tilde{n}^1$
+directly, while it would be desirable to mix $\rho_{ij}$ and obtain
+new densities from it.  Current version only works for linear mixing
+because of use of replicate versions of \var{mix\_rho}: we should
+change this routine to perform the same operations on $\tilde{n}$ and
+$\rho_{ij}$.
+
+Compensation functions currently reproduce only zeroth moments.  This
+should be fixed, by splitting them in separate $L$ channels, see PRB
+{\bf 59}, 1758 (1999), Eq.~(27).
+
+Compensation functions should be allowed to not mimic the true
+augmentation functions.  Currently, \var{ld1.x} can generate PAW with
+pure gaussian compensation functions, but right now the case $l\neq0$
+is not properly done because in this case one should multiply the
+gaussian times some $r^l$ or similar---otherwise the function is
+ill-defined in the origin.
+
+After that, we should proceed substituting routines using radial grids
+(or better, analytic summations) for routines using regular (hard FFT)
+grid.
+
+\section*{Introduction}
 
 \noindent{\bf Disclaimer:} of course one-center integrals should be
 eventually evaluated on radial grids.  But as a first step, the use of
