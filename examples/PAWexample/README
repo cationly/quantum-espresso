@@ -1,10 +1,9 @@
 
         Example on ``experimental'' PAW calculations with pw.x
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-                  (last updated: GF, Dec. 23, 2005)
+                  (last updated: GF & RM, Apr. 26, 2006)
 
-Test is performed on O atom and O_2 molecule (right now non-magnetic,
-with a fairly large smearing).  The idea is the following:
+Test is performed on O atom and O_2 molecule.  The idea is the following:
 
 1) Generate an hard NC pseudopotential (NC1). This will be the
    reference for all other calculations, also for PAW calculations because
@@ -24,16 +23,19 @@ Pseudopotentials and PAW file descriptions, scripts for generating,
 testing, and viewing the results: genAll.bash, testAll.bash, viewAll.bash.
 
 * run_O1.bash O1/
-Script for running single-atom O calculation with pw.x, and results
+Script for running single-atom O calculation with pw.x, and non-magnetic 
+results 
 
 * run_O2.bash O2_$dist/
 Script for running O_2 calculation with pw.x, and results for interatomic
-distance equal to 2*$dist.
+distance equal to 2*$dist 
 
 * plot_O2_BindEn.bash
 Script for visualizing O_2 binding energy.
 
+* lsda/  lsda results for single-atom O calculations
+
 Results:
-Notice that binding energy when the half-distance is lower than US
+- Notice that binding energy when the half-distance is lower than US
 radii does not reproduce NC results.  Apart from that, NC, US, and PAW
 all give similar results.

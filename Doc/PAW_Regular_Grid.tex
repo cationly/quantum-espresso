@@ -11,9 +11,9 @@
 \title{PAW in \var{pw.x} using regular grids\\for computing one-center
 integrals\\WORKING NOTES, USE WITH CARE}
 
-\author{Guido Fratesi}
+\author{Guido Fratesi and Riccardo Mazzarello}
 
-\date{Last modified: December 23, 2005}
+\date{Last modified: April 26, 2006}
 
 % 21cm = 2x\hoffset + \textwidth
 \setlength{\hoffset}{-1in}\addtolength{\hoffset}{1.6cm} %GF>
@@ -42,7 +42,7 @@ branched with tag \var{develop\_PAW}), slightly adapted for doing
 similar things on one-center densities rather than US one
 (atom-by-atom, separately).
 
-Simple tests have been performed for non-magnetic O and O$_2$,
+Simple tests have been performed for magnetic and non-magnetic O and O$_2$,
 obtaining agreement with reference NC calculations within 1mRyd (see
 \var{examples/PAWexample}), the origin of this small discrepancy yet
 to be investigated.
@@ -51,16 +51,6 @@ to be investigated.
 
 Numerics on grids: Check the 1mRyd accuracy; Beware that \var{alpha}
 parameter for gaussian charges added and removed is fixed.
-
-Spin calculations (should be rather ready, perhaps only for subroutine
-\var{atomic\_becsum}).
-
-Mixing scheme to be improved: currently mixing $n^1$ and $\tilde{n}^1$
-directly, while it would be desirable to mix $\rho_{ij}$ and obtain
-new densities from it.  Current version only works for linear mixing
-because of use of replicate versions of \var{mix\_rho}: we should
-change this routine to perform the same operations on $\tilde{n}$ and
-$\rho_{ij}$.
 
 Compensation functions currently reproduce only zeroth moments.  This
 should be fixed, by splitting them in separate $L$ channels, see PRB
@@ -79,9 +69,9 @@ grid.
 
 \section*{Introduction}
 
-\noindent{\bf Disclaimer:} of course one-center integrals should be
-eventually evaluated on radial grids.  But as a first step, the use of
-regular grids should enhable one to test PAW implementation
+\noindent{\bf Disclaimer:} One-center integrals should be
+eventually evaluated on radial grids. However, as a first step, the use of
+regular grids should enable one to test PAW implementation
 introducing the smallest amount of new code.
 
 \begin{table*}
@@ -124,6 +114,11 @@ $\tilde{v}_{eff}(r)$ &$=$& $V^{PS}_{ion}+v_{Hxc}[\tilde{n}+\hat{n}+\tilde{n}_c]$
 $P_{ij}(r)$ &$=$& $\phi^*_i(r)\phi_j(r)\theta(|r-r_c|)$ & AE atomic wavefunctions & \var{pfunc}, \var{prad} & as \var{init\_us\_1}, \var{qvan2}\\
 %
 $\tilde{P}_{ij}(r)$ &$=$& $\tilde{\phi}^*_i(r)\tilde{\phi}_j(r)\theta(|r-r_c|)$ & PS atomic & \var{ptfunc}=$\tilde{P}_{ij}$+$Q_{ij}$, \var{ptrad} & as \var{init\_us\_1}, \var{qvan2}\\
+%
+%=================================================================
+%
+\hline $I_{(ij),(ij)'}$ &$=$& $\int \frac{P_{ij}(r)P_{(ij)'}(r')}{|r-r'|}dr dr'$ & integrals of products of AE P-functions & \var{prodp}, \var{prod0p} & \var{paw\_prod\_p} \\
+$\tilde{I}_{(ij),(ij)'}$ &$=$& $\int \frac{\tilde{P}_{ij}(r)\tilde{P}_{(ij)'}(r')}{|r-r'|} dr dr'$ & integrals of products of PS P-functions & \var{prodpt}, \var{prod0pt} & \var{paw\_prod\_p} \\
 %
 %=================================================================
 %
@@ -205,10 +200,10 @@ calculation on the regular grid}
 \end{table*}
 
 
-Given that the solution of Schr\"odinger equation is the same for US
-and PAW, one has mainly to implement the calculation of the total
-energy and of the hamiltonian (i.e., of nonlocal part $D_{ij}$).
-Forces will be discussed in a later stage.  One also needs for SCF
+Since the solution of the Schr\"odinger equation is the same for US
+and PAW, one has just to implement the calculation of the total
+energy and the hamiltonian (i.e., of nonlocal part $D_{ij}$).
+Forces will be discussed at a later stage.  One also needs for SCF
 procedure a starting point for the augmentation channel occupations
 $\rho_{ij}$ and an algorithm for mixing them, consistently with the
 corresponding charge density.
@@ -218,12 +213,12 @@ quantities reported in Table~\ref{tab:quantities}.  The first group
 are quantities defining the US pseudopotential, and the second are
 quantites already used for US calculation.  In the following groups
 are quantities which should be added for PAW calculation.  Some of
-them are repeated from the first two groups to remind that their
+them are repeated from the first two groups to remind the reader that their
 evaluation will eventually be performed on radial grids.  It is
 understood that all one-center (1-c) integrals have to be performed
 individually for all atoms, and then summed.
 
-Notice the spacial cutoff $\theta(|r-r_c|)$ applied to $P$,
+Notice the spatial cutoff $\theta(|r-r_c|)$ applied to $P$,
 $\tilde{P}$, $V^{AE}_{ion}$, and $V^{PS}_{ion}$.  This will not be
 strictly needed when integrating on the radial grid, due to
 cancellations between AE and PS quantities.  Right now it is necessary
@@ -236,7 +231,7 @@ since LDA/GGA are quasilocal.
 
 \section*{Hartree terms ($n^1$, $\tilde{n}^1$)}
 
-We define the Fourier transform (FT) in ${\cal{L}}^{2}(\mathbb{R}^3)$
+We define the Fourier transform (FT) 
 of a function $f(\mathbf{r})$, and the anti-FT, as
 \begin{eqnarray}
 \label{eq:FTL2R3}
@@ -247,7 +242,7 @@ In \var{pw.x} one adopts the slightly different notation
 $f(\mathbf{q})=\frac{1}{\Omega} \int \mathrm{d}^3 \mathbf{r}
 \mathrm{e}^ { -\mathrm{i} \mathbf{q} \cdot \mathbf{r}} f(\mathbf{r})$,
 $\Omega$ being the volume of the periodically repeated cell.
-We will discretize FT with this different convention, leading to:
+We will discretize FT with the latter convention, leading to:
 \begin{eqnarray}
 \label{eq:discFT}f_\mathbf{G}=&\frac{1}{\Omega} \sum_\mathbf{r} \frac{\Omega}{N} \mathrm{e}^ { -\mathrm{i} \mathbf{G} \cdot \mathbf{r}} f_\mathbf{r}& =\frac{1}{N} \sum_\mathbf{r} \mathrm{e}^ { -\mathrm{i} \mathbf{G} \cdot \mathbf{r}} f_\mathbf{r},\\
 f_\mathbf{r}=&{\Omega} \sum_\mathbf{r} \frac{\Omega'}{(2\pi)^3N} \mathrm{e}^ { \mathrm{i} \mathbf{G} \cdot \mathbf{r}} f_\mathbf{r}& = \sum_\mathbf{r} \mathrm{e}^ { \mathrm{i} \mathbf{G} \cdot \mathbf{r}} f_\mathbf{G},
@@ -276,14 +271,14 @@ simply given as $E_\text{H}=\frac{1}{2} \int \mathrm{d}^3\mathbf{r}
 n(\mathbf{r}) V_\text{H}(\mathbf{r})$, with all constants embedded
 into $V_\text{H}$.
 
-Now we want to evaluate $V_\text{H}$ for a spacially-bounded charge
+Now we want to evaluate $V_\text{H}$ for a spatially-bounded charge
 distribution, taking advantage of discretized FT, but without
 introducing spurious effect due to periodically repeated replicas.
-Mathematically, there is the problem that one cannot straightforwardly
+There is a problem though: one cannot straightforwardly
 discretize Eq.~(\ref{eq:VHcont}) using Eq.~(\ref{eq:discFT}) because
-of the singularity of Coulomb potential at $q=0$ (the singularity is
+the Coulomb potential is singular at $q=0$ (the singularity is
 not a problem in the continuous formulation because it is canceled by
-volume element).  A possible solution is to exploit linearity in
+the volume element).  A possible solution is to exploit linearity in
 charge: remove gaussian charges so to cut-off the FT of the density
 and cancel singularity via $n(\mathbf{q})$; then the potential
 generated by gaussian charges is added analytically in real space.
@@ -617,6 +612,7 @@ $\rho_{ij}$=\var{becsum}.  The following is the structure of
    *init_prad()
    *paw_grid_setlocal
    *set_paw_rhoc()
+   *paw_prod_p()
   potinit()
     rho = sum rho_at  ->  vr
    *atomic_becsum()
@@ -630,7 +626,7 @@ $\rho_{ij}$=\var{becsum}.  The following is the structure of
 \end{verbatim}
 Tentative idea: use as \var{becsum} at first iteration the atomic one,
 hopefully corresponding to the atomic density (new routine
-\var{atomic\_becsum}.  Notice however that this is not fully consistent
+\var{atomic\_becsum}).  Notice however that this is not fully consistent
 to starting wavefunctions, which should be used only as guess for
 diagonalization, not for self-consistency.
 
@@ -638,11 +634,9 @@ diagonalization, not for self-consistency.
 
 The only difference with US case is: we have to mix also occupations
 of augmentation channels, because they affect the new hamiltonian
-through one-center charges.  Alternatively, as first step, one can mix
-directly densities $n^1$ and $\tilde{n}^1+\hat{n}$ (to be changed
-before passing to radial grids).  This has been done right now (Dec,
-21 2005) by linear mixing, using {\em duplicate} versions of
-\var{mix\_rho} with only one mixing iteration.
+through one-center charges. This has been implemented in 
+mix\_rho.f90. Simple Thomas-Fermi screening and local-density-dependent 
+TF screening seem to work without modification.
 
 
 \end{document}
