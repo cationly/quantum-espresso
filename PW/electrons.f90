@@ -65,12 +65,13 @@ SUBROUTINE electrons()
 #endif
   !
   !!PAW]
-  USE grid_paw_variables, ONLY : really_do_paw, okpaw, tpawp, &
+  USE grid_paw_variables,   ONLY : really_do_paw, okpaw, tpawp, &
        ehart1, ehart1t, etxc1, etxc1t, deband_paw, descf_paw, &
-       rho1, rho1t, rho1new, rho1tnew
-  USE grid_paw_routines,  ONLY : compute_onecenter_potentials, &
-       delta_e_1, delta_e_1scf, &
-       mix_rho2, mix_rho3 !TEMP
+       rho1, rho1t, rho1new, rho1tnew, becnew
+  USE grid_paw_routines,    ONLY : compute_onecenter_potentials, &
+       compute_onecenter_charges, delta_e_1, delta_e_1scf
+  USE uspp,                 ONLY : becsum
+  USE uspp_param,           ONLY : nhm
   !!PAW]
   !
   IMPLICIT NONE
@@ -121,8 +122,7 @@ SUBROUTINE electrons()
   REAL (DP), ALLOCATABLE :: rhonew(:,:)
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !!PAW[  And this for PAW  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  COMPLEX (DP), ALLOCATABLE :: rhog1(:,:,:)
-  COMPLEX (DP), ALLOCATABLE :: rhog1t(:,:,:)
+  REAL(DP), ALLOCATABLE :: becstep(:,:,:)
   INTEGER :: na, i_what
   REAL (DP) :: correction1c
   !!PAW]  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  
@@ -202,37 +202,26 @@ SUBROUTINE electrons()
   CALL flush_unit( stdout )
   !
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  !%%%%%%%%%%%%%%%%%%%%          iterate !          %%%%%%%%%%%%%%%%%%%%%
+  !%%%%%%%%%%%%%%%%%%%%          iterate !          %%%%%E mix%%%%%%%%%%%%%%%%
   !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   !
-  !TEMP
   IF ( .not. ALLOCATED(rhog) ) ALLOCATE (rhog(ngm, nspin))
-  do is = 1, nspin
+  DO is = 1, nspin
      psic(:) = rho (:, is)
-     call cft3 (psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, -1)
+     CALL cft3 (psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, -1)
      rhog(:, is) = psic ( nl(:) )
-  end do
+  END DO
   !!PAW[
   IF (okpaw) THEN
-     IF ( .not. ALLOCATED(rhog1)  ) ALLOCATE (rhog1 (ngm, nspin, nat))
-     IF ( .not. ALLOCATED(rhog1t) ) ALLOCATE (rhog1t(ngm, nspin, nat))
-     DO na = 1, nat
+     IF ( .not. ALLOCATED(becstep) ) ALLOCATE (becstep(nhm*(nhm+1)/2,nat,nspin))
+     becstep (:,:,:) = 0.d0
+     DO na = 1, nat       
         IF (tpawp(ityp(na))) THEN
-           DO is = 1, nspin
-              psic(:) = rho1 (:, is, na)
-              CALL cft3 (psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, -1)
-              rhog1(:, is, na) = psic ( nl(:) )
-           END DO
-           DO is = 1, nspin
-              psic(:) = rho1t (:, is, na)
-              CALL cft3 (psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, -1)
-              rhog1t(:, is, na) = psic ( nl(:) )
-           END DO
+           becstep(:,na,:) = becsum(:,na,:)
         END IF
      END DO
   END IF
   !!PAW]
-  !TEMP
   DO idum = 1, niter
      !
      IF ( check_stop_now() ) RETURN
@@ -314,6 +303,7 @@ SUBROUTINE electrons()
         ! ... delta_e = - int rho(r) (V_H + V_xc)(r) dr
         !
         deband = delta_e()
+        ALLOCATE (rhognew(ngm, nspin))
         !!PAW[
         IF (okpaw) THEN
            DO na = 1, nat
@@ -326,32 +316,13 @@ SUBROUTINE electrons()
                  deband_paw(1:2,na)=0._DP
               END IF
            END DO
-        END IF
-        !!PAW]
-        !
-        !TEMP
-        ALLOCATE (rhognew(ngm, nspin))
-        !!PAW[
-        !!PAW : mix rho1 and rho1t in G-space
-        IF (okpaw) THEN
            CALL infomsg ('electrons','mixing several times ns if lda_plus_U',-1)
            IF (lda_plus_U) STOP 'electrons - not implemented'
+           ALLOCATE (becnew(nhm*(nhm+1)/2, nat, nspin) )
+           becnew(:,:,:) = 0.d0
            DO na = 1, nat
               IF (tpawp(ityp(na))) THEN
-                 DO is = 1, nspin
-                    psic(:) = rho1 (:, is, na)
-                    CALL cft3 (psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, -1)
-                    rhognew(:, is) = psic ( nl(:) )
-                 END DO
-                 CALL mix_rho2( rhognew, rhog1(:,:,na), nsnew, ns, mixing_beta, &
-                      dr2, tr2_min, iter, nmix, flmix, conv_elec )
-                 DO is = 1, nspin
-                    psic(:) = rho1t (:, is, na)
-                    CALL cft3 (psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, -1)
-                    rhognew(:, is) = psic ( nl(:) )
-                 END DO
-                 CALL mix_rho3( rhognew, rhog1t(:,:,na), nsnew, ns, mixing_beta, &
-                      dr2, tr2_min, iter, nmix, flmix, conv_elec )
+                 becnew(:,na,:) = becsum(:,na,:)
               END IF
            END DO
         END IF
@@ -364,11 +335,14 @@ SUBROUTINE electrons()
         end do
         !TEMP
         !
-        CALL mix_rho( rhognew, rhog, nsnew, ns, mixing_beta, &
+        CALL mix_rho( rhognew, rhog, becnew, becstep, nsnew, ns, mixing_beta, &
              dr2, tr2_min, iter, nmix, flmix, conv_elec )
-        !TEMP
+        !
         DEALLOCATE (rhognew)
-        !TEMP
+        !
+        !!PAW[
+        IF (okpaw) DEALLOCATE (becnew)
+        !!PAW]
         !
         ! ... for the first scf iteration it is controlled that the 
         ! ... threshold is small enough for the diagonalization to 
@@ -407,28 +381,11 @@ SUBROUTINE electrons()
            !TEMP
            !
            !!PAW[
-           !!PAW : bring back new one-center charges to R-space
+           !!PAW : calculates new one-center charges in R-space
            IF (okpaw) THEN
-              ALLOCATE (rho1new (nrxx, nspin, na) )
-              ALLOCATE (rho1tnew(nrxx, nspin, na) )
-              DO na = 1, nat
-                 IF (tpawp(ityp(na))) THEN
-                    DO is = 1, nspin
-                       psic( :) = (0.d0, 0.d0)
-                       psic( nl(:) ) = rhog1 (:, is, na)
-                       IF (gamma_only) psic( nlm(:) ) = CONJG (rhog1 (:, is, na))
-                       CALL cft3 (psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, +1)
-                       rho1new (:, is, na) = psic (:)
-                    END DO
-                    DO is = 1, nspin
-                       psic( :) = (0.d0, 0.d0)
-                       psic( nl(:) ) = rhog1t(:, is, na)
-                       IF (gamma_only) psic( nlm(:) ) = CONJG (rhog1t(:, is, na))
-                       CALL cft3 (psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, +1)
-                       rho1tnew(:, is, na) = psic (:)
-                    END DO
-                 END IF
-              END DO
+              ALLOCATE (rho1new (nrxx, nspin, nat) )
+              ALLOCATE (rho1tnew(nrxx, nspin, nat) )
+              CALL compute_onecenter_charges (becstep, rho1new, rho1tnew)
            END IF
            !!PAW]
            !
@@ -440,14 +397,8 @@ SUBROUTINE electrons()
                           omega, ehart, etxc, vtxc, etotefield, charge, vr )
            !
            !!PAW[
-           CALL compute_onecenter_potentials(rho1new,rho1tnew)
-           !!PAW]
-           !
-           ! ... estimate correction needed to have variational energy 
-           !
-           descf = delta_escf()
-           !!PAW[
            IF (okpaw) THEN
+              CALL compute_onecenter_potentials(rho1new,rho1tnew)
               DO na = 1, nat
                  IF (tpawp(ityp(na))) THEN
                     DO i_what = 1, 2
@@ -458,8 +409,13 @@ SUBROUTINE electrons()
                     descf_paw(1:2,na)=0._DP
                  END IF
               END DO
+              DEALLOCATE (rho1new, rho1tnew)
            END IF
            !!PAW]
+           !
+           ! ... estimate correction needed to have variational energy 
+           !
+           descf = delta_escf()
            !
            ! ... write the charge density to file
            !
@@ -467,9 +423,6 @@ SUBROUTINE electrons()
            CALL io_pot( 1, 'rho', rhonew, nspin )
            DEALLOCATE (rhonew )
            !TEMP
-           !!PAW[
-           IF (okpaw) DEALLOCATE (rho1new, rho1tnew)
-           !!PAW]
         ELSE
            !
            ! ... convergence reached: store V(out)-V(in) in vnew
@@ -779,6 +732,7 @@ SUBROUTINE electrons()
         CALL stop_clock( 'electrons' )
         !TEMP
         DEALLOCATE (rhog)
+        IF (okpaw) DEALLOCATE (becstep)
         !TEMP
         !
         RETURN

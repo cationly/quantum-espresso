@@ -39,6 +39,13 @@ module grid_paw_variables
        prad(:,:,:,:),         &! radial FT of P functions
        ptrad(:,:,:,:)          ! radial FT of \tilde{P} functions
 
+  ! Products \Sum_k (P_ij(k)*P_ij'(k))/k**2
+  COMPLEX(DP), ALLOCATABLE, TARGET :: &
+       prodp(:,:,:),              &! AE product in reciprocal space
+       prodpt(:,:,:),             &! PS product in reciprocal space
+       prod0p(:,:,:),             &! k=0 AE product in reciprocal space
+       prod0pt(:,:,:)              ! k=0 PS product in reciprocal space
+
   ! Analogous to rho in "scf" (PW/pwcom.f90) + index scanning atoms
   REAL(DP), ALLOCATABLE, TARGET :: &
        rho1(:,:,:),             &! 1center AE charge density in real space
@@ -103,6 +110,9 @@ module grid_paw_variables
   REAL(DP), ALLOCATABLE, TARGET :: &
        rho1new(:,:,:),             &! new 1center AE charge density in real space
        rho1tnew(:,:,:)              ! new 1center PS charge density in real space
+  ! new vectors needed for mixing of augm. channel occupations
+  REAL(DP), ALLOCATABLE :: &
+       becnew(:,:,:)       ! new augmentation channel occupations
 
   ! analogous to deband and descf in PW/electrons.f90
   REAL(DP), ALLOCATABLE :: &

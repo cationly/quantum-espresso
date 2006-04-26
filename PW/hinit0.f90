@@ -21,7 +21,7 @@ subroutine hinit0
   USE vlocal,    ONLY : strf
   USE wvfct,     ONLY : npw, g2kin, igk, igk_l2g
   USE io_files,  ONLY : iunigk
-  USE grid_paw_routines, ONLY : init_prad, set_paw_rhoc, init_paw_vloc, paw_grid_setlocal
+  USE grid_paw_routines, ONLY : init_prad, paw_prod_p, set_paw_rhoc, init_paw_vloc, paw_grid_setlocal
   !
   implicit none
   !
@@ -83,6 +83,10 @@ subroutine hinit0
   !
   call set_rhoc
   call set_paw_rhoc !!PAW!!
+  !
+  !!PAW!! calculate the products P_ij*P_kl
+  call paw_prod_p 
+  !!PAW!!
   !
   return
 end subroutine hinit0

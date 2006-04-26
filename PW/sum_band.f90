@@ -45,7 +45,7 @@ SUBROUTINE sum_band()
   USE mp,                   ONLY : mp_bcast
   !
   USE grid_paw_variables, ONLY: okpaw, rho1, rho1t
-  USE grid_paw_routines,  ONLY: compute_onecenter_charges, compute_onecenter_potentials
+  USE grid_paw_routines,  ONLY: compute_onecenter_charges
   !
   IMPLICIT NONE
   !
@@ -180,7 +180,7 @@ SUBROUTINE sum_band()
   !
   IF ( okvan ) CALL addusdens()
   !
-  IF ( okpaw ) CALL compute_onecenter_charges()
+  IF ( okpaw ) CALL compute_onecenter_charges (becsum,rho1,rho1t)
   !
   IF ( noncolin .AND. .NOT. domag ) rho(:,2:4)=0.D0
   !

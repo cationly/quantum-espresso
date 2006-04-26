@@ -31,7 +31,7 @@ SUBROUTINE init_run()
   CALL ggen()
   CALL summary()
   CALL allocate_nlpot()
-  CALL allocate_paw_internals()
+  CALL allocate_paw_internals()  !!PAW!!
   CALL allocate_locpot()
   CALL allocate_wfc()
   !
