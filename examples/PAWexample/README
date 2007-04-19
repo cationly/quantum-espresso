@@ -1,20 +1,25 @@
 
         Example on ``experimental'' PAW calculations with pw.x
         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-                  (last updated: GF & RM, Apr. 26, 2006)
+
+                  (GF & RM, last updated: Apr. 19, 2007)
+
 
 Test is performed on O atom and O_2 molecule.  The idea is the following:
 
-1) Generate an hard NC pseudopotential (NC1). This will be the
+1) Generate a hard NC pseudopotential (NC1). This will be the
    reference for all other calculations, also for PAW calculations because
    PAW datasets will be constructed with lnc2paw=.true.
-2) Generate an hard US PP (US1), and a PAW (PAW1) with the same augmentation
+2) Generate a hard US PP (US1), and a PAW (PAW1) with the same augmentation
    functions, that is \phi^{NC1}\phi^{NC1}-\phi^{US}\phi^{US}.  They
    should give the same results as NC1.
 3) Generate softer NC (NC2), US PP (US2), and PAW (PAW2) with the same
    augmentation functions, that is \phi^{NC2}\phi^{NC2}-\phi^{US}\phi^{US}.
    US2 should give the same results as NC2, while PAW2 should give the same
    results as PAW1 and NC1.
+4) Generate very soft PAW (PAW4) with smooth augmentation functions (sums of 
+   Bessel functions, see Kresse and Joubert, PRB 59, 1758 (1999) ) which 
+   reproduce the moments of the exact augmentation functions.    
 
 This folder contains:
 
