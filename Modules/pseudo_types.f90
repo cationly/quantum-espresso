@@ -51,7 +51,7 @@ TYPE :: paw_t
         aewfc(:,:), &!aewfc (ndm,nwfsx), &  ! all-electron wavefunctions
         pswfc(:,:), &!pswfc (ndm,nwfsx),        & ! pseudo wavefunctions
         proj(:,:), &!proj (ndm,nwfsx),     & ! projectors
-        augfun(:,:,:), &!augfun(ndm,nwfsx,nwfsx),      & ! augmentation functions
+        augfun(:,:,:,:), &!augfun(ndm,nwfsx,nwfsx,0:2*lmaxx+1),      & ! augmentation functions, augfun(:,:,:,0) are AE augm. functions
         augmom(:,:,:), &!augmom(nwfsx,nwfsx,0:2*lmaxx) , & ! moments of the augmentation functions
         aeccharge(:), &!aeccharge (ndm),  & ! AE core charge * 4PI r^2
         psccharge(:), &!psccharge (ndm),  & ! PS core charge * 4PI r^2
@@ -190,7 +190,7 @@ SUBROUTINE allocate_pseudo_paw( paw, size_mesh, size_nwfc, size_lmax )
   ALLOCATE ( paw%aewfc(size_mesh,size_nwfc) )
   ALLOCATE ( paw%pswfc(size_mesh,size_nwfc) )
   ALLOCATE ( paw%proj (size_mesh,size_nwfc) )
-  ALLOCATE ( paw%augfun(size_mesh,size_nwfc,size_nwfc) )
+  ALLOCATE ( paw%augfun(size_mesh,size_nwfc,size_nwfc,0:2*size_lmax+2) )
   ALLOCATE ( paw%augmom(size_nwfc,size_nwfc,0:2*size_lmax+1) )
   ALLOCATE ( paw%aeccharge(size_mesh) )
   ALLOCATE ( paw%psccharge(size_mesh) )

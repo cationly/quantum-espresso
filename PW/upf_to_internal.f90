@@ -166,7 +166,8 @@ subroutine set_pseudo_paw (is, pawset)
   USE constants, ONLY: FPI
   !
   USE grid_paw_variables, ONLY : tpawp, pfunc, ptfunc, aevloc_at, psvloc_at, &
-                                 aerho_atc, psrho_atc, kdiff
+                                 aerho_atc, psrho_atc, kdiff, &
+                                 augmom, nraug, which_paw_augfun, r2 !!NEW-AUG
   USE grid_paw_routines, ONLY : step_f
   !
   implicit none
@@ -178,7 +179,7 @@ subroutine set_pseudo_paw (is, pawset)
   !
   integer :: nb
   TYPE (paw_t) :: pawset
-  integer :: i,j, nrc, nrs
+  integer :: i,j, l, nrc, nrs
   real (DP) :: aux (ndmx), pow
   !
 #if defined __DO_NOT_CUTOFF_PAW_FUNC
@@ -252,8 +253,8 @@ subroutine set_pseudo_paw (is, pawset)
   !
   ! integral of augmentation charges vanishes for different values of l
   !
-  do i=1,pawset%nwfc
-     do j=1,pawset%nwfc
+  do i = 1, pawset%nwfc
+     do j = 1, pawset%nwfc
         if (pawset%l(i)==pawset%l(j)) then
            qqq(i,j,is) = pawset%augmom(i,j,0) !!gf spherical approximation
         else
@@ -261,8 +262,20 @@ subroutine set_pseudo_paw (is, pawset)
         end if
      end do
   end do
+  !! NEW-AUG !! 
+  nraug(is) = pawset%irc
+  dx (is) = pawset%dx
+  r2 (1:pawset%mesh, is) = pawset%r2  (1:pawset%mesh)
+  do l = 0, 2*pawset%lmax
+     do i = 1, pawset%nwfc
+        do j = 1, pawset%nwfc
+           augmom(i,j,l,is) = pawset%augmom(i,j,l)
+        end do 
+     end do
+  end do
+  !! NEW-AUG !!
   qfunc (1:pawset%mesh, 1:pawset%nwfc, 1:pawset%nwfc, is) = &
-       pawset%augfun(1:pawset%mesh,1:pawset%nwfc,1:pawset%nwfc)
+       pawset%augfun(1:pawset%mesh,1:pawset%nwfc,1:pawset%nwfc,0)
   !
   do i=1,pawset%nwfc
      do j=1,pawset%nwfc
@@ -287,9 +300,16 @@ subroutine set_pseudo_paw (is, pawset)
   ! ... Add augmentation charge to ptfunc already here.
   ! ... One should not need \tilde{n}^1 alone in any case.
   !
-  ptfunc(1:pawset%mesh, 1:pawset%nwfc, 1:pawset%nwfc, is) =         &
-       ptfunc (1:pawset%mesh, 1:pawset%nwfc, 1:pawset%nwfc, is) +   &
-       qfunc  (1:pawset%mesh, 1:pawset%nwfc, 1:pawset%nwfc, is)
+  !! NEW-AUG !! 
+  !which_paw_augfun='DEFAULT'
+  !which_paw_augfun='BESSEL'
+  which_paw_augfun='GAUSS'
+  IF (which_paw_augfun=='DEFAULT') THEN
+     ptfunc(1:pawset%mesh, 1:pawset%nwfc, 1:pawset%nwfc, is) =         &
+        ptfunc (1:pawset%mesh, 1:pawset%nwfc, 1:pawset%nwfc, is) +   &
+        qfunc  (1:pawset%mesh, 1:pawset%nwfc, 1:pawset%nwfc, is)
+  ENDIF
+  !! NEW-AUG !! 
   !
   !
   ! nqf is always 0 for this PAW format
