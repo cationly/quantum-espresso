@@ -46,6 +46,20 @@ module grid_paw_variables
        prod0p(:,:,:),             &! k=0 AE product in reciprocal space
        prod0pt(:,:,:)              ! k=0 PS product in reciprocal space
 
+!! NEW-AUG !!
+  ! Moments of the augmentation functions
+  REAL (DP) :: &
+       gifpaw(ndmx,lqmax+1)  ! auxiliary functions for PAW augm. functions !!TEMP-AUG!!
+  REAL (DP) :: &
+       r2(ndmx,npsx)    ! r**2 logarithmic mesh
+  REAL (DP) :: &
+       augmom(nbrx,nbrx,0:6,npsx)     ! moments of PAW augm. functions
+  INTEGER :: &
+       nraug(npsx)                 ! augm. functions cutoff parameter
+  CHARACTER(20)   :: &
+       which_paw_augfun         ! choose augm. function for PAW
+!! NEW-AUG !!
+
   ! Analogous to rho in "scf" (PW/pwcom.f90) + index scanning atoms
   REAL(DP), ALLOCATABLE, TARGET :: &
        rho1(:,:,:),             &! 1center AE charge density in real space

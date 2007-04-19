@@ -39,8 +39,7 @@ CONTAINS
     USE grid_paw_variables, ONLY : pp, ppt, prad, ptrad, rho1, rho1t, &
          vr1, vr1t, int_r2pfunc, int_r2ptfunc, ehart1, etxc1, vtxc1, &
          ehart1t, etxc1t, vtxc1t, aerho_core, psrho_core, &
-         dpaw_ae, dpaw_ps, &
-         aevloc, psvloc, aevloc_r, psvloc_r, &
+         dpaw_ae, dpaw_ps, aevloc, psvloc, aevloc_r, psvloc_r, &
          deband_paw, descf_paw, prodp, prodpt, prod0p, prod0pt
     !
     IMPLICIT NONE
@@ -110,18 +109,16 @@ CONTAINS
     USE gvect,      ONLY : g, gg
     USE lsda_mod,   ONLY : nspin
     USE us,         ONLY : nqxq, dq, nqx, tab, qrad
-    USE uspp,       ONLY : nhtol, nhtoj, nhtolm, dvan, qq, indv, ap, aainit, &
-         qq_so, dvan_so, okvan
-    USE uspp_param, ONLY : lmaxq, dion, betar, qfunc, qfcoef, rinner, nbeta, &
-         kkbeta, nqf, nqlc, lll, jjj, lmaxkb, nh, tvanp, nhm
+    USE uspp,       ONLY : qq, qq_so
+    USE uspp_param, ONLY : lmaxq, betar, qfunc, qfcoef, rinner, nbeta, &
+         kkbeta, nqf, nqlc, lll, jjj, lmaxkb, nh, tvanp, nhm, tvanp
     USE spin_orb,   ONLY : lspinorb, rot_ylm, fcoef
     !
     USE grid_paw_variables, ONLY: tpawp, pfunc, ptfunc, pp, ppt, prad, ptrad, &
-         int_r2pfunc, int_r2ptfunc, okpaw
+         int_r2pfunc, int_r2ptfunc, okpaw, which_paw_augfun, gifpaw, &
+         augmom
     !
     IMPLICIT NONE
-
-    ! NEW
     !
     REAL(DP), POINTER :: pfunc_(:,:,:,:), prad_(:,:,:,:), pp_(:,:,:), int_r2pfunc_(:,:,:)
     !
@@ -147,14 +144,13 @@ CONTAINS
     ! the denominator in KB case
     ! interpolated value
     INTEGER :: n1, m0, m1, n, li, mi, vi, vj, ijs, is1, is2, &
-         lk, mk, vk, kh, lh, sph_ind
+         lk, mk, vk, kh, lh, sph_ind, nnbrx, ll
     COMPLEX(DP) :: coeff, qgm(1)
     REAL(DP) :: spinor, ji, jk
+    CHARACTER*20 :: fname 
 
 !!$call start_clock ('init_us_1')
-
     IF (.NOT.okpaw) RETURN
-
     !
     !    Initialization of the variables
     !
@@ -165,7 +161,7 @@ CONTAINS
     ALLOCATE (besr( ndm))    
     ALLOCATE (qtot( ndm , nbrx , nbrx))
     ALLOCATE (ylmk0( lmaxq * lmaxq))    
-
+    !
     whattodo: DO i_what=1, 2
        ! associate a pointer to the AE or PS part
        NULLIFY(pfunc_,pp_,prad_)
@@ -247,7 +243,19 @@ CONTAINS
                             ENDDO
                             !!kk!! CALL simpson (kkbeta(nt), aux1, rab(1, nt), &
                             CALL simpson (msh(nt), aux1, rab(1, nt), &
-                                 prad_(iq,nmb,l + 1, nt) )
+                                 prad_(iq,nmb,l + 1, nt) ) 
+                            prad_ (iq, nmb, l + 1, nt) =     &
+                            prad_ (iq, nmb, l + 1, nt) * prefr 
+!! NEW-AUG !!
+                            IF ((i_what.EQ.2) .AND. &
+                            (which_paw_augfun/='DEFAULT')) THEN
+                               !
+                               prad_ (iq, nmb, l + 1, nt) =      &
+                               prad_ (iq, nmb, l + 1, nt) +  &
+                               qrad(iq, nmb, l + 1, nt) 
+                               !
+                            ENDIF
+!! NEW-AUG !!
                          ENDIF
                       ENDDO
                    ENDDO
@@ -255,10 +263,10 @@ CONTAINS
                 ENDDO
                 ! l
              ENDDO
-             prad_ (:, :, :, nt) = prad_ (:, :, :, nt)*prefr
+!             prad_ (:, :, :, nt) = prad_ (:, :, :, nt)*prefr
 !!$#ifdef __PARA
 !!$          call reduce (nqxq * nbrx * (nbrx + 1) / 2 * lmaxq, prad_ (1, 1, 1, nt) )
-!!$#endif
+!!$#endif     
           ENDIF
           ! ntyp
 
@@ -304,12 +312,19 @@ CONTAINS
                 DO mb = nb, nbeta (nt)
                    aux2(1:msh(nt)) = pfunc_(1:msh(nt), nb, mb, nt) * &
                         r(1:msh(nt),nt) * r(1:msh(nt),nt)
+!! NEW-AUG !!
+                   IF ( (i_what.EQ.2) .AND. &
+                   (which_paw_augfun/='DEFAULT') ) THEN
+                   aux2(1:msh(nt)) = aux2(1:msh(nt)) + augmom(nb, mb, 0, nt)* &
+                      gifpaw (1:msh(nt), 1) * r(1:msh(nt),nt) * r(1:msh(nt),nt)
+                   ENDIF
+!! NEW-AUG !!
                    CALL simpson (msh(nt), aux2, rab(1,nt), &
                         int_r2pfunc_(nb,mb,nt))
-#if defined __DEBUG_INIT_PRAD
-                   WRITE (200000+10000*i_what+100*nb+mb,'(3e20.10)') &
-                        (aux2(ir),rab(ir,nt),r(ir,nt),ir=1,mesh(nt))
-                   WRITE (*,*)200000+10000*i_what+100*nb+mb, &
+#if defined __DEBUG_NEWD_PAW_GRID
+!                   WRITE (200000+10000*i_what+100*nb+mb,'(3e20.10)') &
+!                        (aux2(ir),rab(ir,nt),r(ir,nt),ir=1,mesh(nt))
+                   WRITE (777,'(i6,e15.7)') 200000+10000*i_what+100*nb+mb, &
                         int_r2pfunc_(nb,mb,nt)
 #endif
                 END DO
@@ -317,7 +332,7 @@ CONTAINS
           END IF
        END DO
     END DO whattodo
-
+!STOP
     DEALLOCATE (ylmk0)
     DEALLOCATE (qtot)
     DEALLOCATE (besr)
@@ -339,13 +354,18 @@ CONTAINS
 #endif
 
 !!$    ! Look at the radial fourier transforms
-!!$    do nt = 1, ntyp
-!!$       do ih = 1, nbrx
-!!$          write (10000+nt*100+ih,'(e15.8)') qrad(1:nqxq,ih,1,nt)
+    DO nt = 1, ntyp
+       DO ih = 1, nbrx
+          DO ll = 1, lmaxq
+          !
+!          WRITE (10000+ll*1000+nt*100+ih,'(e15.6)') ptrad(1:nqxq,ih,ll,nt)
 !!$          write (20000+nt*100+ih,'(e15.8)') prad(1:nqxq,ih,1,nt)
 !!$          write (30000+nt*100+ih,'(e15.8)') ptrad(1:nqxq,ih,1,nt)
-!!$       end do
-!!$    end do
+          !CLOSE (UNIT=10000+nt*100+ih,STATUS='KEEP')
+          !
+          END DO
+       END DO
+    END DO
 
 !!$  call stop_clock ('init_us_1')
 #if defined __DEBUG_INIT_PRAD
@@ -360,6 +380,176 @@ CONTAINS
 #endif
     RETURN
   END SUBROUTINE init_prad
+
+!! NEW-AUG !!
+
+!#define __DEBUG_COMPUTE_AUGFUN
+! compute augmentation functions (Bessel or Gauss)
+! this routine is called by init_us_1
+  SUBROUTINE compute_pawaugfun
+    !
+    USE kinds,              ONLY : DP
+    USE atom,               ONLY: zmesh, mesh, r, rab, dx, msh
+    USE pseud,              ONLY: lmax
+    USE parameters,         ONLY : lmaxx, nbrx, lqmax, ndmx
+    USE constants,          ONLY : fpi
+    USE ions_base,          ONLY : ntyp => nsp
+    USE cell_base,          ONLY : omega, tpiba
+    USE gvect,              ONLY : g, gg
+    USE lsda_mod,           ONLY : nspin
+    USE us,                 ONLY : nqxq, dq, nqx, tab, qrad
+    USE uspp,               ONLY : qq, qq_so
+    USE uspp_param,         ONLY : lmaxq, betar, qfunc, qfcoef, rinner, &
+                    nbeta, kkbeta, nqf, nqlc, lll, jjj, lmaxkb, nh, tvanp, nhm
+    USE spin_orb,   ONLY : lspinorb, rot_ylm, fcoef
+    !
+    USE grid_paw_variables, ONLY: tpawp, okpaw, nraug, augmom, which_paw_augfun, gifpaw
+    !
+    IMPLICIT NONE
+    ! 
+    !     here a few local variables
+    !
+    INTEGER :: nt, ih, jh, nb, mb, nmb, l, m, ir, iq, is, startq, &
+         lastq, ilast, ndm, iok
+    ! various counters
+    REAL(DP), ALLOCATABLE :: aux (:)
+    ! various work space
+    REAL(DP) :: prefr, pref, q, qi, raux
+    ! the prefactor of the q functions
+    ! the prefactor of the beta functions
+    ! the modulus of g for each shell
+    ! q-point grid for interpolation
+    ! work space
+    REAL(DP) :: qc(2), xc(2), b1(2), b2(2)
+    REAL(DP), ALLOCATABLE :: j1(:,:)
+    INTEGER  :: nc          ! index Bessel funct
+    ! 
+    !
+    IF (.NOT.okpaw) RETURN
+    !
+    !    Initialization of the variables
+    !
+    ndm = MAXVAL (msh(1:ntyp))
+    ALLOCATE (j1 (ndm,2))    
+    ALLOCATE (aux ( ndm))      
+    !
+    j1(:,:) = 0.d0
+    gifpaw(:,:) = 0.d0
+    !
+    !   here we calculate the gi functions
+    !
+    CALL divide (nqxq, startq, lastq)
+    DO nt = 1, ntyp
+       !
+       IF (tpawp (nt) ) THEN
+          !
+          SELECT CASE (which_paw_augfun)
+          !
+          CASE ('BESSEL')
+             ! 
+             DO l = 0, nqlc (nt) - 1
+                !
+                CALL find_aug_qi(qc,nraug(nt),l,2,nt,iok)
+                IF (iok.ne.0) & 
+                   CALL errore('compute_augfun', 'problems with find_aug_qi',1)                
+                DO nc = 1, 2
+                   !
+                   CALL sph_bes(nraug(nt)+5,r(1,nt),qc(nc),l,j1(1,nc))
+                   b1(nc) = j1(nraug(nt),nc)
+                   aux(1:nraug(nt)) = j1(1:nraug(nt),nc) * &
+                                      r(1:nraug(nt),nt)**(l+2)
+                   CALL simpson (nraug(nt), aux, rab(1, nt), b2(nc) )
+                   !
+                ENDDO
+                xc(1) = b1(2) / (b1(2) * b2(1) - b1(1) * b2(2))
+                xc(2) = -1._dp * b1(1) * xc(1) / b1(2)
+                gifpaw(1:nraug(nt),l+1) = ( xc(1) * j1(1:nraug(nt),1) + &
+                    xc(2) * j1(1:nraug(nt),2) ) * r(1:nraug(nt),nt) ** 2
+                gifpaw((nraug(nt)+1):msh(nt),l+1) = 0._dp 
+                ! l
+             ENDDO
+             !
+          CASE ('GAUSS')
+             ! 
+             DO l = 0, nqlc (nt) - 1
+                !
+                gifpaw(1:msh(nt),l+1) = EXP(-(r(1:msh(nt),nt)**2) /  & 
+                                 (2._dp*0.25_dp**2)) * r(1:msh(nt),nt) **2  
+                CALL simpson (nraug(nt), gifpaw(1:nraug(nt),l+1), rab(1, nt), raux )
+                IF (ABS(raux) .LT. 1.d-8) THEN
+                   CALL errore('ld1_to_paw','norm of augmentation function too small',nb*100+mb)
+                END IF
+                gifpaw(1:msh(nt),l+1) = gifpaw(1:msh(nt),l+1) / raux 
+                !
+             ENDDO
+             ! 
+          END SELECT
+          !
+       ENDIF
+       ! ntyp
+    ENDDO
+    DEALLOCATE (j1)    
+       DEALLOCATE (aux)    
+    !
+  END SUBROUTINE compute_pawaugfun
+
+! in this subroutine the zeros of the 1st derivative of j_l are tabulated
+! (they are NOT explicitly evaluated)
+ !--------------------------------------------------------------------------
+SUBROUTINE find_aug_qi(qc,ik,lam,ncn,is,iok)
+  !--------------------------------------------------------------------------
+  !
+  !      This routine finds two values of q such that the
+  !      functions f_l have a derivative equal to
+  !      0 at the point ik
+  !  
+  USE kinds,      ONLY : DP
+  USE atom,       ONLY : r
+  IMPLICIT NONE
+
+  INTEGER ::      &
+       ik,    & ! input: the point corresponding to rcaug
+       lam,   & ! input: the angular momentum
+       ncn,   & ! input: the number of qi to compute
+       is,    & ! input: the type of the pseudo
+       iok      ! output: if 0 the calculation in this routine is ok
+
+  REAL (DP) :: &
+       qc(ncn)  ! output: the values of qi
+
+
+  REAL (DP) ::   &
+       zeroderjl (2,7) ! first two zeros of the first derivative of 
+                       ! spherical Bessel function j_l for l = 0,...,6
+
+  INTEGER ::    &
+       nc       ! counter on the q found
+
+  data zeroderjl / 0.0_dp,                 4.4934094579614_dp, &
+                   2.0815759780862_dp,     5.9403699890844_dp, &
+                   3.3420936578747_dp,     7.2899322987026_dp, &
+                   4.5140996477983_dp,     8.5837549433127_dp, &
+                   5.6467036213923_dp,     9.8404460168549_dp, &
+                   6.7564563311363_dp,    11.0702068269176_dp, &
+                   7.8510776799611_dp,    12.2793339053177_dp  /
+  iok=0
+  IF (ncn.gt.2) &
+       CALL errore('find_aug_qi','ncn is too large',1)
+
+  IF (lam.gt.6) &
+       CALL errore('find_aug_qi','l not programmed',1)
+  !
+  !    fix deltaq and the maximum step number
+  !
+  DO nc = 1, ncn
+     !
+     qc(nc) = zeroderjl (nc, lam + 1) / r (ik, is)
+     !
+  ENDDO
+  RETURN
+END SUBROUTINE find_aug_qi
+
+!! NEW-AUG !! 
 
 !
 !----------------------------------------------------------------------------
@@ -486,6 +676,7 @@ CONTAINS
 ! analogous to compute_onecenter_charges
 !
   SUBROUTINE compute_onecenter_charges(becnew, rho1new, rho1tnew)
+    !
     USE kinds,                ONLY : DP
     USE ions_base,            ONLY : nat, ntyp => nsp, ityp
     USE gvect,                ONLY : nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, &
@@ -499,7 +690,7 @@ CONTAINS
     !
     USE cell_base,          ONLY: at
     USE ions_base,          ONLY: tau, atm, ityp
-    USE grid_paw_variables, ONLY: prad, ptrad, pp, tpawp, okpaw
+    USE grid_paw_variables, ONLY: prad, ptrad, pp, tpawp, okpaw, which_paw_augfun
     USE us,                 ONLY: qrad
     !
     IMPLICIT NONE
@@ -532,7 +723,7 @@ CONTAINS
     ALLOCATE (qmod( ngm))    
     ALLOCATE (qgm( ngm))    
     ALLOCATE (ylmk0( ngm, lmaxq * lmaxq))    
-    
+    !  
     CALL ylmr2 (lmaxq * lmaxq, ngm, g, gg, ylmk0)
     DO ig = 1, ngm
        qmod (ig) = SQRT (gg (ig) )
@@ -637,7 +828,7 @@ CONTAINS
     REAL(DP), POINTER :: etxc1_(:), vtxc1_(:), ehart1_(:)
     !REAL(DP) :: rho_core(nrxx)
     REAL(DP) :: charge, alpha, spheropole
-    INTEGER :: na, ih, jh, ijh, nb, mb, is, nt
+    INTEGER :: na, ih, jh, ijh, nb, mb, is, nt, i
     !
     REAL(DP), POINTER :: rho1_(:,:,:), rho_core_(:,:), vr1_(:,:,:), int_r2pfunc_(:,:,:)
     INTEGER :: i_what
@@ -676,8 +867,11 @@ CONTAINS
              !
              CALL v_xc( rho1_, rho_core_, nr1, nr2, nr3, nrx1, nrx2, nrx3, &
                   nrxx, nl, ngm, g, nspin, alat, omega, etxc1_(na), vtxc1_(na), vr1_(:,:,na) )
-#if defined __DEBUG_ONECENTER_POTENTIALS
-             PRINT '(A,2f20.10)', 'XC', etxc1_(na), vtxc1_(na)
+#if defined __DEBUG_NEWD_PAW_GRID
+!             IF (i_what==2) THEN
+!                 WRITE (456,'(8f15.7)') (vr1_(i,1,1), i=1,nrxx)
+!                 PRINT '(A,2f20.10)', 'XC', etxc1_(na), vtxc1_(na)
+!             ENDIF
 #endif
              !
              spheropole=0.d0
@@ -693,9 +887,9 @@ CONTAINS
                             DO is = 1, nspin
                                spheropole = spheropole + &
                                     int_r2pfunc_(nb,mb,nt) * becsum(ijh,na,is)
-#if defined __DEBUG_ONECENTER_POTENTIALS
-                               WRITE (4,'(3i5,f20.10,2i5,f20.10)') ih, jh, ijh, &
-                                    becsum(ijh,na,is), nb, mb, int_r2pfunc_(nb,mb,nt)
+#if defined __DEBUG_NEWD_PAW_GRID
+!                               WRITE (4,'(3i5,f20.10,2i5,f20.10)') ih, jh, ijh, &
+!                                    becsum(ijh,na,is), nb, mb, int_r2pfunc_(nb,mb,nt)
 #endif
                             END DO
                          END IF
@@ -710,6 +904,12 @@ CONTAINS
              CALL v_h_grid( rho1_(:,:,na), nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, &
                   nl, ngm, gg, gstart, nspin, alat, omega, ehart1_(na), charge, vr1_(:,:,na), &
                   alpha, spheropole, na)
+#if defined __DEBUG_NEWD_PAW_GRID
+!             IF (i_what==2) THEN
+!                 WRITE (789,'(8f15.7)') (vr1_(i,1,1), i=1,nrxx)
+!                 PRINT '(A,2f20.10)', 'HARTREE', ehart1_(na)
+!             ENDIF
+#endif
           END IF
        END DO
 
@@ -1280,6 +1480,10 @@ SUBROUTINE v_h_grid( rho, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, &
      !
   END IF
   !
+#if defined __DEBUG_NEWD_PAW_GRID
+!                 WRITE (789,'(8f15.7)') (vr1_(i,1,1), i=1,nrxx)
+!                 PRINT '(A,2f20.10)', 'HARTREE1', ehart
+#endif
   CALL reduce( 1, ehart )
   !
   ! ... Set G=0 terms
@@ -1290,11 +1494,13 @@ SUBROUTINE v_h_grid( rho, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, &
   ! Add analytic contribution from gaussian charges to Hartree energy
   ehart = ehart + 0.5_DP * e2 * charge**2 / SQRT(2*PI*alpha)
   !
-#if defined __DEBUG_V_H_GRID
-  PRINT '(A,3f20.10)', 'V_G=0:              ', aux1(1,1), &
-       e2*(FPI*alpha*charge)/omega, e2*(2*PI/3*spheropole)/omega
-  PRINT '(A,3f20.10)', 'Hartree self-energy:', ehart, &
-     charge * aux1(1,1),    0.5_DP * e2 * charge**2 / SQRT(2*PI*alpha)
+#if defined __DEBUG_NEWD_PAW_GRID
+!  PRINT '(A,3f20.10)', 'SPHEROPOLE,CHARGE:              ', charge, &
+!       spheropole
+!  PRINT '(A,3f20.10)', 'V_G=0:              ', aux1(1,1), &
+!       e2*(FPI*alpha*charge)/omega, e2*(2*PI/3*spheropole)/omega
+!  PRINT '(A,3f20.10)', 'Hartree self-energy:', ehart, &
+!     charge * aux1(1,1),    0.5_DP * e2 * charge**2 / SQRT(2*PI*alpha)
 #endif
   ! 
   aux(:,:) = 0.D0
@@ -1397,9 +1603,16 @@ END SUBROUTINE v_h_grid
 !#define __DEBUG_NEWD_PAW_GRID
 SUBROUTINE newd_paw_grid
   !
+  !! NEW-AUG
+  USE gvect,              ONLY : nrxx
+  !! NEW-AUG
   USE grid_paw_variables,   ONLY : okpaw, prad, ptrad, vr1, vr1t, dpaw_ae, dpaw_ps, aevloc_r, psvloc_r
   !
   IMPLICIT NONE
+  !
+  !! NEW-AUG
+  INTEGER :: i
+  !! NEW-AUG
   !
   IF ( .NOT. okpaw ) RETURN
   !
@@ -1415,9 +1628,11 @@ SUBROUTINE newd_paw_grid
        SIZE(vr1,1),SIZE(vr1,2),SIZE(vr1,3),                 &
        SIZE(aevloc_r,1),SIZE(aevloc_r,2),                   &
        SIZE(dpaw_ae,1),SIZE(dpaw_ae,2),SIZE(dpaw_ae,3),SIZE(dpaw_ae,4))
-!!$#if defined __DEBUG_NEWD_PAW_GRID
-!!$  STOP 'STOP __DEBUG_NEWD_PAW_GRID'
-!!$#endif
+#if defined __DEBUG_NEWD_PAW_GRID
+!  WRITE (123,'(8f15.7)') (vr1t(i,1,1), i=1,nrxx)
+  !WRITE (456,'(8f15.7)') (psvloc_r(i,1), i=1,nrxx)
+!  STOP 'STOP __DEBUG_NEWD_PAW_GRID'
+#endif
   !
 CONTAINS
   !
@@ -1536,8 +1751,8 @@ CONTAINS
     CALL reduce( nhm * nhm * nat * nspin, dpaw_ )
     !
 #if defined __DEBUG_NEWD_PAW_GRID
-    PRINT *, 'D - D1 or D1~'
-    PRINT '(8f11.3)', ((dpaw_(jh,ih,1,1),jh=1,nh(nt)),ih=1,nh(nt))
+!    PRINT *, 'D - D1 or D1~'
+!    PRINT '(8f15.7)', ((dpaw_(jh,ih,1,1),jh=1,nh(nt)),ih=1,nh(nt))
 #endif
     !
     DEALLOCATE( aux, qgm_na, qgm, qmod, ylmk0 )

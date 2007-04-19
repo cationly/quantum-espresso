@@ -41,6 +41,11 @@ subroutine init_us_1
   USE uspp_param, ONLY : lmaxq, dion, betar, qfunc, qfcoef, rinner, nbeta, &
                          kkbeta, nqf, nqlc, lll, jjj, lmaxkb, nh, tvanp, nhm
   USE spin_orb,   ONLY : lspinorb, rot_ylm, fcoef
+!! NEW-AUG !!
+  USE grid_paw_variables,   ONLY : really_do_paw, okpaw, tpawp, augmom, &
+                                   which_paw_augfun, gifpaw 
+  USE grid_paw_routines,    ONLY : compute_pawaugfun
+!! NEW-AUG !!
   !
   implicit none
   !
@@ -66,7 +71,7 @@ subroutine init_us_1
              lk, mk, vk, kh, lh, sph_ind
   complex(DP) :: coeff, qgm(1)
   real(DP) :: spinor, ji, jk
-
+  !
   call start_clock ('init_us_1')
   !
   !    Initialization of the variables
@@ -207,9 +212,18 @@ subroutine init_us_1
   !
   !   here for the US types we compute the Fourier transform of the
   !   Q functions.
-  !
+  !   
   call divide (nqxq, startq, lastq)
   do nt = 1, ntyp
+     !
+!! NEW-AUG !!
+     if ((tpawp(nt)) .and. (which_paw_augfun/='DEFAULT')) then
+        !
+        CALL compute_pawaugfun
+        !
+     endif
+!! NEW-AUG !!
+     !
      if (tvanp (nt) ) then
         do l = 0, nqlc (nt) - 1
            !
@@ -223,13 +237,26 @@ subroutine init_us_1
                       (l <= lll (nb, nt) + lll (mb, nt) )        .and. &
                       (mod (l + lll (nb, nt) + lll (mb, nt), 2) == 0) ) then
                     do ir = 1, kkbeta (nt)
-                       if (r (ir, nt) >= rinner (l + 1, nt) ) then
-                          qtot (ir, nb, mb) = qfunc (ir, nb, mb, nt)
+!! NEW-AUG !!
+                       !
+                       if (tpawp(nt) .and. (which_paw_augfun/='DEFAULT')) then
+                          !
+                          qtot (ir, nb, mb) = augmom (nb, mb, l, nt) * &
+                                              gifpaw (ir, l+1) 
+                          !
                        else
-                          ilast = ir
+                          !
+                          if (r (ir, nt) >= rinner (l + 1, nt) ) then
+                             qtot (ir, nb, mb) = qfunc (ir, nb, mb, nt)
+                          else
+                             ilast = ir
+                          endif
+                          !
                        endif
+                       !
+!! NEW-AUG !!
                     enddo
-                   if (rinner (l + 1, nt) > 0.d0) &
+                    if (rinner (l + 1, nt) > 0.d0) &
                          call setqf(qfcoef (1, l+1, nb, mb, nt), &
                                     qtot(1,nb,mb), r(1,nt), nqf(nt),l,ilast)
                  endif
@@ -351,7 +378,6 @@ subroutine init_us_1
   deallocate (besr)
   deallocate (aux1)
   deallocate (aux)
-
   call stop_clock ('init_us_1')
   return
 end subroutine init_us_1
