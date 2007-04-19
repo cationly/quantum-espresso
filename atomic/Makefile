@@ -95,13 +95,14 @@ MODULES = \
 ../Modules/io_files.o \
 ../Modules/pseudo_types.o \
 ../Modules/readpseudo.o \
+../Modules/uspp.o \
 
 TLDEPS= bindir mods libs pw
 
 all: tldeps ld1.x
 
 ld1.x: $(LD1OBJS) ld1.o $(LD1MODS) $(MODULES) $(LIBOBJS)
-	$(MPIF90) $(LDFLAGS) -o ld1.x \
+	$(F90) $(LDFLAGS) -o ld1.x \
 		ld1.o $(LD1OBJS) $(LD1MODS) $(MODULES) $(LIBOBJS) $(LIBS)
 	- ( cd ../bin ; ln -fs ../atomic/ld1.x . )
 
