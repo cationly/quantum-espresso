@@ -13,7 +13,8 @@ integrals\\WORKING NOTES, USE WITH CARE}
 
 \author{Guido Fratesi and Riccardo Mazzarello}
 
-\date{Last modified: April 26, 2006}
+\date{Last modified: April 19, 2007}
+
 
 % 21cm = 2x\hoffset + \textwidth
 \setlength{\hoffset}{-1in}\addtolength{\hoffset}{1.6cm} %GF>
@@ -42,7 +43,8 @@ branched with tag \var{develop\_PAW}), slightly adapted for doing
 similar things on one-center densities rather than US one
 (atom-by-atom, separately).
 
-Simple tests have been performed for magnetic and non-magnetic O and O$_2$,
+Simple tests have been performed for magnetic and non-magnetic O and O$_2$
+(still to be tested for ``Bessel'' augmentation functions),
 obtaining agreement with reference NC calculations within 1mRyd (see
 \var{examples/PAWexample}), the origin of this small discrepancy yet
 to be investigated.
@@ -52,16 +54,14 @@ to be investigated.
 Numerics on grids: Check the 1mRyd accuracy; Beware that \var{alpha}
 parameter for gaussian charges added and removed is fixed.
 
-Compensation functions currently reproduce only zeroth moments.  This
-should be fixed, by splitting them in separate $L$ channels, see PRB
-{\bf 59}, 1758 (1999), Eq.~(27).
-
-Compensation functions should be allowed to not mimic the true
-augmentation functions.  Currently, \var{ld1.x} can generate PAW with
-pure gaussian compensation functions, but right now the case $l\neq0$
-is not properly done because in this case one should multiply the
-gaussian times some $r^l$ or similar---otherwise the function is
-ill-defined in the origin.
+Compensation functions are splitted in separate $L$ channels.  
+Currently, \var{ld1.x} can generate PAW with
+a) sum of spherical Bessel functions which reproduce the moments of the 
+exact augmentation functions (see PRB {\bf 59}, 1758 (1999), to be tested
+for lattices with a basis); b) pure gaussian compensation functions 
+(right now the case $l\neq0$ is not properly done because in this case 
+one should multiply the gaussian times some $r^l$ or similar---otherwise 
+the function is ill-defined in the origin).
 
 After that, we should proceed substituting routines using radial grids
 (or better, analytic summations) for routines using regular (hard FFT)
@@ -607,22 +607,24 @@ $\rho_{ij}$=\var{becsum}.  The following is the structure of
   allocate_wfc()
   openfil()
   hinit0()
-    local and NL PS, core charge
-   *init_paw_vloc
-   *init_prad()
-   *paw_grid_setlocal
-   *set_paw_rhoc()
-   *paw_prod_p()
+     local and NL PS, core charge
+    *init_paw_vloc
+     init_us_1
+       *compute_pawaugfun
+     *init_prad()
+     *paw_grid_setlocal
+     *set_paw_rhoc()
+     *paw_prod_p()
   potinit()
-    rho = sum rho_at  ->  vr
-   *atomic_becsum()
-   *compute_onecenter_charges()
-   *compute_onecenter_potentials()
+      rho = sum rho_at  ->  vr
+     *atomic_becsum()
+     *compute_onecenter_charges()
+     *compute_onecenter_potentials()
   newd()
-   *newd_paw_grid()
+     *newd_paw_grid()
   wfcinit()
-    solve H in the basis of
-    atomic wfcs
+      solve H in the basis of
+      atomic wfcs
 \end{verbatim}
 Tentative idea: use as \var{becsum} at first iteration the atomic one,
 hopefully corresponding to the atomic density (new routine
