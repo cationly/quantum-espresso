@@ -1,10 +1,10 @@
 #!/bin/bash
 
 NCONF=11
-CALCLIST="NC1 NC2 US1 US2 PAW1 PAW2 PAW3"
+CALCLIST="NC1 NC2 US1 US2 PAW1 PAW2 PAW3 PAW4"
 
 first="NC1"
-last="PAW3"
+last="PAW4"
 
 echo "# occ AE "$CALCLIST > s.dat
 echo "# occ AE "$CALCLIST > p.dat
@@ -48,18 +48,18 @@ set origin 0,0
 set size 0.5,1
 set ylabel "E(2s): PS - AE (Ry)"
 set key bottom right
-plot 's.dat' u 1:3 t "NC1", 's.dat' u 1:4 t "NC2", 's.dat' u 1:5 t "US1", 's.dat' u 1:6 t "US2", 's.dat' u 1:7 t "PAW1" w p, 's.dat' u 1:8 t "PAW2" w p, 's.dat' u 1:9 t "PAW3" w p
+plot 's.dat' u 1:3 t "NC1", 's.dat' u 1:4 t "NC2", 's.dat' u 1:5 t "US1", 's.dat' u 1:6 t "US2", 's.dat' u 1:7 t "PAW1" w p, 's.dat' u 1:8 t "PAW2" w p, 's.dat' u 1:9 t "PAW3" w p, 's.dat' u 1:10 t "PAW4" w p
 set nokey
 set origin 0.55,0.5
 set size 0.45,0.5
 set ylabel "E(2p): PS - AE (Ry)"
-plot 'p.dat' u 1:3 t "NC1", 'p.dat' u 1:4 t "NC2", 'p.dat' u 1:5 t "US1", 'p.dat' u 1:6 t "US2", 'p.dat' u 1:7 t "PAW1" w p, 'p.dat' u 1:8 t "PAW2" w p, 'p.dat' u 1:9 t "PAW3" w p
+plot 'p.dat' u 1:3 t "NC1", 'p.dat' u 1:4 t "NC2", 'p.dat' u 1:5 t "US1", 'p.dat' u 1:6 t "US2", 'p.dat' u 1:7 t "PAW1" w p, 'p.dat' u 1:8 t "PAW2" w p, 'p.dat' u 1:9 t "PAW3" w p, 'p.dat' u 1:10 t "PAW4" w p
 set origin 0.55,0.0
 set size 0.45,0.5
 set ylabel "deltaE: PS - AE (Ry)"
-plot 'e.dat' u 1:3 t "NC1", 'e.dat' u 1:4 t "NC2", 'e.dat' u 1:5 t "US1", 'e.dat' u 1:6 t "US2", 'e.dat' u 1:7 t "PAW1" w p, 'e.dat' u 1:8 t "PAW2" w p, 'e.dat' u 1:9 t "PAW3" w p
+plot 'e.dat' u 1:3 t "NC1", 'e.dat' u 1:4 t "NC2", 'e.dat' u 1:5 t "US1", 'e.dat' u 1:6 t "US2", 'e.dat' u 1:7 t "PAW1" w p, 'e.dat' u 1:8 t "PAW2" w p, 'e.dat' u 1:9 t "PAW3" w p, 'e.dat' u 1:10 t "PAW4" w p
 set nomultiplot
-! gv -antialias -scale 3 all.eps &
+! ggv -antialias -scale 3 all.eps &
 EOF
 
 exit
@@ -86,5 +86,5 @@ set size 0.45,0.5
 set ylabel "deltaE:  PAW - reference (Ry)"
 plot 'e.dat' u 1:7 t "PAW-AE-QAE", 'e.dat' u 1:(\$8-\$4) t "PAW-NChard-Qhard" w p, 'e.dat' u 1:(\$9-\$4) t "PAW-NChard-Qsmooth"
 set nomultiplot
-! gv -antialias -scale 3 all2.eps &
+! ggv -antialias -scale 3 all2.eps &
 EOF

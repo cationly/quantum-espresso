@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PW=~/develop_PAW/bin/pw.x
+PW=~/Codes/espresso-develop_PAW/bin/pw.x
 
 fileout="E_O1.dat"
 
@@ -19,8 +19,6 @@ echo -n $ecutwfc >> $fileout
 for pseudo in $PSEUDOLIST; do
 echo Now: $ecutwfc $pseudo
 
-if [ $1 ]; then
-if [ ! -f O1_${ecutwfc}_${pseudo}.out ]; then
 cat <<EOF | $PW > O1_${ecutwfc}_${pseudo}.out
 O1
 Oxygen
@@ -55,8 +53,6 @@ O   0.5000   0.0000   0.0000
 K_POINTS automatic
  1 1 1 0 0 0
 EOF
-fi
-fi
 
 energy=$(awk '/\!/ {print $5}' O1_${ecutwfc}_${pseudo}.out)
 echo -n " $energy " >> $fileout

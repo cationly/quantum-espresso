@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LD1=~/develop_PAW/bin/ld1.x
+LD1=~/Codes/espresso-develop_PAW/bin/ld1.x
 
 FUNC="PBE"
 
@@ -32,6 +32,10 @@ CALC[7]=PAW3
 PROG[7]=$LD1
 SUFF[7]=PAW
 
+CALC[8]=PAW4
+PROG[8]=$LD1
+SUFF[8]=PAW
+
 NCONF=11
 
 for ((i=0;((i<NCONF));i++)); do
@@ -47,7 +51,7 @@ cat <<EOF > testconfigs
 2P  2  1  4.00  0.00  1.40  1.60  1
 EOF
 
-for ((c=1;((c<=7));c++)); do
+for ((c=1;((c<=8));c++)); do
 
 cat <<EOF > ${CALC[$c]}/${CALC[$c]}.tst.in
  &input
