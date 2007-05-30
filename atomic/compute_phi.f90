@@ -32,7 +32,7 @@ subroutine compute_phi(lam,ik,iknorm,nwf0,ns,xc,iflag,iok,occ)
   real(DP) :: &
        xc(8), occ
   !
-  real(DP), parameter :: pi=3.14159265358979_DP
+  real(DP), parameter :: pi=3.14159265358979_DP, eps8=1.d-8
   real(DP) :: &
        fae,    & ! the value of the all-electron function
        f1ae,   & ! its first derivative
@@ -289,7 +289,10 @@ subroutine compute_phi(lam,ik,iknorm,nwf0,ns,xc,iflag,iok,occ)
 140        format (5x,' Using 4 Bessel functions for this wfc,', &
                 ' rho(0) =',f6.3)
      end if
-     !write(6,'(5x," AE norm = ",f6.3,"  PS norm = ",f6.3)') faenor, psnor
+     if (abs (faenor - psnor) .gt. eps8) then 
+        write(6,'(5x," AE norm = ",f12.8,"  PS norm = ",f12.8)') faenor, psnor
+        call errore("compute_phi"," AE and PS norm are different",1)
+     end if
   end if
   !
   !      check for absence of nodes in the pseudo wavefunction
