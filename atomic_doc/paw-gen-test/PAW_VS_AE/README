@@ -1,0 +1,25 @@
+This directory contains a few test for accuracy of PAW calculations. The
+test consists of:
+
+1) reference AE calculation
+2) reference NC calculation with small cutoff radii (NChard)
+3) NC with standard cutoff radii
+4) US with standard cutoff radii
+5) US with small cutoff radii (UShard)
+6) PAW with standard cutoff radii, exact augmentation functions (PAW-AE-QAE)
+7) PAW with standard cutoff radii, Bessel-type augmentation functions (PAW-AE-BESS)
+8) PAW with standard cutoff radii, Gaussian-type augmentation functions (PAW-AE-BESS)
+
+Pseudopotentials/datasets are gerenated by 
+./genAll.bash
+
+Three tests are performed by
+./testAll-s.bash (for a scann in the 2S-orbital occupation from 2 to 0)
+./testAll-p.bash (for a scann in the 2P-orbital occupation from 4 to 2)
+./testAll-sp.bash (for a combined scann in 2S and 2P-orbital occupations from 2 & 4 tp 0 & 6 )
+
+Results of the tests can be viewed by
+./viewAll.bash
+Everyting toghether can be done by 
+./testAll3.bash
+
