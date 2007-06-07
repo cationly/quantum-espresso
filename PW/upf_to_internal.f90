@@ -157,7 +157,7 @@ subroutine set_pseudo_paw (is, pawset)
        chi, oc, nchi, lchi, jchi, rho_at, rho_atc, nlcc
   USE pseud, ONLY: lloc, lmax, zp
   USE uspp_param, ONLY: vloc_at, dion, betar, qqq, qfcoef, qfunc, nqf, nqlc, &
-       rinner, nbeta, kkbeta, lll, jjj, psd, tvanp
+       rinner, nbeta, kkbeta, lll, jjj, psd, tvanp, augfun
   USE funct, ONLY: dft, which_dft, ismeta, ishybrid
   !
   USE ions_base, ONLY: zv
@@ -167,7 +167,7 @@ subroutine set_pseudo_paw (is, pawset)
   !
   USE grid_paw_variables, ONLY : tpawp, pfunc, ptfunc, aevloc_at, psvloc_at, &
                                  aerho_atc, psrho_atc, kdiff, &
-                                 augmom, nraug, which_paw_augfun, r2 !!NEW-AUG
+                                 augmom, nraug, r2 !!NEW-AUG
   USE grid_paw_routines, ONLY : step_f
   !
   implicit none
@@ -273,9 +273,10 @@ subroutine set_pseudo_paw (is, pawset)
         end do 
      end do
   end do
-  !! NEW-AUG !!
   qfunc (1:pawset%mesh, 1:pawset%nwfc, 1:pawset%nwfc, is) = &
        pawset%augfun(1:pawset%mesh,1:pawset%nwfc,1:pawset%nwfc,0)
+  augfun(1:pawset%mesh,1:pawset%nwfc,1:pawset%nwfc,0:2*pawset%lmax,is) = &
+       pawset%augfun(1:pawset%mesh,1:pawset%nwfc,1:pawset%nwfc,0:2*pawset%lmax)
   !
   do i=1,pawset%nwfc
      do j=1,pawset%nwfc
@@ -299,18 +300,6 @@ subroutine set_pseudo_paw (is, pawset)
   !
   ! ... Add augmentation charge to ptfunc already here.
   ! ... One should not need \tilde{n}^1 alone in any case.
-  !
-  !! NEW-AUG !! 
-  !which_paw_augfun='DEFAULT'
-  !which_paw_augfun='BESSEL'
-  which_paw_augfun='GAUSS'
-  IF (which_paw_augfun=='DEFAULT') THEN
-     ptfunc(1:pawset%mesh, 1:pawset%nwfc, 1:pawset%nwfc, is) =         &
-        ptfunc (1:pawset%mesh, 1:pawset%nwfc, 1:pawset%nwfc, is) +   &
-        qfunc  (1:pawset%mesh, 1:pawset%nwfc, 1:pawset%nwfc, is)
-  ENDIF
-  !! NEW-AUG !! 
-  !
   !
   ! nqf is always 0 for this PAW format
   ! qfcoef(1:pawset%nqf, 1:pawset%nqlc, 1:pawset%nwfc, 1:pawset%nwfc, is ) = 0._dp

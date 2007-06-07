@@ -347,40 +347,56 @@ SUBROUTINE cft3s( f, n1, n2, n3, nx1, nx2, nx3, sign )
      !
 #if defined (__FFT_MODULE_DRV) && ( defined __AIX || defined __FFTW )
      !
+!     write (*,*) "CALL cfft3ds"
      CALL cfft3ds( f, n1, n2, n3, nx1, nx2, nx3, 1, dffts%isind, dffts%iplw )
      !
-#elif defined (__FFT_MODULE_DRV)
+#else
+#if defined (__FFT_MODULE_DRV)
      !
+!     write (*,*) "CALL cfft3d"
      CALL cfft3d( f, n1, n2, n3, nx1, nx2, nx3, 1 )
      !
-#elif defined (NOPENCILS)
+#else
+#if defined (NOPENCILS)
      !
+!     write (*,*) "CALL cft_3"
      CALL cft_3( f, n1, n2, n3, nx1, nx2, nx3, 2, 1 )
      !
 #else
      !
+!     write (*,*) "CALL cfts_3"
      CALL cfts_3( f, n1, n2, n3, nx1, nx2, nx3, 2, 1, dffts%isind, dffts%iplw )
      !
+#endif
+#endif
 #endif
      !
   ELSE IF ( sign == -2 ) THEN
      !
 #if defined (__FFT_MODULE_DRV) && ( defined __AIX || defined __FFTW )
      !
+!     write (*,*) "CALL cfft3ds"
      CALL cfft3ds( f, n1, n2, n3, nx1, nx2, nx3, -1, dffts%isind, dffts%iplw )
      !
-#elif defined (__FFT_MODULE_DRV)
+#else
+#if defined (__FFT_MODULE_DRV)
      !
+!     write (*,*) "CALL cfft3d"
      CALL cfft3d( f, n1, n2, n3, nx1, nx2, nx3, -1 )
      !
-#elif defined (NOPENCILS)
+#else
+#if defined (NOPENCILS)
      !
+!     write (*,*) "CALL cft_3"
      CALL cft_3( f, n1, n2, n3, nx1, nx2, nx3, 2, -1 )
      !
 #else
      !
+!     write (*,*) "CALL cfts_3"
      CALL cfts_3( f, n1, n2, n3, nx1, nx2, nx3, 2, -1, dffts%isind, dffts%iplw )
      !
+#endif
+#endif
 #endif
      !
   ELSE

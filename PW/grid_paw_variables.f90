@@ -29,6 +29,8 @@ module grid_paw_variables
        pfunc(ndmx,nbrx,nbrx,npsx), &! AE: \phi_{mu}(|r|)-\phi_{nu}(|r|)
        ptfunc(ndmx,nbrx,nbrx,npsx)  ! PS: \tilde{\phi}_{mu}(|r|)-\tilde{\phi}_{nu}(|r|)
 
+  REAL(DP), TARGET :: &
+       augfun(ndmx,nbrx,nbrx,0:lqmax,npsx) 
   ! Analogous to qq in "uspp_param" (Modules/uspp.f90)
   REAL(DP), ALLOCATABLE, TARGET :: &
        pp(:,:,:),             &! the integrals of p functions in the solid
@@ -56,8 +58,6 @@ module grid_paw_variables
        augmom(nbrx,nbrx,0:6,npsx)     ! moments of PAW augm. functions
   INTEGER :: &
        nraug(npsx)                 ! augm. functions cutoff parameter
-  CHARACTER(20)   :: &
-       which_paw_augfun         ! choose augm. function for PAW
 !! NEW-AUG !!
 
   ! Analogous to rho in "scf" (PW/pwcom.f90) + index scanning atoms
@@ -96,6 +96,9 @@ module grid_paw_variables
   REAL(DP), ALLOCATABLE, TARGET :: &
        aevloc(:,:),            &! AE local 1-c potential for each atom type
        psvloc(:,:)              ! PS local 1-c potential for each atom type
+  !
+  REAL(DP), ALLOCATABLE :: &
+       radial_distance(:,:)     ! radial distance from na (minimum image conv)
 
   ! Analogous to vltot in "scf" (PW/pwcom.f90)
   REAL(DP), ALLOCATABLE, TARGET :: &

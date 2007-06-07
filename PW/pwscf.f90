@@ -82,7 +82,9 @@ PROGRAM pwscf
      !
   ELSE
      !
+     write (*,*) "ok 0"
      CALL init_run()
+     write (*,*) "ok 1"
      !
      istep = 0
      !
@@ -96,12 +98,14 @@ PROGRAM pwscf
         !
      ELSE
         !
+     write (*,*) "ok 2"
         main_loop: DO
            !
            istep = istep + 1
            !
            ! ... electronic self-consistentcy
            !
+     write (*,*) "ok 3"
            CALL electrons()
            !
            IF ( .NOT. conv_elec ) CALL stop_run( conv_elec )

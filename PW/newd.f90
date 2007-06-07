@@ -194,7 +194,7 @@ SUBROUTINE newd()
   ELSE
      !
      IF (okpaw) CALL newd_paw_grid()
-!!$  PRINT *, 'D - D1 - D~1'
+!!$  PRINT *, 'D + D1 - D~1'
 !!$  PRINT '(8f11.3)', ((dpaw_ae(jh,ih,1,1)-dpaw_ps(jh,ih,1,1),jh=1,nh(1)),ih=1,nh(1))
      !
      DO na = 1, nat
