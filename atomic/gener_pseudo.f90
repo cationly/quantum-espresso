@@ -33,7 +33,7 @@ subroutine gener_pseudo
   use atomic_paw, only : ld1_to_paw, paw_to_ld1
   implicit none
 
-  integer ::   &
+  integer ::  &
        ik,    &  ! the point corresponding to rc
        ikus,  &  ! the point corresponding to rc ultrasoft
        ikloc, &  ! the point corresponding to rc local
@@ -397,7 +397,7 @@ subroutine gener_pseudo
      !
      ! create the 'pawsetup' object containing the atomic setup for PAW
      call ld1_to_paw ( pawsetup,                                         &
-          symbol, zval, mesh, r, r2, sqr, dx, maxval(ikk(1:nbeta)), ikk, &
+          symbol, zval, mesh, r, r2, sqr, dx, paw_rmatch_augfun, ikk,    &
           nbeta, lls, ocs, enls, psipaw, phis, betas, qvan, kindiff,     &
           nlcc, aeccharge, psccharge, vpotpaw, vpsloc, which_paw_augfun )
      !

@@ -85,9 +85,9 @@ implicit none
             call vxc_t(rh,rhc,lsd,vxcp)
             if (gga) then
                f3(i) = exc_t(rh,rhc,lsd)*(rho_tot+rhoc(i)) &
-                     + egc(i)*r2(i)*fourpi  &
-                     - exc_t(rh0,rhc,lsd)*rhoc(i) &
-                     - egcc(i)*r2(i)*fourpi
+                     + egc(i)*r2(i)*fourpi  
+!                     - exc_t(rh0,rhc,lsd)*rhoc(i) &
+!                     - egcc(i)*r2(i)*fourpi
                f8(i) = exc_t(rh0,rhc,lsd)*rhoc(i) + &
                        egcc(i)*r2(i)*fourpi
                f2(i) =-(vgc(i,1)+vxcp(1))*rhos(i,1) &
@@ -125,6 +125,7 @@ implicit none
       if (nlcc) then
          ecc=    int_0_inf_dr(f8,r,r2,dx,mesh,2)
          write(6,'(5x,''Core only energy '',f15.8 )') ecc
+         ecc= 0.d0
       endif
 !
       epseu=0.0_DP

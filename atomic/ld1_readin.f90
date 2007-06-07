@@ -70,6 +70,7 @@ subroutine ld1_readin
        lpaw,  &    ! if true create a PAW dataset
        lnc2paw, &  ! if true the PAW dataset is generated on a NC one
        which_paw_augfun , & ! choose augmentation functions for PAW
+       paw_rmatch_augfun, & ! define matching radius for aumentation functions
        rcutnc2paw,    & ! cutoff radius for NC wfcs to be used for PAW generat.
        file_pseudopw, & ! output file where the pseudopotential is written
        file_screen,   & ! output file for the screening potential
@@ -237,6 +238,7 @@ subroutine ld1_readin
      lpaw = .false.
      lnc2paw = .false.
      which_paw_augfun = 'AE'
+     paw_rmatch_augfun=0.0_dp
      rcutnc2paw(:) = 0.0_dp
 
      read(5,inputp,err=500,iostat=ios)

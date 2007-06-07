@@ -224,6 +224,7 @@ module ld1inc
   type(paw_t) :: &
        pawsetup    ! the PAW dataset
   real(DP) ::       &
+       paw_rmatch_augfun,& ! define the matching radius for paw.aug.fun.
        psipaw(ndm,nwfsx),& ! the all-electron wavefunctions for any beta
        aeccharge(ndm),   & ! true, not smoothened, AE core charge for PAW
        psccharge(ndm)      ! smoothened core charge for PAW
