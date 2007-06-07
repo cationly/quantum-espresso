@@ -1,11 +1,12 @@
 #!/bin/bash
 
-LD1=~/Codes/espresso-develop_PAW/bin/ld1.x
+PWROOT=$HOME/QE/PAW/espresso/
+LD1=$PWROOT/bin/ld1.x
 
 RNC=1.40
 RNChard=1.20
-RUSs=1.45
-RUSp=1.60
+RUSs=1.70
+RUSp=1.70
 Rd=1.40
 
 FUNC="PBE"
@@ -98,7 +99,6 @@ cat <<EOF > $name/$name.gen.in
 2P  2  1  4.00  0.00  $RNChard  $RNChard  1
 EOF
 $LD1 < $name/$name.gen.in > $name/$name.gen.out
-
 
 ### US ###
 
@@ -241,7 +241,6 @@ cat <<EOF > $name/$name.gen.in
 EOF
 $LD1 < $name/$name.gen.in > $name/$name.gen.out
 
-
 ### PAW from NC hard with smoother NC augmentation functions (same radius as US calculation) ###
 
 name=PAW2
@@ -291,7 +290,7 @@ cat <<EOF > $name/$name.gen.in
 2S  1  0  2.00  0.00  $RNC  $RUSs  1
 2P  2  1  4.00  0.00  $RNC  $RUSp  1
 EOF
-$LD1 < $name/$name.gen.in > $name/$name.gen.out
+# $LD1 < $name/$name.gen.in > $name/$name.gen.out
 
 
 ### PAW from NC hard with gaussian augmentation functions ###
@@ -328,6 +327,7 @@ cat <<EOF > $name/$name.gen.in
    rcutnc2paw(4)=$RNChard,
    rcutnc2paw(5)=$RNChard,
    which_paw_augfun ='GAUSS'
+   paw_rmatch_augfun=1.2
    file_qvan = './$name/$name.qvan'
  /
 5
@@ -379,6 +379,7 @@ cat <<EOF > $name/$name.gen.in
    rcutnc2paw(4)=$RNChard,
    rcutnc2paw(5)=$RNChard,
    which_paw_augfun ='BESSEL'
+   paw_rmatch_augfun=1.2
    file_qvan = './$name/$name.qvan'
  /
 5

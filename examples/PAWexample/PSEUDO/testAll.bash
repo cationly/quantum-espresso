@@ -1,6 +1,7 @@
 #!/bin/bash
 
-LD1=~/Codes/espresso-develop_PAW/bin/ld1.x
+PWROOT=$HOME/QE/PAW/espresso
+LD1=$PWROOT/bin/ld1.x
 
 FUNC="PBE"
 

@@ -1,6 +1,6 @@
 
      program ld1 starts. version 11-Feb-05
-     today is 22Dec2005 at 19:16:39 
+     today is  6Jun2007 at 21: 0:54 
 
      -------------------- All-electron run ------------------------------
 
@@ -16,7 +16,7 @@
      2 1     2P 1( 4.00)        -0.6643        -0.3321        -9.0378
      3 2     3D 1(-1.00)         0.0000         0.0000         0.0000
 
-     eps = 5.7E-15  iter = 14
+     eps = 9.5E-15  iter = 14
  
      Etot =    -149.890997 Ry,     -74.945498 Ha,   -2039.386923 eV
 
@@ -58,7 +58,7 @@
 
       Wfc   2S  rcut= 1.400  Estimated cut-off energy=       64.20 Ry
       This function has    0 nodes for 0 < r <    1.413
-      Wfc-us  2S rcutus= 1.450  Estimated cut-off energy=    23.50 Ry
+      Wfc-us  2S rcutus= 1.700  Estimated cut-off energy=    17.92 Ry
 
 
       Wfc   2S  rcut= 1.400  Estimated cut-off energy=       96.76 Ry
@@ -67,7 +67,7 @@
 
       Wfc   2S  rcut= 1.400  Estimated cut-off energy=       79.41 Ry
       This function has    0 nodes for 0 < r <    1.413
-      Wfc-us  2S rcutus= 1.450  Estimated cut-off energy=    34.96 Ry
+      Wfc-us  2S rcutus= 1.700  Estimated cut-off energy=    33.87 Ry
 
 
       Wfc   2P  rcut= 1.400  Estimated cut-off energy=      125.00 Ry
@@ -76,7 +76,7 @@
 
       Wfc   2P  rcut= 1.400  Estimated cut-off energy=       88.65 Ry
       This function has    0 nodes for 0 < r <    1.413
-      Wfc-us  2P rcutus= 1.600  Estimated cut-off energy=    30.86 Ry
+      Wfc-us  2P rcutus= 1.700  Estimated cut-off energy=    28.04 Ry
 
 
       Wfc   2P  rcut= 1.400  Estimated cut-off energy=      127.71 Ry
@@ -85,40 +85,50 @@
 
       Wfc   2P  rcut= 1.400  Estimated cut-off energy=       92.81 Ry
       This function has    0 nodes for 0 < r <    1.413
-      Wfc-us  2P rcutus= 1.600  Estimated cut-off energy=    36.78 Ry
+      Wfc-us  2P rcutus= 1.700  Estimated cut-off energy=    35.27 Ry
 
       The bmat matrix before symmetrization
-     2.14390    -7.35154     0.00000     0.00000
-    -7.35267    25.09950     0.00000     0.00000
-     0.00000     0.00000    -0.60378    -0.62742
-     0.00000     0.00000    -0.62740    -0.62910
+     1.70454    -7.81041     0.00000     0.00000
+    -7.81154    30.67195     0.00000     0.00000
+     0.00000     0.00000    -0.60782    -0.61066
+     0.00000     0.00000    -0.61063    -0.59259
 
       The bmat matrix
-     2.14390    -7.35210     0.00000     0.00000
-    -7.35210    25.09950     0.00000     0.00000
-     0.00000     0.00000    -0.60378    -0.62741
-     0.00000     0.00000    -0.62741    -0.62910
+     1.70454    -7.81097     0.00000     0.00000
+    -7.81097    30.67195     0.00000     0.00000
+     0.00000     0.00000    -0.60782    -0.61064
+     0.00000     0.00000    -0.61064    -0.59259
 
       The qq matrix
-    -0.14386     0.52057     0.00000     0.00000
-     0.52057    -1.89057     0.00000     0.00000
-     0.00000     0.00000     0.23573     0.28530
-     0.00000     0.00000     0.28530     0.34539
+    -0.06182     0.57930     0.00000     0.00000
+     0.57930    -3.38122     0.00000     0.00000
+     0.00000     0.00000     0.26804     0.31907
+     0.00000     0.00000     0.31907     0.38051
  WARNING: __PAW_FROM_NC__
+ MULTIPOLE  1  0:  1  0 -0.0618
+ MULTIPOLE  2  0:  1  0  0.5792
+ MULTIPOLE  2  0:  2  0 -3.3812
+ MULTIPOLE  3  1:  1  0  0.0000 -0.1071
+ MULTIPOLE  3  1:  2  0  0.0000  0.1978
+ MULTIPOLE  3  1:  3  1  0.2680  0.1794  0.1327
+ MULTIPOLE  4  1:  1  0  0.0000 -0.1268
+ MULTIPOLE  4  1:  2  0  0.0000  0.2418
+ MULTIPOLE  4  1:  3  1  0.3191  0.2104  0.1535
+ MULTIPOLE  4  1:  4  1  0.3805  0.2473  0.1777
 
      Estimated PAW energy =  -31.920890 Ryd
 
      The PAW screened D coefficients
-     2.14390    -7.35198     0.00000     0.00000
-    -7.35198    25.09950     0.00000     0.00000
-     0.00000     0.00000    -0.60378    -0.62742
-     0.00000     0.00000    -0.62742    -0.62910
+     1.70454    -7.81085     0.00000     0.00000
+    -7.81085    30.67195     0.00000     0.00000
+     0.00000     0.00000    -0.60782    -0.61065
+     0.00000     0.00000    -0.61065    -0.59259
 
      The PAW descreened D coefficients (US)
-     0.73240    -2.17363     0.00000     0.00000
-    -2.17363     6.08481     0.00000     0.00000
-     0.00000     0.00000     1.38687     1.80424
-     0.00000     0.00000     1.80424     2.34213
+     1.00553    -2.27639     0.00000     0.00000
+    -2.27639    -1.19005     0.00000     0.00000
+     0.00000     0.00000     1.58814     2.03986
+     0.00000     0.00000     2.03986     2.61043
 
      ------------ End of pseudopotential generation --------------------
 
@@ -136,7 +146,7 @@
      2 1     2P 1( 4.00)        -0.6643        -0.3321        -9.0378
      3 2     3D 1(-1.00)         0.0000         0.0000         0.0000
 
-     eps = 5.7E-15  iter = 14
+     eps = 9.5E-15  iter = 14
  
      Etot =    -149.890997 Ry,     -74.945498 Ha,   -2039.386923 eV
 
@@ -168,13 +178,13 @@
      mesh =1095 r(mesh) =  99.04343 xmin = -7.00 dx = 0.01250
 
      n l     nl             e AE (Ryd)       e PS (Ryd)   De AE-PS (Ryd) 
-     1 0     2S   1( 2.00)       -1.75770       -1.75783        0.00013
+     1 0     2S   1( 2.00)       -1.75770       -1.75781        0.00011
      2 1     2P   1( 4.00)       -0.66426       -0.66421       -0.00005
 
-     eps = 2.2E-18  iter =  6
+     eps = 9.0E-15  iter =  5
  
      Etot =    -149.890997 Ry,     -74.945498 Ha,   -2039.386923 eV
-     Etotps =   -31.921117 Ry,     -15.960558 Ha,    -434.312333 eV
+     Etotps =   -31.921036 Ry,     -15.960518 Ha,    -434.311230 eV
      dEtot_ae =       0.000000 Ry
      dEtot_ps =       0.000000 Ry,   Delta E=       0.000000
 
