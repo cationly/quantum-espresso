@@ -44,6 +44,7 @@ SUBROUTINE paw_io(pawset_,un,what,size_mesh,size_nwfc,size_lmax)
      WRITE(un,'(e20.10)') (pawset_%r2(n), n=1,pawset_%mesh)
      WRITE(un,'(e20.10)') (pawset_%sqrtr(n), n=1,pawset_%mesh)
      WRITE(un,'(e20.10)') pawset_%dx
+     WRITE(un,'(e20.10)') pawset_%rmatch_augfun
      WRITE(un,*) pawset_%nlcc
      WRITE(un,'(i8)') pawset_%nwfc
      WRITE(un,'(i8)') (pawset_%l(ns), ns=1,pawset_%nwfc)
@@ -56,7 +57,7 @@ SUBROUTINE paw_io(pawset_,un,what,size_mesh,size_nwfc,size_lmax)
      WRITE(un,'(e20.10)') ((pawset_%proj(n,ns), n=1,pawset_%mesh), ns=1,pawset_%nwfc)
      WRITE(un,'(i8)') pawset_%lmax
 !     WRITE(un,'(e20.10)') (((pawset_%augfun(n,ns,ns1,0), n=1,pawset_%mesh), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc)
-     WRITE(un,'(e20.10)') ((((pawset_%augfun(n,ns,ns1,l), n=1,pawset_%mesh), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc),l=0,2*pawset_%lmax+1)
+     WRITE(un,'(e20.10)') ((((pawset_%augfun(n,ns,ns1,l), n=1,pawset_%mesh), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc),l=0,2*pawset_%lmax)
      WRITE(un,'(e20.10)') (((pawset_%augmom(ns,ns1,l), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc),l=0,2*pawset_%lmax)
      WRITE(un,'(e20.10)') (pawset_%aeccharge(n), n=1,pawset_%mesh)
      IF (pawset_%nlcc) WRITE(un,'(e20.10)') (pawset_%psccharge(n), n=1,pawset_%mesh)
@@ -79,6 +80,7 @@ SUBROUTINE paw_io(pawset_,un,what,size_mesh,size_nwfc,size_lmax)
      READ(un,'(e20.10)') (pawset_%r2(n), n=1,pawset_%mesh)
      READ(un,'(e20.10)') (pawset_%sqrtr(n), n=1,pawset_%mesh)
      READ(un,'(e20.10)') pawset_%dx
+     READ(un,'(e20.10)') pawset_%rmatch_augfun
      READ(un,*) pawset_%nlcc
      READ(un,'(i8)') pawset_%nwfc
      IF (pawset_%nwfc > size_nwfc) CALL errore ('paw_io','size_nwfc too small?',1)
@@ -93,7 +95,7 @@ SUBROUTINE paw_io(pawset_,un,what,size_mesh,size_nwfc,size_lmax)
      READ(un,'(i8)') pawset_%lmax
      IF (pawset_%lmax > size_lmax) CALL errore ('paw_io','size_lmax too small?',1)
 !     READ(un,'(e20.10)') (((pawset_%augfun(n,ns,ns1,0), n=1,pawset_%mesh), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc)
-     READ(un,'(e20.10)') ((((pawset_%augfun(n,ns,ns1,l), n=1,pawset_%mesh), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc),l=0,2*pawset_%lmax+1)
+     READ(un,'(e20.10)') ((((pawset_%augfun(n,ns,ns1,l), n=1,pawset_%mesh), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc),l=0,2*pawset_%lmax)
      READ(un,'(e20.10)') (((pawset_%augmom(ns,ns1,l), ns=1,pawset_%nwfc), ns1=1,pawset_%nwfc),l=0,2*pawset_%lmax)
      READ(un,'(e20.10)') (pawset_%aeccharge(n), n=1,pawset_%mesh)
      IF (pawset_%nlcc) READ(un,'(e20.10)') (pawset_%psccharge(n), n=1,pawset_%mesh)
@@ -111,9 +113,6 @@ SUBROUTINE paw_io(pawset_,un,what,size_mesh,size_nwfc,size_lmax)
   CLOSE(un)
 END SUBROUTINE paw_io
 !---------------------------------------------------------------------
-
-
-
 
 
 !

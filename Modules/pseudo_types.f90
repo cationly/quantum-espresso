@@ -39,6 +39,7 @@ TYPE :: paw_t
    REAL (DP), POINTER :: r2(:) !r2 (ndm)    ! r^2
    REAL (DP), POINTER :: sqrtr(:) !sqrtr (ndm) ! sqrt(r)
    REAL (DP) :: dx          ! log(r(i+1))-log(r(i))
+   REAL (DP) :: rmatch_augfun  ! the matching radius for augmentation charges
    LOGICAL :: nlcc ! nonlinear core correction
    INTEGER :: nwfc ! number of wavefunctions/projectors
    INTEGER :: lmax ! maximum angular momentum of projectors
