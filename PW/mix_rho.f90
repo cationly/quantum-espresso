@@ -686,6 +686,7 @@ FUNCTION rho1_dot_product( bec1, bec2 ) RESULT( rho1_ddot )
   !
   COMPLEX(DP), POINTER :: prodp_(:,:,:), prod0p_(:,:,:)
   INTEGER :: i_what
+  REAL(DP):: i_sign
   !
   rho1_ddot = 0.D0   
   !
@@ -705,6 +706,7 @@ FUNCTION rho1_dot_product( bec1, bec2 ) RESULT( rho1_ddot )
         prodp_ => prodpt
         prod0p_ => prod0pt
      END IF
+     i_sign = DBLE(1-2*(i_what-1)) ! = +1 if i_what==1, -1 if i_what==2
      !
      DO ijh = 1, nhm*(nhm+1)/2
         !
@@ -715,7 +717,7 @@ FUNCTION rho1_dot_product( bec1, bec2 ) RESULT( rho1_ddot )
               nt = ityp (na)
               IF ( nspin == 1 ) THEN
                  !
-                 rho1_ddot = rho1_ddot + DBLE((-1)**(i_what-1)) * fac * &
+                 rho1_ddot = rho1_ddot + i_sign * fac * &
                  bec1(ijh,na,1) * prodp_(ijh, ijh2, nt) * bec2(ijh2,na,1)
                  !
 !!$              gamma_only case not yet implemented
@@ -725,7 +727,7 @@ FUNCTION rho1_dot_product( bec1, bec2 ) RESULT( rho1_ddot )
                  !
                  ! ... first the charge
                  !
-                 rho1_ddot = rho1_ddot + DBLE((-1)**(i_what-1)) * fac * &
+                 rho1_ddot = rho1_ddot + i_sign * fac * &
                   (bec1(ijh,na,1)+bec1(ijh,na,2)) * prodp_(ijh,ijh2,nt) * &
                   (bec2(ijh2,na,1)+bec2(ijh2,na,2))
                  ! 
@@ -739,7 +741,7 @@ FUNCTION rho1_dot_product( bec1, bec2 ) RESULT( rho1_ddot )
                  !
                  IF ( gstart == 2 ) THEN
                     !
-                    rho1_ddot = rho1_ddot + DBLE((-1)**(i_what-1)) * fac * &
+                    rho1_ddot = rho1_ddot + i_sign * fac * &
                     (bec1(ijh,na,1)-bec1(ijh,na,2)) * prod0p_(ijh,ijh2,nt) * &
                     (bec2(ijh2,na,1)-bec2(ijh2,na,2))
                     !
@@ -747,7 +749,7 @@ FUNCTION rho1_dot_product( bec1, bec2 ) RESULT( rho1_ddot )
                  !
 !!$              IF ( gamma_only ) fac = 2.D0 * fac
                  !
-                 rho1_ddot = rho1_ddot + DBLE((-1)**(i_what-1)) * fac * &
+                 rho1_ddot = rho1_ddot + i_sign * fac * &
                    (bec1(ijh,na,1)-bec1(ijh,na,2)) * prodp_(ijh,ijh2,nt) * &
                    (bec2(ijh2,na,1)-bec2(ijh2,na,2))
                  !
