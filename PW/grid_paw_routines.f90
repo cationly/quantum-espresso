@@ -38,10 +38,9 @@ CONTAINS
     !
     USE grid_paw_variables, ONLY : pp, ppt, prad, ptrad, rho1, rho1t, &
          vr1, vr1t, int_r2pfunc, int_r2ptfunc, ehart1, etxc1, vtxc1, &
-         ehart1t, etxc1t, vtxc1t, aerho_core, psrho_core, &
-         radial_distance, &
+         ehart1t, etxc1t, vtxc1t, aerho_core, psrho_core, radial_distance, &
          dpaw_ae, dpaw_ps, aevloc, psvloc, aevloc_r, psvloc_r, &
-         deband_paw, descf_paw, prodp, prodpt, prod0p, prod0pt
+         prodp, prodpt, prod0p, prod0pt
     !
     IMPLICIT NONE
     !
@@ -57,9 +56,9 @@ CONTAINS
     ALLOCATE (aevloc( ngl, ntyp))
     ALLOCATE (psvloc( ngl, ntyp))  
     !
-    ALLOCATE (aevloc_r(nrxx,nat))
-    ALLOCATE (psvloc_r(nrxx,nat))
-    ALLOCATE (radial_distance(nrxx,nat))
+    ALLOCATE (aevloc_r(nrxx,ntyp))
+    ALLOCATE (psvloc_r(nrxx,ntyp))
+    ALLOCATE (radial_distance(nrxx))
     !
     ALLOCATE(prodp(nhm*(nhm+1)/2,nhm*(nhm+1)/2,ntyp))
     ALLOCATE(prodpt(nhm*(nhm+1)/2,nhm*(nhm+1)/2,ntyp))
@@ -78,14 +77,11 @@ CONTAINS
     ALLOCATE(ehart1t(nat))
     ALLOCATE(etxc1t (nat))
     ALLOCATE(vtxc1t (nat))
-    ALLOCATE (aerho_core(nrxx, nat))
-    ALLOCATE (psrho_core(nrxx, nat))
+    ALLOCATE (aerho_core(nrxx,ntyp))
+    ALLOCATE (psrho_core(nrxx,ntyp))
     !
     ALLOCATE(dpaw_ae( nhm, nhm, nat, nspin))
     ALLOCATE(dpaw_ps( nhm, nhm, nat, nspin))
-    !
-    ALLOCATE(deband_paw( 2, nat))
-    ALLOCATE(descf_paw ( 2, nat))
     !
   END SUBROUTINE allocate_paw_internals
 
@@ -138,8 +134,8 @@ CONTAINS
     COMPLEX(DP) :: coeff, qgm(1)
     REAL(DP) :: spinor, ji, jk
 
-!    call start_clock ('init_prad')
     IF (.NOT.okpaw) RETURN
+    call start_clock ('init_prad')
     !
     !    Initialization of the variables
     !
@@ -274,7 +270,7 @@ CONTAINS
     END DO whattodo
     DEALLOCATE (ylmk0, qtot, besr, aux1, aux)
 
-!    call stop_clock ('init_prad')
+    call stop_clock ('init_prad')
     RETURN
   END SUBROUTINE init_prad
 !
@@ -292,7 +288,7 @@ CONTAINS
   !  
   USE grid_paw_variables, ONLY : prad, ptrad, tpawp, okpaw, prodp, prodpt,&
                                  prod0p, prod0pt
-  USE ions_base,          ONLY : nat, ntyp => nsp, ityp
+  USE ions_base,          ONLY : nat, ntyp => nsp
   USE uspp_param,         ONLY : lmaxq, nh, nhm 
   USE wvfct,              ONLY : gamma_only
   !
@@ -303,23 +299,20 @@ CONTAINS
   INTEGER :: gi, ig, na, nt, ih, jh, ijh, ijh2
   ! counters
   !
-  REAL(DP), ALLOCATABLE :: qmod (:), ylmk0 (:,:)
-  ! the modulus of G
-  ! the spherical harmonics
-  !
-  COMPLEX(DP), ALLOCATABLE ::  qgm(:)
-  COMPLEX(DP), ALLOCATABLE ::  pft(:,:,:)
+  REAL(DP), ALLOCATABLE :: qmod (:),  & ! the modulus of G
+                           ylmk0 (:,:)  ! the spherical harmonics
+  COMPLEX(DP), ALLOCATABLE :: pft(:,:)  ! the AE/PS wfc products
   !
   REAL(DP),    POINTER :: prad_(:,:,:,:)
   COMPLEX(DP), POINTER :: prodp_(:,:,:), prod0p_(:,:,:)
   INTEGER :: i_what
   !
   IF ( .NOT. okpaw ) RETURN
+  call start_clock ('paw_prod_p')
   !
   gi = gstart
   !
-  ALLOCATE ( qmod(ngm), qgm(ngm), pft(nhm*(nhm+1)/2,ngm,ntyp), &
-             ylmk0(ngm,lmaxq*lmaxq) ) 
+  ALLOCATE (qmod(ngm), pft(ngm,nhm*(nhm+1)/2), ylmk0(ngm,lmaxq*lmaxq))
   !
   CALL ylmr2 (lmaxq * lmaxq, ngm, g, gg, ylmk0)
   qmod(:) = SQRT(gg(:))
@@ -339,42 +332,38 @@ CONTAINS
      !
      prodp_ (:,:,:)  = (0.d0, 0.d0)
      prod0p_ (:,:,:) = (0.d0, 0.d0)
-     pft (:,:,:) = (0.d0, 0.d0)
      !
      DO nt = 1, ntyp
+        pft (:,:) = (0.d0, 0.d0)
         IF (tpawp(nt)) THEN
            ijh = 0
            DO ih = 1, nh (nt)
               DO jh = ih, nh (nt)
                  ijh = ijh + 1
-                 CALL pvan2 (ngm, ih, jh, nt, qmod, qgm, ylmk0, prad_, &
+                 CALL pvan2 (ngm, ih, jh, nt, qmod, pft(1,ijh), ylmk0, prad_, &
                       SIZE(prad_,1),SIZE(prad_,2),SIZE(prad_,3),SIZE(prad_,4))
-                 pft(ijh,:,nt) =  qgm(:)
               ENDDO ! jh
            ENDDO ! ih
+           DO ijh = 1, nhm*(nhm+1)/2
+              DO ijh2 = ijh, nhm*(nhm+1)/2
+                 prodp_ (ijh, ijh2, nt) = & 
+                 SUM( DBLE( CONJG(pft(gi:,ijh))*pft(gi:,ijh2) ) / gg(gi:) )
+                 !
+                 prod0p_(ijh, ijh2, nt) = DBLE( CONJG(pft(1,ijh))*pft(1,ijh2) )
+                 !
+                 prodp_ (ijh2, ijh, nt) = CONJG( prodp_ (ijh, ijh2, nt) )
+                 prod0p_(ijh2, ijh, nt) = CONJG( prod0p_(ijh, ijh2, nt) )
+                 !
+              ENDDO ! ijh2
+           ENDDO ! ijh
         ENDIF ! tpawp
      ENDDO ! nt
      !
-     DO ijh = 1, nhm*(nhm+1)/2
-        DO ijh2 = ijh, nhm*(nhm+1)/2
-           DO nt = 1, ntyp
-              prodp_ (ijh, ijh2, nt) = & 
-              SUM( DBLE( CONJG(pft(ijh,gi:,nt))*pft(ijh2,gi:,nt) ) / gg(gi:) )
-              !
-              prod0p_(ijh, ijh2, nt) = &
-              DBLE( CONJG( pft(ijh,1,nt) ) * pft(ijh2,1,nt) )
-              !
-              prodp_ (ijh2, ijh, nt) = CONJG( prodp_ (ijh, ijh2, nt) )
-              prod0p_(ijh2, ijh, nt) = CONJG( prod0p_(ijh, ijh2, nt) )
-              !
-           ENDDO
-        ENDDO
-     ENDDO 
-     !
   ENDDO whattodo
   !
-  DEALLOCATE (qmod, qgm, pft, ylmk0) 
+  DEALLOCATE (qmod, pft, ylmk0) 
   !
+  call stop_clock ('paw_prod_p')
   RETURN
   !
   END SUBROUTINE paw_prod_p
@@ -384,18 +373,15 @@ CONTAINS
   SUBROUTINE compute_onecenter_charges(becnew, rho1new, rho1tnew)
     !
     USE kinds,                ONLY : DP
-    USE ions_base,            ONLY : nat, ntyp => nsp, ityp
+    USE cell_base,            ONLY:  at
+    USE ions_base,            ONLY : nat, ntyp => nsp, ityp, tau, atm
     USE gvect,                ONLY : nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, &
-                                     ngm, nl, nlm, gg, g, eigts1, eigts2, &
-                                     eigts3, ig1, ig2, ig3
+                                     ngm, nl, nlm, gg, g
     USE lsda_mod,             ONLY : nspin
-    USE scf,                  ONLY : rho
     USE uspp_param,           ONLY : lmaxq, tvanp, nh, nhm
     USE wvfct,                ONLY : gamma_only
     USE wavefunctions_module, ONLY : psic
     !
-    USE cell_base,          ONLY: at
-    USE ions_base,          ONLY: tau, atm, ityp
     USE grid_paw_variables, ONLY: prad, ptrad, pp, tpawp, okpaw
     USE us,                 ONLY: qrad
     !
@@ -418,6 +404,7 @@ CONTAINS
     INTEGER :: i_what
 
     IF (.NOT.okpaw) RETURN
+    call start_clock ('one-charge')
   
     ALLOCATE (aux(ngm,nspin,nat), qmod(ngm), qgm(ngm), ylmk0(ngm,lmaxq*lmaxq))    
     !  
@@ -450,9 +437,6 @@ CONTAINS
                       DO is = 1, nspin
                          DO ig = 1, ngm
                             aux(ig,is,na) = aux(ig,is,na) +         &
-                                            eigts1 (ig1 (ig), na) * &
-                                            eigts2 (ig2 (ig), na) * &
-                                            eigts3 (ig3 (ig), na) * &
                                             qgm(ig)*becnew(ijh,na,is)
                          ENDDO
                       ENDDO
@@ -481,6 +465,7 @@ CONTAINS
     END DO whattodo
     !
     DEALLOCATE (ylmk0, qgm, qmod, aux)
+    call stop_clock ('one-charge')
 
   END SUBROUTINE compute_onecenter_charges
 
@@ -519,6 +504,7 @@ CONTAINS
     !
     IF (.NOT.okpaw) RETURN
     !
+    call start_clock ('one-pot')
     CALL infomsg ('compute_onecenter_potentials','alpha set manually',-1)
     alpha = 0.1_DP
     !
@@ -546,7 +532,7 @@ CONTAINS
              !
              vr1_(:,:,na)=0._DP
              !
-             CALL v_xc( rho1_(:,:,na), rho_core_(:,na), &
+             CALL v_xc( rho1_(:,:,na), rho_core_(:,ityp(na)), &
                         nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, &
                         nl, ngm, g, nspin, alat, omega, &
                         etxc1_(na), vtxc1_(na), vr1_(:,:,na) )
@@ -558,9 +544,6 @@ CONTAINS
                    nb = indv(ih,nt)
                    DO jh = ih, nh (nt)
                       mb = indv(jh,nt)
-!                      if (lpl(nhtolm(ih,nt),nhtolm(jh,nt),1).eq.1) &
-!                         write (*,*) nhtolm(ih,nt),nhtolm(jh,nt), &
-!                                     ap(1,nhtolm(ih,nt),nhtolm(jh,nt))
                       ijh = ijh + 1
                       IF (nhtolm(ih,nt)==nhtolm(jh,nt)) THEN
                          IF (ityp(na)==nt) THEN
@@ -591,11 +574,11 @@ CONTAINS
         average_pot = 0.d0
         rms_pot     = 0.d0
         do ir=1,nrxx
-           if (radial_distance(ir,na) > 2.0) then
+           if (radial_distance(ir) > 2.0) then
               nir = nir + 1
               !
-              deltav = (vr1(ir,is,na)  + aevloc_r(ir,na)) - &
-                       (vr1t(ir,is,na) + psvloc_r(ir,na)) 
+              deltav = (vr1(ir,is,na)  + aevloc_r(ir,ityp(na))) - &
+                       (vr1t(ir,is,na) + psvloc_r(ir,ityp(na))) 
               average_pot = average_pot + deltav
               rms_pot = rms_pot + deltav*deltav
               !
@@ -617,6 +600,7 @@ CONTAINS
         end if
      end do
   end do
+    call stop_clock ('one-pot')
 
   END SUBROUTINE compute_onecenter_potentials
   
@@ -668,6 +652,7 @@ CONTAINS
     !
     ! compute the indices which correspond to ih,jh
     !
+    call start_clock ('pvan2')
     sixth = 1.d0 / 6.d0
     dqi = 1 / dq
     nb = indv (ih, np)
@@ -725,6 +710,7 @@ CONTAINS
           qg (ig) = qg (ig) + sig * ylmk0 (ig, lp) * work
        ENDDO
     ENDDO
+    call stop_clock ('pvan2')
 
     RETURN
   END SUBROUTINE pvan2
@@ -738,15 +724,12 @@ CONTAINS
     USE io_global, ONLY : stdout
     USE kinds,     ONLY : DP
     USE atom,      ONLY : rho_atc, numeric, msh, r, rab, nlcc
-    USE ions_base, ONLY : nat, ityp, ntyp => nsp
+    USE ions_base, ONLY : ntyp => nsp
     USE cell_base, ONLY : omega, tpiba2, alat
-    USE gvect,     ONLY : ngm, nr1, nr2, nr3, nrx1, nrx2, nrx3, &
-                          nrxx, nl, nlm, ngl, gl, igtongl,      &
-                          eigts1, eigts2, eigts3, ig1, ig2, ig3
+    USE gvect,     ONLY : ngm, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, &
+                          nl, nlm, ngl, gl, igtongl
     USE pseud,     ONLY : a_nlcc, b_nlcc, alpha_nlcc
-    USE vlocal,    ONLY : strf
     USE wvfct,     ONLY : gamma_only
-    !
     USE grid_paw_variables, ONLY : aerho_atc, psrho_atc, aerho_core, psrho_core
     !
     IMPLICIT NONE
@@ -767,10 +750,9 @@ CONTAINS
     REAL(DP) , ALLOCATABLE ::  dum(:,:)  ! dummy array containing rho=0
   
     INTEGER :: ir, & ! counter on mesh points
-               nt, & ! counter on atomic types
-               na, & ! counter on atoms
-               ng    ! counter on g vectors
+               nt    ! counter on atomic types
     !
+    call start_clock ('set_paw_rhoc')
     ALLOCATE (aux(nrxx), rhocg(ngl))
     !    
     whattodo: DO i_what=1, 2
@@ -783,14 +765,12 @@ CONTAINS
           rho_core_ => psrho_core
        END IF    
        !
-       ! the sum is on atom types
+       ! the loop is on atomic types
        !
        typ_loop: DO nt = 1, ntyp
           !
           IF ((i_what==2).AND.(.NOT.nlcc(nt))) THEN
-             DO na = 1, nat
-                IF (ityp (na).EQ.nt) rho_core_(:,na)=0.d0
-             END DO
+             rho_core_(:,nt)=0.d0
              CYCLE typ_loop
           END IF
           !
@@ -800,47 +780,41 @@ CONTAINS
                b_nlcc (nt), alpha_nlcc (nt), msh (nt), r (1, nt), rab (1, nt), &
                rho_atc_ (1, nt), rhocg)
           !
-          at_loop: DO na = 1, nat
-             at_if: IF (ityp (na) .EQ.nt) THEN
-                aux (:) = 0.d0
-                aux(nl(:)) = rhocg(igtongl(:)) * &
-                             eigts1(ig1(:),na) * &
-                             eigts2(ig2(:),na) * &
-                             eigts3(ig3(:),na)
-                if (gamma_only)  aux(nlm(1:ngm)) = CONJG(aux(nl(1:ngm)))
-                !
-                ! the core charge in real space
-                !
-                CALL cft3 (aux, nr1, nr2, nr3, nrx1, nrx2, nrx3, 1)
-                !
-                ! test on the charge and computation of the core energy
-                !
-                rhoneg = 0.d0
-                rhoima = 0.d0
-                DO ir = 1, nrxx
-                   rhoneg = rhoneg + min (0.d0,  DBLE (aux (ir) ) )
-                   rhoima = rhoima + abs (AIMAG (aux (ir) ) )
-                   rho_core_(ir,na) = DBLE (aux(ir))
-                ENDDO
-                rhoneg = rhoneg / (nr1 * nr2 * nr3)
-                rhoima = rhoima / (nr1 * nr2 * nr3)
+          aux (:) = 0.d0
+          aux(nl(:)) = rhocg(igtongl(:)) 
+          if (gamma_only)  aux(nlm(1:ngm)) = CONJG(aux(nl(1:ngm)))
+          !
+          ! the core charge in real space
+          !
+          CALL cft3 (aux, nr1, nr2, nr3, nrx1, nrx2, nrx3, 1)
+          !
+          ! test on the charge and computation of the core energy
+          !
+          rhoneg = 0.d0
+          rhoima = 0.d0
+          DO ir = 1, nrxx
+             rhoneg = rhoneg + min (0.d0,  DBLE (aux (ir) ) )
+             rhoima = rhoima + abs (AIMAG (aux (ir) ) )
+             rho_core_(ir,nt) = DBLE (aux(ir))
+          ENDDO
+          rhoneg = rhoneg / (nr1 * nr2 * nr3)
+          rhoima = rhoima / (nr1 * nr2 * nr3)
 #ifdef __PARA
-                CALL reduce (1, rhoneg)
-                CALL reduce (1, rhoima)
+          CALL reduce (1, rhoneg)
+          CALL reduce (1, rhoima)
 #endif
-                IF (rhoneg < -1.0d-6 .OR. rhoima > 1.0d-6) then
-                   WRITE( stdout, '(/5x,"Check: atom number ", i12)') na
-                   WRITE( stdout, '(/12x,"negative/imaginary core charge ", &
-                          2f12.6)') rhoneg, rhoima
-                ENDIF
-                !
-             END IF at_if
-          END DO at_loop
+          IF (rhoneg < -1.0d-6 .OR. rhoima > 1.0d-6) then
+             WRITE( stdout, '(/5x,"Check: atomic type", i12)') nt
+             WRITE( stdout, '(/12x,"negative/imaginary core charge ", 2f12.6)') &
+                             rhoneg, rhoima
+          ENDIF
+          !
        END DO typ_loop
     END DO whattodo
     !
     DEALLOCATE (rhocg)
     DEALLOCATE (aux)
+    call stop_clock ('set_paw_rhoc')
     !
     RETURN
 
@@ -892,18 +866,12 @@ SUBROUTINE v_h_grid( rho, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, &
   !
   ! ... Hartree potential VH(r) from n(r)
   !
-  USE constants, ONLY : fpi, e2
   USE kinds,     ONLY : DP
+  USE constants, ONLY : fpi, e2, PI, EPS8
   USE gvect,     ONLY : nlm
   USE wvfct,     ONLY : gamma_only
-  USE cell_base, ONLY : tpiba2
-  !
-  USE constants, ONLY : PI, EPS8
-  USE cell_base, ONLY : at
-  USE ions_base, ONLY : tau, atm, ityp, ntyp=>nsp
-  USE ions_base, ONLY : nat
-  USE gvect,     ONLY : eigts1, eigts2, eigts3, ig1, ig2, ig3
-  !
+  USE cell_base, ONLY : tpiba2, at
+  USE ions_base, ONLY : tau, atm, ntyp=>nsp, nat
   USE grid_paw_variables, ONLY : radial_distance
   !
   IMPLICIT NONE
@@ -926,9 +894,9 @@ SUBROUTINE v_h_grid( rho, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, &
   !
   REAL(DP) :: dummyx, c(3), r2, gaussrho
   INTEGER :: ir1,ir2,ir3, i,j,k
-  COMPLEX(DP) :: skk
   !
   !
+   call start_clock ('v_h_grid')
   ALLOCATE( aux( 2, nrxx ), aux1( 2, ngm ) )
   !
   ! ... copy total rho in aux
@@ -958,15 +926,14 @@ SUBROUTINE v_h_grid( rho, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, &
   DO ig = gstart, ngm
      !
      ! Define a gaussian distribution of charge, to be substracted
-     skk = eigts1(ig1(ig),na) * eigts2(ig2(ig),na) * eigts3(ig3(ig),na)
      gaussrho = charge * EXP(-alpha*gg(ig)*tpiba2) / omega
      !
      fac = 1.D0 / gg(ig)
      !
      ehart = ehart + ( aux(1,nl(ig))**2 + aux(2,nl(ig))**2 - gaussrho**2 ) * fac
      !
-     aux1(1,ig) = ( aux(1,nl(ig)) - gaussrho * REAL(skk,DP) ) * fac
-     aux1(2,ig) = ( aux(2,nl(ig)) - gaussrho * AIMAG(skk)   ) * fac
+     aux1(1,ig) = ( aux(1,nl(ig)) - gaussrho ) * fac
+     aux1(2,ig) = ( aux(2,nl(ig))            ) * fac
      !
   ENDDO
   !
@@ -1037,7 +1004,7 @@ SUBROUTINE v_h_grid( rho, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, &
   ! ... in the most inefficient way.
   !
   DO ir=1,nrxx
-     r2=radial_distance(ir,na)
+     r2=radial_distance(ir)
      !
      IF (r2 < EPS8) THEN
         aux(1,ir)=aux(1,ir)+e2*charge/SQRT(PI*alpha)
@@ -1063,6 +1030,7 @@ SUBROUTINE v_h_grid( rho, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, &
   END IF
   !
   DEALLOCATE( aux, aux1 )
+   call stop_clock ('v_h_grid')
   !
   RETURN
   !
@@ -1076,13 +1044,12 @@ SUBROUTINE set_radial_distance( radial_distance, nr1,nr2,nr3, nrx1,nrx2,nrx3, &
   !
   USE constants, ONLY : PI, EPS8
   USE cell_base, ONLY : at, bg
-  USE ions_base, ONLY : tau, nat
   !
   IMPLICIT NONE
   !
   INTEGER,   INTENT(IN)  :: nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx
   REAL (DP), INTENT(IN)  :: alat
-  REAL (DP), INTENT(OUT) :: radial_distance(nrxx,nat)
+  REAL (DP), INTENT(OUT) :: radial_distance(nrxx)
   !
   ! ... local variables
   !
@@ -1098,32 +1065,30 @@ SUBROUTINE set_radial_distance( radial_distance, nr1,nr2,nr3, nrx1,nrx2,nrx3, &
   dr(:,1) = at(:,1) / DBLE( nr1 )
   dr(:,2) = at(:,2) / DBLE( nr2 )
   dr(:,3) = at(:,3) / DBLE( nr3 )
-  do na=1,nat
-     do ir=1, nrxx
-        ! ... three dimensional indexes
-        idx   = idx0 + ir - 1
-        k     = idx / (nrx1*nrx2)
-        idx   = idx - (nrx1*nrx2)*k
-        j     = idx / nrx1
-        idx   = idx - nrx1*j
-        i     = idx
-        !
-        pos_ir(:) = i*dr(:,1) + j*dr(:,2) + k*dr(:,3) - tau(:,na)
-        ! ... minimum image convenction
-        CALL cryst_to_cart( 1, pos_ir, bg, -1 )
-        pos_ir(:) = pos_ir(:) - ANINT( pos_ir(:) )
-        CALL cryst_to_cart( 1, pos_ir, at, 1 )
-        dist2 = pos_ir(1)**2 + pos_ir(2)**2 + pos_ir(3)**2
-        do i=-1,1
-           do j=-1,1
-              do k=-1,1
-                 pos(:) = pos_ir(:) + i*at(:,1) + j*at(:,2) + k*at(:,3) 
-                 dist2 = min (dist2,pos(1)**2 + pos(2)**2 + pos(3)**2)
-              end do
+  do ir=1, nrxx
+     ! ... three dimensional indexes
+     idx   = idx0 + ir - 1
+     k     = idx / (nrx1*nrx2)
+     idx   = idx - (nrx1*nrx2)*k
+     j     = idx / nrx1
+     idx   = idx - nrx1*j
+     i     = idx
+     !
+     pos_ir(:) = i*dr(:,1) + j*dr(:,2) + k*dr(:,3) 
+     ! ... minimum image convenction
+     CALL cryst_to_cart( 1, pos_ir, bg, -1 )
+     pos_ir(:) = pos_ir(:) - ANINT( pos_ir(:) )
+     CALL cryst_to_cart( 1, pos_ir, at, 1 )
+     dist2 = pos_ir(1)**2 + pos_ir(2)**2 + pos_ir(3)**2
+     do i=-1,1
+        do j=-1,1
+           do k=-1,1
+              pos(:) = pos_ir(:) + i*at(:,1) + j*at(:,2) + k*at(:,3) 
+              dist2 = min (dist2,pos(1)**2 + pos(2)**2 + pos(3)**2)
            end do
         end do
-        radial_distance(ir,na) = sqrt(dist2) * alat
      end do
+     radial_distance(ir) = sqrt(dist2) * alat
   end do
   !
   RETURN
@@ -1139,7 +1104,9 @@ SUBROUTINE newd_paw_grid
   USE gvect,              ONLY : nrxx
   USE lsda_mod,           ONLY : nspin
   USE ions_base,          ONLY : nat
-  USE grid_paw_variables,   ONLY : okpaw, prad, ptrad, vr1, vr1t, dpaw_ae, dpaw_ps, aevloc_r, psvloc_r, radial_distance
+  USE grid_paw_variables, ONLY : okpaw, prad, ptrad, vr1, vr1t, &
+                                 dpaw_ae, dpaw_ps, aevloc_r, psvloc_r, &
+                                 radial_distance
   !
   IMPLICIT NONE
   !
@@ -1147,6 +1114,7 @@ SUBROUTINE newd_paw_grid
   REAL(DP) :: deltav, average, rms
   !
   IF ( .NOT. okpaw ) RETURN
+   call start_clock ('newd_paw')
   !
   !PRINT '(A)', 'WARNING newd_paw_grid contains only H+xc potentials'
   !
@@ -1160,6 +1128,7 @@ SUBROUTINE newd_paw_grid
        SIZE(vr1,1),SIZE(vr1,2),SIZE(vr1,3),                 &
        SIZE(aevloc_r,1),SIZE(aevloc_r,2),                   &
        SIZE(dpaw_ae,1),SIZE(dpaw_ae,2),SIZE(dpaw_ae,3),SIZE(dpaw_ae,4))
+   call stop_clock ('newd_paw')
   !
 CONTAINS
   !
@@ -1169,8 +1138,7 @@ CONTAINS
     USE ions_base,            ONLY : nat, ntyp => nsp, ityp
     USE cell_base,            ONLY : omega
     USE gvect,                ONLY : nr1, nr2, nr3, nrx1, nrx2, nrx3, &
-                                     g, gg, ngm, gstart, ig1, ig2, ig3, &
-                                     eigts1, eigts2, eigts3, nl
+                                     g, gg, ngm, gstart, nl
     USE lsda_mod,             ONLY : nspin
     USE scf,                  ONLY : vr, vltot
     USE uspp,                 ONLY : deeq, dvan, deeq_nc, dvan_so, okvan
@@ -1191,7 +1159,7 @@ CONTAINS
     !
     INTEGER :: ig, nt, ih, jh, na, is, nht
     ! counters on g vectors, atom type, beta functions x 2, atoms, spin
-    COMPLEX(DP), ALLOCATABLE :: aux(:,:), qgm(:), qgm_na(:)
+    COMPLEX(DP), ALLOCATABLE :: aux(:,:), qgm(:)
     ! work space
     REAL(DP), ALLOCATABLE :: ylmk0(:,:), qmod(:)
     ! spherical harmonics, modulus of G
@@ -1203,8 +1171,7 @@ CONTAINS
        fact = 1.D0
     END IF
     !
-    ALLOCATE( aux( ngm, nspin ), qgm_na( ngm ), &
-              qgm( ngm ), qmod( ngm ), ylmk0( ngm, lmaxq*lmaxq ) )
+    ALLOCATE( aux(ngm,nspin), qgm(ngm), qmod(ngm), ylmk0(ngm,lmaxq*lmaxq) )
     !
     dpaw_(:,:,:,:) = 0._DP
     !
@@ -1213,10 +1180,12 @@ CONTAINS
     qmod(1:ngm) = SQRT( gg(1:ngm) )
     !
     DO na=1, nat
+       ! The type is fixed
+       nt = ityp(na)
        !
        ! ... fourier transform of the total effective potential
        DO is = 1, nspin
-          psic(:) = vl_(:,na) + vr_(:,is,na)
+          psic(:) = vl_(:,nt) + vr_(:,is,na)
           CALL cft3( psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, - 1 )
           aux(1:ngm,is) = psic( nl(1:ngm) )
        END DO
@@ -1224,8 +1193,6 @@ CONTAINS
        ! ... here we compute the integral Q*V for atom "na",
        ! ...       I = sum_G exp(-iR.G) Q_nm v^*
        !
-       ! The type is fixed
-       nt = ityp(na)
        !
        IF ( tpawp(nt) ) THEN
           !
@@ -1235,26 +1202,19 @@ CONTAINS
                 !
                 ! ... The Q(r) for this atomic species without structure factor
                 !
-                !CALLqvan2( ngm, ih, jh, nt, qmod, qgm, ylmk0 )
                 CALL pvan2 (ngm, ih, jh, nt, qmod, qgm, ylmk0, prad_, &
                      sp1,sp2,sp3,sp4)
-                !
-                ! ... The Q(r) for this specific atom
-                !
-                qgm_na(1:ngm) = qgm(1:ngm) * eigts1(ig1(1:ngm),na) &
-                                           * eigts2(ig2(1:ngm),na) &
-                                           * eigts3(ig3(1:ngm),na)
                 !
                 ! ... and the product with the Q functions
                 !
                 DO is = 1, nspin
                    !
                    dpaw_(ih,jh,na,is) = fact * omega * &
-                        DDOT( 2 * ngm, aux(1,is), 1, qgm_na, 1 )
+                        DDOT( 2 * ngm, aux(1,is), 1, qgm, 1 )
                    !
                    IF ( gamma_only .AND. gstart == 2 ) &
                         dpaw_(ih,jh,na,is) = dpaw_(ih,jh,na,is) - &
-                        omega * DBLE( aux(1,is) * qgm_na(1) )
+                        omega * DBLE( aux(1,is) * qgm(1) )
                    !
                    dpaw_(jh,ih,na,is) = dpaw_(ih,jh,na,is)
                    !
@@ -1275,7 +1235,7 @@ CONTAINS
 !    PRINT '(8f15.7)', ((dpaw_(jh,ih,1,1),jh=1,nh(nt)),ih=1,nh(nt))
 #endif
     !
-    DEALLOCATE( aux, qgm_na, qgm, qmod, ylmk0 )
+    DEALLOCATE( aux, qgm, qmod, ylmk0 )
     !
   END SUBROUTINE integrate_potential_x_charge
     
@@ -1367,6 +1327,7 @@ END SUBROUTINE atomic_becsum
     REAL(DP), POINTER :: vloc_(:,:)
     INTEGER :: i_what
     !  
+   call start_clock ('init_pawvloc')
     whattodo: DO i_what=1, 2
     ! associate a pointer to the AE or PS part
        NULLIFY(vloc_at_,vloc_)
@@ -1388,6 +1349,7 @@ END SUBROUTINE atomic_becsum
             alps (1, 0, nt), tpiba2, ngl, gl, omega, vloc_ (1, nt) )
        END DO
     END DO whattodo 
+   call stop_clock ('init_pawvloc')
     !
     RETURN
     !
@@ -1460,6 +1422,7 @@ subroutine vloc_of_g_noerf (lloc, lmax, numeric, mesh, msh, rab, r, vloc_at, &
   ! the angular momentum
   ! counter on mesh points
 
+   call start_clock ('vloc_of_g_no')
   if (.not.numeric) then
      STOP 'vloc_of_g_noerf not implemented'
   else
@@ -1512,6 +1475,7 @@ subroutine vloc_of_g_noerf (lloc, lmax, numeric, mesh, msh, rab, r, vloc_at, &
      vloc (:) = vloc(:) * fpi / omega
      deallocate (aux, aux1)
   endif
+   call stop_clock ('vloc_of_g_no')
   return
 end subroutine vloc_of_g_noerf
 
@@ -1527,29 +1491,22 @@ subroutine paw_grid_setlocal
   USE ions_base, ONLY : ntyp => nsp
   USE cell_base, ONLY : alat
   USE extfield,  ONLY : tefield, dipfield, etotefield
-  USE gvect,     ONLY : igtongl
-  USE vlocal,    ONLY : strf !!$ , vloc
   USE wvfct,     ONLY : gamma_only
-  USE gvect,     ONLY : nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, nlm, ngm
-  USE scf,       ONLY : rho
-  !
-  USE gvect,     ONLY : eigts1, eigts2, eigts3, ig1, ig2, ig3
-  USE grid_paw_variables, ONLY : aevloc, psvloc, aevloc_r, psvloc_r, radial_distance
-  USE ions_base, ONLY : nat, ityp
+  USE gvect,     ONLY : nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, &
+                        nl, nlm, ngm, igtongl
+  USE grid_paw_variables, ONLY : aevloc, psvloc, aevloc_r, psvloc_r, &
+                        radial_distance
   !
   implicit none
   complex(DP), allocatable :: aux (:)
   ! auxiliary variable
-  integer :: nt, ng, ir
-  ! counter on atom types
-  ! counter on g vectors
-  ! counter on r vectors
+  integer :: nt ! counter on atom types
   !
   REAL(DP), POINTER :: vloc_(:,:)
   REAL(DP), POINTER :: vltot_(:,:)
-  INTEGER :: na, i_what
-  COMPLEX(DP) :: skk
+  INTEGER :: i_what
   !
+   call start_clock ('paw_setlocal')
   allocate (aux( nrxx))    
   !
   whattodo: DO i_what=1, 2
@@ -1563,44 +1520,34 @@ subroutine paw_grid_setlocal
         vltot_  => psvloc_r
      END IF
 
-     na_loop: do na=1, nat
+     nt_loop: do nt=1, ntyp
         aux(:)=(0.d0,0.d0)
-        !
         ! the type is fixed to the specific atom
-        nt=ityp(na)
-        do ng = 1, ngm
-           skk = eigts1(ig1(ng),na) * eigts2(ig2(ng),na) * eigts3(ig3(ng),na)
-           aux(nl(ng)) = aux(nl(ng)) + vloc_(igtongl(ng),nt) * skk
-        enddo
-        if (gamma_only) then
-           do ng = 1, ngm
-              aux (nlm(ng)) = CONJG(aux (nl(ng)))
-           enddo
-        end if
+        aux(nl(1:ngm)) = vloc_(igtongl(1:ngm),nt) 
+        if (gamma_only) aux (nlm(1:ngm)) = CONJG(aux (nl(1:ngm)))
         !
         ! aux = potential in G-space . FFT to real space
         !
         call cft3 (aux, nr1, nr2, nr3, nrx1, nrx2, nrx3, 1)
         !
-        do ir = 1, nrxx
-           vltot_ (ir,na) =  DBLE (aux (ir) )
-        enddo
+        vltot_ (1:nrxx,nt) =  DBLE (aux (1:nrxx) )
         !
         if (tefield.and.(.not.dipfield)) then
            STOP 'paw_grid_setlocal: efield not implemented'
         endif
-     end do na_loop
+     end do nt_loop
   end DO whattodo
   deallocate(aux)
   ! calculate radial distance from atoms for each grid point
   CALL set_radial_distance( radial_distance, nr1,nr2,nr3, nrx1,nrx2,nrx3, &
                nrxx, alat)
+   call stop_clock ('paw_setlocal')
   return
 end subroutine paw_grid_setlocal
 
 ! Analogous to delta_e in PW/electrons.f90
 !-----------------------------------------------------------------------
-FUNCTION delta_e_1 ( na, i_what )
+FUNCTION delta_e_1 ( rho_, vr_, de_na )
 !-----------------------------------------------------------------------
   !
   ! ... delta_e = - \int rho(r) V_scf(r)
@@ -1608,31 +1555,30 @@ FUNCTION delta_e_1 ( na, i_what )
   USE kinds
   USE gvect,              ONLY : nr1, nr2, nr3
   USE cell_base,          ONLY : omega
-  USE grid_paw_variables, ONLY: rho1, rho1t, vr1, vr1t, okpaw
+  USE ions_base,          ONLY : nat, ityp
   USE lsda_mod,           ONLY : nspin
+  USE grid_paw_variables, ONLY : tpawp
   !
   IMPLICIT NONE
+  REAL(DP), INTENT(IN) :: rho_(:,:,:), vr_(:,:,:)
+  REAL(DP), OPTIONAL :: de_na(:)
   !   
   REAL (DP) :: delta_e_1
-  INTEGER :: na, i_what
+  REAL (DP) :: aux
   !
-  REAL(DP), POINTER :: rho_(:,:,:), vr_(:,:,:)
-  INTEGER :: ipol
-  !
-  IF (i_what==1) THEN
-     rho_ => rho1
-     vr_  => vr1
-  ELSE IF (i_what==2) THEN
-     rho_ => rho1t
-     vr_  => vr1t
-  ELSE 
-     CALL errore('delta_e_1','wrong i_what',1)
-  END IF
+  INTEGER :: ipol, na
   !
   delta_e_1 = 0.D0
-  DO ipol = 1, nspin
-     delta_e_1 = delta_e_1 - SUM( rho_(:,ipol,na) * vr_(:,ipol,na) )
-  END DO
+  if (present(de_na)) de_na(:) = 0.D0
+  do na=1, nat
+     if (.not. tpawp(ityp(na))) cycle
+     aux = 0.d0
+     DO ipol = 1, nspin
+        aux = aux - SUM( rho_(:,ipol,na) * vr_(:,ipol,na) )
+     END DO
+     delta_e_1 = delta_e_1 + aux 
+     if (present(de_na)) de_na(na) = aux * omega / ( nr1 * nr2 * nr3 )
+  end do
   delta_e_1 = omega * delta_e_1 / ( nr1 * nr2 * nr3 )
   CALL reduce( 1, delta_e_1 )
   !
@@ -1642,7 +1588,7 @@ END FUNCTION delta_e_1
 
 ! Analogous to delta_escf in PW/electrons.f90
 !-----------------------------------------------------------------------
- FUNCTION delta_e_1scf ( na, i_what )
+ FUNCTION delta_e_1scf ( rho_, rhonew_, vr_ , de_na)
 !-----------------------------------------------------------------------
   !
   ! ... delta_e_1scf = - \int \delta rho(r) V_scf(r)
@@ -1651,34 +1597,30 @@ END FUNCTION delta_e_1
   USE kinds
   USE gvect,              ONLY : nr1, nr2, nr3
   USE cell_base,          ONLY : omega
-  USE grid_paw_variables, ONLY : rho1, rho1t, vr1, vr1t, rho1new, rho1tnew
+  USE ions_base,          ONLY : nat, ityp
   USE lsda_mod,           ONLY : nspin
+  USE grid_paw_variables, ONLY : tpawp
   !
   IMPLICIT NONE
+  REAL(DP), INTENT(IN) :: rho_(:,:,:), rhonew_(:,:,:), vr_(:,:,:)
+  REAL(DP), OPTIONAL :: de_na(:)
   !    
   REAL (DP) :: delta_e_1scf
-  INTEGER :: na, i_what
   !
-  REAL(DP), POINTER :: rho_(:,:,:), rhonew_(:,:,:), vr_(:,:,:)
-  INTEGER :: ipol
-  !
-  IF (i_what==1) THEN
-     rho_ => rho1
-     rhonew_ => rho1new
-     vr_  => vr1
-  ELSE IF (i_what==2) THEN
-     rho_ => rho1t
-     rhonew_ => rho1tnew
-     vr_  => vr1t
-  ELSE 
-     CALL errore('delta_e_1scf','wrong i_what',1)
-  END IF
+  REAL (DP) :: aux
+  INTEGER :: ipol, na
   !
   delta_e_1scf = 0.D0
-  DO ipol = 1, nspin
-     delta_e_1scf = delta_e_1scf - &
-                    SUM( (rhonew_(:,ipol,na)-rho_(:,ipol,na)) * vr_(:,ipol,na) )
-  END DO
+  if (present(de_na)) de_na(:) = 0.D0
+  do na=1,nat
+     if(.not.tpawp(ityp(na))) cycle
+     aux = 0.d0
+     DO ipol = 1, nspin
+        aux = aux - SUM( (rhonew_(:,ipol,na)-rho_(:,ipol,na)) * vr_(:,ipol,na) )
+     END DO
+     delta_e_1scf = delta_e_1scf + aux
+     if (present(de_na)) de_na(na) = aux * omega / ( nr1 * nr2 * nr3 )
+  end do
   delta_e_1scf = omega * delta_e_1scf / ( nr1 * nr2 * nr3 )
   CALL reduce( 1, delta_e_1scf )
   !

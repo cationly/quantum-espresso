@@ -66,8 +66,9 @@ SUBROUTINE electrons()
   !
   !!PAW]
   USE grid_paw_variables,   ONLY : really_do_paw, okpaw, tpawp, &
-       ehart1, ehart1t, etxc1, etxc1t, deband_paw, descf_paw, &
-       rho1, rho1t, rho1new, rho1tnew, becnew
+       ehart1, ehart1t, etxc1, etxc1t, deband_1ae, deband_1ps,  &
+       descf_1ae, descf_1ps, rho1, rho1t, rho1new, rho1tnew,  &
+       vr1, vr1t, becnew
   USE grid_paw_routines,    ONLY : compute_onecenter_potentials, &
        compute_onecenter_charges, delta_e_1, delta_e_1scf
   USE uspp,                 ONLY : becsum
@@ -123,8 +124,10 @@ SUBROUTINE electrons()
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !!PAW[  And this for PAW  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   REAL(DP), ALLOCATABLE :: becstep(:,:,:)
-  INTEGER :: na, i_what
+  INTEGER :: na
   REAL (DP) :: correction1c
+  REAL (DP), ALLOCATABLE :: deband_1ps_na(:), deband_1ae_na(:), & ! auxiliary info on
+                            descf_1ps_na(:), descf_1ae_na(:)      ! one-center corrections
   !!PAW]  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  
  !
   ! PU added for electric field
@@ -133,10 +136,9 @@ SUBROUTINE electrons()
 
   !
   CALL start_clock( 'electrons' )
+  IF (okpaw) ALLOCATE ( deband_1ae_na(nat), deband_1ps_na(nat), &
+                        descf_1ae_na(nat),  descf_1ps_na(nat) )
   !
-
-  !
-
   iter = 0
   ik_  = 0
   !
@@ -152,6 +154,7 @@ SUBROUTINE electrons()
         !
         CALL stop_clock( 'electrons' )
         !
+        IF (okpaw) DEALLOCATE(deband_1ae_na, deband_1ps_na, descf_1ae_na, descf_1ps_na)
         RETURN
         !
      END IF
@@ -167,6 +170,7 @@ SUBROUTINE electrons()
      !
      CALL non_scf()
      !
+     IF (okpaw) DEALLOCATE(deband_1ae_na, deband_1ps_na, descf_1ae_na, descf_1ps_na)
      RETURN
      !
   END IF
@@ -216,9 +220,7 @@ SUBROUTINE electrons()
      IF ( .not. ALLOCATED(becstep) ) ALLOCATE (becstep(nhm*(nhm+1)/2,nat,nspin))
      becstep (:,:,:) = 0.d0
      DO na = 1, nat       
-        IF (tpawp(ityp(na))) THEN
-           becstep(:,na,:) = becsum(:,na,:)
-        END IF
+        IF (tpawp(ityp(na))) becstep(:,na,:) = becsum(:,na,:)
      END DO
   END IF
   !!PAW]
@@ -280,7 +282,7 @@ SUBROUTINE electrons()
         !
         IF ( check_stop_now() ) RETURN
         !
-        !!PAW : sum_band also computes new one-center charges
+        !!PAW : sum_band DOES NOT compute new one-center charges
         CALL sum_band()
         !
         IF ( lda_plus_u )  THEN
@@ -306,24 +308,15 @@ SUBROUTINE electrons()
         ALLOCATE (rhognew(ngm, nspin))
         !!PAW[
         IF (okpaw) THEN
-           DO na = 1, nat
-              IF (tpawp(ityp(na))) THEN
-                 DO i_what = 1, 2
-                    deband_paw(i_what,na)=delta_e_1 ( na, i_what )
-                    deband_paw(i_what,na)=deband_paw(i_what,na) * (-1)**(i_what-1)
-                 END DO
-              ELSE
-                 deband_paw(1:2,na)=0._DP
-              END IF
-           END DO
+           CALL compute_onecenter_charges (becsum,rho1,rho1t)
+           deband_1ae = delta_e_1(rho1, vr1, deband_1ae_na)  !AE
+           deband_1ps = delta_e_1(rho1t,vr1t,deband_1ps_na)  !PS
            CALL infomsg ('electrons','mixing several times ns if lda_plus_U',-1)
            IF (lda_plus_U) STOP 'electrons - not implemented'
            ALLOCATE (becnew(nhm*(nhm+1)/2, nat, nspin) )
            becnew(:,:,:) = 0.d0
            DO na = 1, nat
-              IF (tpawp(ityp(na))) THEN
-                 becnew(:,na,:) = becsum(:,na,:)
-              END IF
+              IF (tpawp(ityp(na))) becnew(:,na,:) = becsum(:,na,:)
            END DO
         END IF
         !!PAW]
@@ -380,15 +373,6 @@ SUBROUTINE electrons()
            end do
            !TEMP
            !
-           !!PAW[
-           !!PAW : calculates new one-center charges in R-space
-           IF (okpaw) THEN
-              ALLOCATE (rho1new (nrxx, nspin, nat) )
-              ALLOCATE (rho1tnew(nrxx, nspin, nat) )
-              CALL compute_onecenter_charges (becstep, rho1new, rho1tnew)
-           END IF
-           !!PAW]
-           !
            ! ... no convergence yet: calculate new potential from 
            ! ... new estimate of the charge density 
            !
@@ -397,18 +381,13 @@ SUBROUTINE electrons()
                           omega, ehart, etxc, vtxc, etotefield, charge, vr )
            !
            !!PAW[
+           !!PAW : calculates new one-center charges in R-space
            IF (okpaw) THEN
+              ALLOCATE (rho1new (nrxx,nspin,nat), rho1tnew(nrxx,nspin,nat) )
+              CALL compute_onecenter_charges (becstep, rho1new, rho1tnew)
               CALL compute_onecenter_potentials(rho1new,rho1tnew)
-              DO na = 1, nat
-                 IF (tpawp(ityp(na))) THEN
-                    DO i_what = 1, 2
-                       descf_paw(i_what,na)=delta_e_1scf ( na, i_what )
-                       descf_paw(i_what,na)=descf_paw(i_what,na) * (-1)**(i_what-1)
-                    END DO
-                 ELSE
-                    descf_paw(1:2,na)=0._DP
-                 END IF
-              END DO
+              descf_1ae = delta_e_1scf(rho1, rho1new, vr1, descf_1ae_na)  ! AE
+              descf_1ps = delta_e_1scf(rho1t,rho1tnew,vr1t,descf_1ps_na)  ! PS
               DEALLOCATE (rho1new, rho1tnew)
            END IF
            !!PAW]
@@ -443,7 +422,12 @@ SUBROUTINE electrons()
            !
            descf = 0.D0
            !!PAW[
-           IF (okpaw) descf_paw(:,:)=0._DP
+           IF (okpaw) then
+              descf_1ae=0._DP
+              descf_1ps=0._DP
+              descf_1ae_na(:)=0.d0
+              descf_1ps_na(:)=0.d0
+           endif
            !!PAW]
            !
         END IF
@@ -607,9 +591,13 @@ SUBROUTINE electrons()
         PRINT *, 'US energy before PAW additions', etot
         DO na = 1, nat
            IF (tpawp(ityp(na))) THEN
-              PRINT '(i3,8f9.3)', na,ehart1(na),ehart1t(na),etxc1(na),etxc1t(na),deband_paw(1:2,na),descf_paw(1:2,na)
+              PRINT '(i3,8f9.3)', na,ehart1(na),ehart1t(na),             &
+                                  etxc1(na),etxc1t(na),                  &
+                                  deband_1ae_na(na), -deband_1ps_na(na), &
+                                  descf_1ae_na(na),-descf_1ps_na(na)
               correction1c = ehart1(na) -ehart1t(na) +etxc1(na) -etxc1t(na) + &
-                   SUM(deband_paw(1:2,na))+SUM(descf_paw(1:2,na))
+                             deband_1ae_na(na) - deband_1ps_na(na) +           &
+                             descf_1ae_na(na) - descf_1ps_na(na)
               PRINT '(A,i3,f20.10)', 'atom # & correction:', na, correction1c
               IF (really_do_paw) etot = etot + correction1c
            END IF
@@ -732,7 +720,10 @@ SUBROUTINE electrons()
         CALL stop_clock( 'electrons' )
         !TEMP
         DEALLOCATE (rhog)
-        IF (okpaw) DEALLOCATE (becstep)
+        IF (okpaw) THEN
+           DEALLOCATE (becstep)
+           DEALLOCATE(deband_1ae_na, deband_1ps_na, descf_1ae_na, descf_1ps_na)
+        END IF
         !TEMP
         !
         RETURN

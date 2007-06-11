@@ -44,9 +44,6 @@ SUBROUTINE sum_band()
                                    root_image, npool, my_pool_id
   USE mp,                   ONLY : mp_bcast
   !
-  USE grid_paw_variables, ONLY: okpaw, rho1, rho1t
-  USE grid_paw_routines,  ONLY: compute_onecenter_charges
-  !
   IMPLICIT NONE
   !
   ! ... local variables
@@ -179,8 +176,6 @@ SUBROUTINE sum_band()
   ! ... Here we add the Ultrasoft contribution to the charge
   !
   IF ( okvan ) CALL addusdens()
-  !
-  IF ( okpaw ) CALL compute_onecenter_charges (becsum,rho1,rho1t)
   !
   IF ( noncolin .AND. .NOT. domag ) rho(:,2:4)=0.D0
   !

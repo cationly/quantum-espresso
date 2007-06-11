@@ -51,8 +51,6 @@ module grid_paw_variables
 !! NEW-AUG !!
   ! Moments of the augmentation functions
   REAL (DP) :: &
-       gifpaw(ndmx,lqmax+1)  ! auxiliary functions for PAW augm. functions !!TEMP-AUG!!
-  REAL (DP) :: &
        r2(ndmx,npsx)    ! r**2 logarithmic mesh
   REAL (DP) :: &
        augmom(nbrx,nbrx,0:6,npsx)     ! moments of PAW augm. functions
@@ -98,7 +96,7 @@ module grid_paw_variables
        psvloc(:,:)              ! PS local 1-c potential for each atom type
   !
   REAL(DP), ALLOCATABLE :: &
-       radial_distance(:,:)     ! radial distance from na (minimum image conv)
+       radial_distance(:)     ! radial distance from na (minimum image conv)
 
   ! Analogous to vltot in "scf" (PW/pwcom.f90)
   REAL(DP), ALLOCATABLE, TARGET :: &
@@ -132,7 +130,6 @@ module grid_paw_variables
        becnew(:,:,:)       ! new augmentation channel occupations
 
   ! analogous to deband and descf in PW/electrons.f90
-  REAL(DP), ALLOCATABLE :: &
-       deband_paw(:,:), descf_paw(:,:)
+  REAL(DP) ::  deband_1ae, deband_1ps, descf_1ae, descf_1ps
   
 end module grid_paw_variables
