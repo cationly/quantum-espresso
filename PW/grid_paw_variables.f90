@@ -29,8 +29,10 @@ module grid_paw_variables
        pfunc(ndmx,nbrx,nbrx,npsx), &! AE: \phi_{mu}(|r|)-\phi_{nu}(|r|)
        ptfunc(ndmx,nbrx,nbrx,npsx)  ! PS: \tilde{\phi}_{mu}(|r|)-\tilde{\phi}_{nu}(|r|)
 
-  REAL(DP), TARGET :: &
-       augfun(ndmx,nbrx,nbrx,0:lqmax,npsx) 
+!  REAL(DP), TARGET :: &
+! THE DEFINITION OF augfun IS IN ../Modules/uspp.f90
+!       augfun(ndmx,nbrx,nbrx,0:lqmax,npsx) 
+
   ! Analogous to qq in "uspp_param" (Modules/uspp.f90)
   REAL(DP), ALLOCATABLE, TARGET :: &
        pp(:,:,:),             &! the integrals of p functions in the solid
@@ -125,6 +127,11 @@ module grid_paw_variables
   REAL(DP), ALLOCATABLE, TARGET :: &
        rho1new(:,:,:),             &! new 1center AE charge density in real space
        rho1tnew(:,:,:)              ! new 1center PS charge density in real space
+  ! pltz
+  REAL(DP), TARGET, ALLOCATABLE   :: rho1rad(:,:,:,:) ! AE charge density on radial grid
+  REAL(DP), TARGET, ALLOCATABLE   :: rho1trad(:,:,:,:)! the same, but pseudo
+  REAL(DP), TARGET, ALLOCATABLE   :: radpot(:,:,:,:,:)           ! potential on radial grid
+
   ! new vectors needed for mixing of augm. channel occupations
   REAL(DP), ALLOCATABLE :: &
        becnew(:,:,:)       ! new augmentation channel occupations

@@ -30,7 +30,7 @@ CONTAINS
   SUBROUTINE allocate_paw_internals
     USE gvect,              ONLY : nrxx
     USE lsda_mod,           ONLY : nspin
-    USE parameters,         ONLY : nbrx
+    USE parameters,         ONLY : nbrx,ndmx
     USE ions_base,          ONLY : nsp, nat, ntyp => nsp
     USE us,                 ONLY : nqxq
     USE uspp_param,         ONLY : lmaxq, nhm
@@ -40,7 +40,7 @@ CONTAINS
          vr1, vr1t, int_r2pfunc, int_r2ptfunc, ehart1, etxc1, vtxc1, &
          ehart1t, etxc1t, vtxc1t, aerho_core, psrho_core, radial_distance, &
          dpaw_ae, dpaw_ps, aevloc, psvloc, aevloc_r, psvloc_r, &
-         prodp, prodpt, prod0p, prod0pt
+         prodp, prodpt, prod0p, prod0pt, rho1rad, rho1trad, radpot
     !
     IMPLICIT NONE
     !
@@ -79,6 +79,10 @@ CONTAINS
     ALLOCATE(vtxc1t (nat))
     ALLOCATE (aerho_core(nrxx,ntyp))
     ALLOCATE (psrho_core(nrxx,ntyp))
+    !
+    ALLOCATE( rho1rad(ndmx,lmaxq**2,nspin,nat)) !pltz
+    ALLOCATE(rho1trad(ndmx,lmaxq**2,nspin,nat)) !pltz
+    ALLOCATE(radpot(ndmx,lmaxq**2,nat,nspin,2))       !pltz
     !
     ALLOCATE(dpaw_ae( nhm, nhm, nat, nspin))
     ALLOCATE(dpaw_ps( nhm, nhm, nat, nspin))
@@ -373,7 +377,7 @@ CONTAINS
   SUBROUTINE compute_onecenter_charges(becnew, rho1new, rho1tnew)
     !
     USE kinds,                ONLY : DP
-    USE cell_base,            ONLY:  at
+    !USE cell_base,            ONLY:  at
     USE ions_base,            ONLY : nat, ntyp => nsp, ityp, tau, atm
     USE gvect,                ONLY : nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, &
                                      ngm, nl, nlm, gg, g
@@ -532,6 +536,7 @@ CONTAINS
              !
              vr1_(:,:,na)=0._DP
              !
+! pltz: FIXME!!!!
              CALL v_xc( rho1_(:,:,na), rho_core_(:,ityp(na)), &
                         nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, &
                         nl, ngm, g, nspin, alat, omega, &
@@ -558,7 +563,7 @@ CONTAINS
              END DO
              !
              PRINT *, 'SPHEROPOLE:',na, spheropole
-             CALL v_h_grid( rho1_(1,1,na), nr1,nr2,nr3, nrx1,nrx2,nrx3, nrxx, &
+             CALL v_h_grid( rho1_(:,:,na), nr1,nr2,nr3, nrx1,nrx2,nrx3, nrxx, &
                             nl, ngm, gg, gstart, nspin, alat, omega, &
                             ehart1_(na), charge, vr1_(:,:,na), alpha, &
                             spheropole, na)
@@ -1344,9 +1349,9 @@ END SUBROUTINE atomic_becsum
        ! compute V_loc(G) for a given type of atom
        !
        CALL vloc_of_g_noerf (lloc (nt), lmax (nt), numeric (nt), mesh (nt), &
-            msh (nt), rab (1, nt), r (1, nt), vloc_at_ (1, nt), cc (1, &
+            msh (nt), rab (1, nt), r (1, nt), vloc_at_ (:, nt), cc (1, &
             nt), alpc (1, nt), nlc (nt), nnl (nt), zp (nt), aps (1, 0, nt), &
-            alps (1, 0, nt), tpiba2, ngl, gl, omega, vloc_ (1, nt) )
+            alps (1, 0, nt), tpiba2, ngl, gl, omega, vloc_ (:, nt) )
        END DO
     END DO whattodo 
    call stop_clock ('init_pawvloc')
@@ -1377,6 +1382,7 @@ subroutine vloc_of_g_noerf (lloc, lmax, numeric, mesh, msh, rab, r, vloc_at, &
   !
 !#include "f_defs.h"
   USE kinds
+  USE constants, ONLY: pi, fpi, eps => eps8, e2
   implicit none
   !
   !    first the dummy variables
@@ -1408,8 +1414,6 @@ subroutine vloc_of_g_noerf (lloc, lmax, numeric, mesh, msh, rab, r, vloc_at, &
   logical :: numeric
   ! input: if true the pseudo is numeric
   !
-  real(DP), parameter :: pi = 3.14159265358979d0, fpi= 4.d0 * pi, &
-                              e2 = 2.d0, eps= 1.d-8
   !    local variables
   !
   real(DP) :: vlcp, fac, den1, den2, g2a, gx

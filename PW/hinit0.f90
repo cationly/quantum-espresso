@@ -22,6 +22,7 @@ subroutine hinit0
   USE wvfct,     ONLY : npw, g2kin, igk, igk_l2g
   USE io_files,  ONLY : iunigk
   USE grid_paw_routines, ONLY : init_prad, set_paw_rhoc, init_paw_vloc, paw_grid_setlocal
+  USE rad_paw_routines !FIXME: remove when finished with tests
   !
   implicit none
   !
@@ -32,12 +33,16 @@ subroutine hinit0
   !
   call init_vloc
   call init_paw_vloc !!PAW!!
+
   !
   !   k-point independent parameters of non-local pseudopotentials
   !
   call init_us_1
   call init_prad !!PAW!!
   call init_at_1
+  !
+  ! FIXME: remove when finished with tests
+  call integrate_pfunc()
   !
   rewind (iunigk)
   do ik = 1, nks

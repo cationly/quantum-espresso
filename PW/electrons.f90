@@ -68,9 +68,10 @@ SUBROUTINE electrons()
   USE grid_paw_variables,   ONLY : really_do_paw, okpaw, tpawp, &
        ehart1, ehart1t, etxc1, etxc1t, deband_1ae, deband_1ps,  &
        descf_1ae, descf_1ps, rho1, rho1t, rho1new, rho1tnew,  &
-       vr1, vr1t, becnew
+       vr1, vr1t, becnew, rho1rad, rho1trad, radpot
   USE grid_paw_routines,    ONLY : compute_onecenter_potentials, &
        compute_onecenter_charges, delta_e_1, delta_e_1scf
+  USE rad_paw_routines,     ONLY : sum_rad_rho, rad_potential  !pltz
   USE uspp,                 ONLY : becsum
   USE uspp_param,           ONLY : nhm
   !!PAW]
@@ -386,9 +387,28 @@ SUBROUTINE electrons()
               ALLOCATE (rho1new (nrxx,nspin,nat), rho1tnew(nrxx,nspin,nat) )
               CALL compute_onecenter_charges (becstep, rho1new, rho1tnew)
               CALL compute_onecenter_potentials(rho1new,rho1tnew)
+
               descf_1ae = delta_e_1scf(rho1, rho1new, vr1, descf_1ae_na)  ! AE
               descf_1ps = delta_e_1scf(rho1t,rho1tnew,vr1t,descf_1ps_na)  ! PS
+
               DEALLOCATE (rho1new, rho1tnew)
+
+              ! NEW RADIAL PAW
+              CALL sum_rad_rho(becsum, rho1rad, rho1trad)  !pltz
+              CALL rad_potential(rho1rad, rho1trad,radpot)  !pltz
+              ! radial energies are printed inside rad_potential
+                    WRITE(6,*) "GRID PAW ENERGIES: "
+                    WRITE(6,*) "AE 1     :", ehart1(1)
+                    WRITE(6,*) "AE 2     :", ehart1(2)
+                    WRITE(6,*) "PS 1     :", ehart1t(1)
+                    WRITE(6,*) "PS 2     :", ehart1t(2)
+                    WRITE(6,*) "AE tot   :", SUM(ehart1(:))
+                    WRITE(6,*) "PS tot   :", SUM(ehart1t(:))
+                    WRITE(6,*) "AE-PS 1  :", ehart1(1)-ehart1t(1)
+                    WRITE(6,*) "AE-PS 2  :", ehart1(2)-ehart1t(2)
+                    WRITE(6,*) "AE-PS tot:", SUM(ehart1(:))-SUM(ehart1t(:))
+              ! ---]] debug
+
            END IF
            !!PAW]
            !
@@ -588,19 +608,19 @@ SUBROUTINE electrons()
      etot = eband + ( etxc - etxcc ) + ewld + ehart + deband + demet + descf
      !!PAW[
      IF (okpaw) THEN
-        PRINT *, 'US energy before PAW additions', etot
+        !PRINT *, 'US energy before PAW additions', etot
         DO na = 1, nat
            IF (tpawp(ityp(na))) THEN
-              PRINT '(i3,8f9.3)', na,ehart1(na),ehart1t(na),             &
-                                  etxc1(na),etxc1t(na),                  &
-                                  deband_1ae_na(na), -deband_1ps_na(na), &
-                                  descf_1ae_na(na),-descf_1ps_na(na)
+              !PRINT '(i3,8f9.3)', na,ehart1(na),ehart1t(na),             &
+              !                    etxc1(na),etxc1t(na),                  &
+              !                    deband_1ae_na(na), -deband_1ps_na(na), &
+              !                    descf_1ae_na(na),-descf_1ps_na(na)
               correction1c = ehart1(na) -ehart1t(na) +etxc1(na) -etxc1t(na) + &
                              deband_1ae_na(na) - deband_1ps_na(na) +           &
                              descf_1ae_na(na) - descf_1ps_na(na)
               PRINT '(A,i3,f20.10)', 'atom # & correction:', na, correction1c
               IF (really_do_paw) etot = etot + correction1c
-           END IF
+          END IF
         END DO
      END IF
      !!PAW]

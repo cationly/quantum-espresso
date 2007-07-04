@@ -174,6 +174,10 @@ SUBROUTINE print_clock_pw()
    call print_clock ('init_pawvloc')
    call print_clock ('vloc_of_g_no')
    call print_clock ('paw_setlocal')
+   call print_clock ('rad_energy')
+   call print_clock ('rad_pot')
+   call print_clock ('sum_rad_rho')
+
    !
    RETURN
    !

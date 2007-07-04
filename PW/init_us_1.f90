@@ -36,14 +36,15 @@ subroutine init_us_1
   USE gvect,      ONLY : g, gg
   USE lsda_mod,   ONLY : nspin
   USE us,         ONLY : nqxq, dq, nqx, tab, qrad
-  USE uspp,       ONLY : nhtol, nhtoj, nhtolm, dvan, qq, indv, ap, aainit, &
-                         qq_so, dvan_so, okvan
+  USE uspp,       ONLY : nhtol, nhtoj, nhtolm, nhtom, dvan, qq, indv, ap,&
+                         aainit, qq_so, dvan_so, okvan
   USE uspp_param, ONLY : lmaxq, dion, betar, qfunc, qfcoef, rinner, nbeta, &
                          kkbeta, nqf, nqlc, lll, jjj, lmaxkb, nh, tvanp, nhm, &
                          augfun
   USE spin_orb,   ONLY : lspinorb, rot_ylm, fcoef
 !! NEW-AUG !!
   USE grid_paw_variables,   ONLY : really_do_paw, okpaw, tpawp
+
 !! NEW-AUG !!
   !
   implicit none
@@ -132,6 +133,7 @@ subroutine init_us_1
         do m = 1, 2 * l + 1
            nhtol (ih, nt) = l
            nhtolm(ih, nt) = l*l+m
+           nhtom(ih, nt) = m
            nhtoj (ih, nt) = j
            indv  (ih, nt) = nb
            ih = ih + 1
@@ -220,7 +222,7 @@ subroutine init_us_1
            !
            !     first we build for each nb,mb,l the total Q(|r|) function
            !     note that l is the true (combined) angular momentum
-           !     and that the arrays have dimensions 1..l+1
+           !     and that the arrays have dimensions 0..l (no more 1..l+1)
            !
            do nb = 1, nbeta (nt)
               do mb = nb, nbeta (nt)
@@ -355,6 +357,8 @@ subroutine init_us_1
         enddo
      enddo
   enddo
+
+
 #ifdef __PARA
   call reduce (nqx * nbrx * ntyp, tab)
 #endif

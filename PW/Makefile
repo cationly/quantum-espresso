@@ -5,6 +5,7 @@ include ../make.sys
 PWOBJS = \
 grid_paw_routines.o \
 grid_paw_variables.o \
+rad_paw_routines.o\
 add_bfield.o \
 add_efield.o \
 add_vuspsi.o \
