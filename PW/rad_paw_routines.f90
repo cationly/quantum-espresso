@@ -217,6 +217,7 @@ SUBROUTINE sum_rad_rho(bec, rho1rad, rho1trad)
 !    indv(mb,nt),lm,nhtolm(nb,nt), nhtolm(mb,nt),pref, ap(lm, nhtolm(nb,nt),&
 !    nhtolm(mb,nt)), bec(nmb,na,ispin) , bec(nmb, MOD(na,2)+1, ispin)"
 
+    WRITE(21,*) "becsum used in RAD:"
     whattodo: DO i_what = AE, PS
     NULLIFY(rho1rad_, pfunc_)
     IF (i_what == AE) THEN
@@ -237,6 +238,7 @@ SUBROUTINE sum_rad_rho(bec, rho1rad, rho1trad)
                 DO nb = 1, nh(nt)
                 DO mb = nb, nh(nt)
                     nmb = nmb+1 ! nmb = 1, nh*(nh+1)/2
+                    WRITE(21,"(a,i3,a,4i3,f12.6)") "-->",nmb,":",nb,mb,na,ispin,bec(nmb,na,ispin)
                     DO lm = 1, lmaxq**2
                         IF ( ABS(ap(lm, nhtolm(mb,nt), nhtolm(nb,nt))) > eps8 ) THEN
                             ! becsum already contains a factor 2 for off-diagonal pfuncs

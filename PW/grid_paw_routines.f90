@@ -377,7 +377,6 @@ CONTAINS
   SUBROUTINE compute_onecenter_charges(becnew, rho1new, rho1tnew)
     !
     USE kinds,                ONLY : DP
-    !USE cell_base,            ONLY:  at
     USE ions_base,            ONLY : nat, ntyp => nsp, ityp, tau, atm
     USE gvect,                ONLY : nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, &
                                      ngm, nl, nlm, gg, g
@@ -409,11 +408,28 @@ CONTAINS
 
     IF (.NOT.okpaw) RETURN
     call start_clock ('one-charge')
-  
+
     ALLOCATE (aux(ngm,nspin,nat), qmod(ngm), qgm(ngm), ylmk0(ngm,lmaxq*lmaxq))    
     !  
     CALL ylmr2 (lmaxq * lmaxq, ngm, g, gg, ylmk0)
     qmod(:) = SQRT(gg(:))
+
+    WRITE(20,*) "becsum used in GRID:"
+    DO i_what =1,2
+        atoms: DO na = 1, nat
+        nt = ityp(na)
+            spins: DO is = 1, nspin
+            ijh = 0
+                ! loop on all pfunc for this kind of pseudo
+                DO ih = 1, nh(nt)
+                DO jh = ih, nh(nt)
+                    ijh = ijh+1
+                    WRITE(20,"(a,i3,a,4i3,f12.6)") "-->",ijh,":",ih,jh,na,is,becnew(ijh,na,is)
+                ENDDO
+                ENDDO
+            ENDDO spins
+        ENDDO atoms
+    ENDDO
 
     whattodo: DO i_what=1, 2
        NULLIFY(prad_,rho1_)

@@ -384,18 +384,14 @@ SUBROUTINE electrons()
            !!PAW[
            !!PAW : calculates new one-center charges in R-space
            IF (okpaw) THEN
+              ! NEW RADIAL PAW (start)
+              CALL sum_rad_rho(becstep, rho1rad, rho1trad)  !pltz
+              CALL rad_potential(rho1rad, rho1trad,radpot)  !pltz
+              ! NEW RADIAL PAW (end)
+
               ALLOCATE (rho1new (nrxx,nspin,nat), rho1tnew(nrxx,nspin,nat) )
               CALL compute_onecenter_charges (becstep, rho1new, rho1tnew)
               CALL compute_onecenter_potentials(rho1new,rho1tnew)
-
-              descf_1ae = delta_e_1scf(rho1, rho1new, vr1, descf_1ae_na)  ! AE
-              descf_1ps = delta_e_1scf(rho1t,rho1tnew,vr1t,descf_1ps_na)  ! PS
-
-              DEALLOCATE (rho1new, rho1tnew)
-
-              ! NEW RADIAL PAW
-              CALL sum_rad_rho(becsum, rho1rad, rho1trad)  !pltz
-              CALL rad_potential(rho1rad, rho1trad,radpot)  !pltz
               ! radial energies are printed inside rad_potential
                     WRITE(6,*) "GRID PAW ENERGIES: "
                     WRITE(6,*) "AE 1     :", ehart1(1)
@@ -409,6 +405,10 @@ SUBROUTINE electrons()
                     WRITE(6,*) "AE-PS tot:", SUM(ehart1(:))-SUM(ehart1t(:))
               ! ---]] debug
 
+              descf_1ae = delta_e_1scf(rho1, rho1new, vr1, descf_1ae_na)  ! AE
+              descf_1ps = delta_e_1scf(rho1t,rho1tnew,vr1t,descf_1ps_na)  ! PS
+
+              DEALLOCATE (rho1new, rho1tnew)
            END IF
            !!PAW]
            !
