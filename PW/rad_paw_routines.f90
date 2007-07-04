@@ -25,7 +25,6 @@ CONTAINS
 !!
 FUNCTION rad_energy(pot, rho, e_na)
     USE kinds,                  ONLY : DP
-    USE constants,              ONLY : e2
     USE lsda_mod,               ONLY : nspin
     USE uspp_param,             ONLY : nhm, nh, lmaxq
     USE atom,                   ONLY : r, rab, mesh, msh
@@ -57,7 +56,6 @@ FUNCTION rad_energy(pot, rho, e_na)
     ENDDO spins
     ENDDO atoms
 
-    !rad_energy = - e2 *rad_energy
     CALL stop_clock ('rad_energy')
 
 END FUNCTION rad_energy
