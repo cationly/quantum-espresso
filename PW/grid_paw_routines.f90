@@ -493,7 +493,7 @@ CONTAINS
   ! Analogous to PW/v_of_rho.f90
   ! + evaluation of the spheropole: Int dr r^2 rho(r)
 !#define __DEBUG_ONECENTER_POTENTIALS
-  SUBROUTINE compute_onecenter_potentials (inp_rho1, inp_rho1t)
+  SUBROUTINE compute_onecenter_potentials (becsum,inp_rho1, inp_rho1t)
     USE kinds,            ONLY : DP
     USE cell_base,        ONLY : at, alat, omega
     USE ions_base,        ONLY: tau, atm, ityp, ntyp=>nsp
@@ -505,11 +505,14 @@ CONTAINS
     USE grid_paw_variables, ONLY: vr1, vr1t, radial_distance, & 
          int_r2pfunc, int_r2ptfunc, tpawp, okpaw, ehart1, etxc1, vtxc1, &
          ehart1t, etxc1t, vtxc1t, aerho_core, psrho_core, psvloc_r, aevloc_r
-    USE uspp, ONLY: indv, becsum, nhtolm, lpl, ap
-    USE uspp_param, ONLY: nh
+    !USE uspp, ONLY: indv, becsum, nhtolm, lpl, ap
+    ! becsum now passed as parameter
+    USE uspp, ONLY: indv, nhtolm, lpl, ap
+    USE uspp_param, ONLY: nh,nhm !<-- nhm only neeed for becsum
     USE constants, ONLY: PI
     IMPLICIT NONE
     !
+    REAL(DP), INTENT(IN)          :: becsum(nhm*(nhm+1)/2,nat,nspin)
     REAL(DP), TARGET, INTENT(OUT) :: &
          inp_rho1(nrxx, nspin, nat), inp_rho1t(nrxx,nspin,nat)
     !

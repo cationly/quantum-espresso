@@ -217,7 +217,7 @@ SUBROUTINE potinit()
   !
   CALL atomic_becsum()
   CALL compute_onecenter_charges(becsum,rho1,rho1t)
-  CALL compute_onecenter_potentials(rho1,rho1t)
+  CALL compute_onecenter_potentials(becsum,rho1,rho1t)
   !
   RETURN
   !
