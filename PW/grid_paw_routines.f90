@@ -40,7 +40,7 @@ CONTAINS
          vr1, vr1t, int_r2pfunc, int_r2ptfunc, ehart1, etxc1, vtxc1, &
          ehart1t, etxc1t, vtxc1t, aerho_core, psrho_core, radial_distance, &
          dpaw_ae, dpaw_ps, aevloc, psvloc, aevloc_r, psvloc_r, &
-         prodp, prodpt, prod0p, prod0pt, rho1rad, rho1trad, radpot
+         prodp, prodpt, prod0p, prod0pt
     !
     IMPLICIT NONE
     !
@@ -80,9 +80,9 @@ CONTAINS
     ALLOCATE (aerho_core(nrxx,ntyp))
     ALLOCATE (psrho_core(nrxx,ntyp))
     !
-    ALLOCATE( rho1rad(ndmx,lmaxq**2,nspin,nat)) !pltz
-    ALLOCATE(rho1trad(ndmx,lmaxq**2,nspin,nat)) !pltz
-    ALLOCATE(radpot(ndmx,lmaxq**2,nat,nspin,2))       !pltz
+!     ALLOCATE( rho1rad(ndmx,lmaxq**2,nspin,nat)) !pltz
+!     ALLOCATE(rho1trad(ndmx,lmaxq**2,nspin,nat)) !pltz
+!     ALLOCATE(radpot(ndmx,lmaxq**2,nat,nspin,2))       !pltz
     !
     ALLOCATE(dpaw_ae( nhm, nhm, nat, nspin))
     ALLOCATE(dpaw_ps( nhm, nhm, nat, nspin))
@@ -495,7 +495,7 @@ CONTAINS
 !#define __DEBUG_ONECENTER_POTENTIALS
   SUBROUTINE compute_onecenter_potentials (becsum,inp_rho1, inp_rho1t)
     USE kinds,            ONLY : DP
-    USE cell_base,        ONLY : at, alat, omega
+    USE cell_base,        ONLY : at, alat, omega, boxdimensions
     USE ions_base,        ONLY: tau, atm, ityp, ntyp=>nsp
     USE ions_base,        ONLY : nat
     USE lsda_mod,         ONLY : nspin
@@ -504,10 +504,10 @@ CONTAINS
     !
     USE grid_paw_variables, ONLY: vr1, vr1t, radial_distance, & 
          int_r2pfunc, int_r2ptfunc, tpawp, okpaw, ehart1, etxc1, vtxc1, &
-         ehart1t, etxc1t, vtxc1t, aerho_core, psrho_core, psvloc_r, aevloc_r
+         ehart1t, etxc1t, vtxc1t, aerho_core, psrho_core, psvloc_r, aevloc_r,augmom
     !USE uspp, ONLY: indv, becsum, nhtolm, lpl, ap
     ! becsum now passed as parameter
-    USE uspp, ONLY: indv, nhtolm, lpl, ap
+    USE uspp, ONLY: indv, nhtolm, lpl, ap,lpx
     USE uspp_param, ONLY: nh,nhm !<-- nhm only neeed for becsum
     USE constants, ONLY: PI
     IMPLICIT NONE
@@ -555,7 +555,6 @@ CONTAINS
              !
              vr1_(:,:,na)=0._DP
              !
-! pltz: FIXME!!!!
              CALL v_xc( rho1_(:,:,na), rho_core_(:,ityp(na)), &
                         nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, &
                         nl, ngm, g, nspin, alat, omega, &
@@ -581,7 +580,7 @@ CONTAINS
                 END DO
              END DO
              !
-             PRINT *, 'SPHEROPOLE:',na, spheropole
+             !PRINT *, 'SPHEROPOLE:',na, spheropole
              CALL v_h_grid( rho1_(:,:,na), nr1,nr2,nr3, nrx1,nrx2,nrx3, nrxx, &
                             nl, ngm, gg, gstart, nspin, alat, omega, &
                             ehart1_(na), charge, vr1_(:,:,na), alpha, &
@@ -590,40 +589,40 @@ CONTAINS
        END DO
     END DO whattodo
 
-  do na=1,nat
-     do is=1, nspin
-        nir = 0
-        average_rho = 0.d0
-        rms_rho     = 0.d0
-        average_pot = 0.d0
-        rms_pot     = 0.d0
-        do ir=1,nrxx
-           if (radial_distance(ir) > 2.0) then
-              nir = nir + 1
-              !
-              deltav = (vr1(ir,is,na)  + aevloc_r(ir,ityp(na))) - &
-                       (vr1t(ir,is,na) + psvloc_r(ir,ityp(na))) 
-              average_pot = average_pot + deltav
-              rms_pot = rms_pot + deltav*deltav
-              !
-              deltarho = inp_rho1(ir,is,na) - inp_rho1t(ir,is,na)
-              average_rho = average_rho + deltarho
-              rms_rho = rms_rho + deltarho*deltarho
-           end if
-        end do
-        if (nir > 0) then
-           average_pot = average_pot/nir
-           rms_pot = sqrt(rms_pot/nir - average_pot*average_pot)
-           average_rho = average_rho/nir
-           rms_rho = sqrt(rms_rho/nir - average_rho*average_rho)
-           write (*,'(a,2i3,i8,4f18.12)') &
-                    ' rho/pot shift for atom ', na, is, nir, &
-                      average_rho, rms_rho, average_pot, rms_pot
-        else
-           write (*,*) 'rho/pot shift for atom failed because nir is ZERO'
-        end if
-     end do
-  end do
+!   do na=1,nat
+!      do is=1, nspin
+!         nir = 0
+!         average_rho = 0.d0
+!         rms_rho     = 0.d0
+!         average_pot = 0.d0
+!         rms_pot     = 0.d0
+!         do ir=1,nrxx
+!            if (radial_distance(ir) > 2.0) then
+!               nir = nir + 1
+!               !
+!               deltav = (vr1(ir,is,na)  + aevloc_r(ir,ityp(na))) - &
+!                        (vr1t(ir,is,na) + psvloc_r(ir,ityp(na))) 
+!               average_pot = average_pot + deltav
+!               rms_pot = rms_pot + deltav*deltav
+!               !
+!               deltarho = inp_rho1(ir,is,na) - inp_rho1t(ir,is,na)
+!               average_rho = average_rho + deltarho
+!               rms_rho = rms_rho + deltarho*deltarho
+!            end if
+!         end do
+!         if (nir > 0) then
+!            average_pot = average_pot/nir
+!            rms_pot = sqrt(rms_pot/nir - average_pot*average_pot)
+!            average_rho = average_rho/nir
+!            rms_rho = sqrt(rms_rho/nir - average_rho*average_rho)
+!            write (*,'(a,2i3,i8,4f18.12)') &
+!                     ' rho/pot shift for atom ', na, is, nir, &
+!                       average_rho, rms_rho, average_pot, rms_pot
+!         else
+!            write (*,*) 'rho/pot shift for atom failed because nir is ZERO'
+!         end if
+!      end do
+!   end do
     call stop_clock ('one-pot')
 
   END SUBROUTINE compute_onecenter_potentials

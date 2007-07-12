@@ -128,9 +128,9 @@ module grid_paw_variables
        rho1new(:,:,:),             &! new 1center AE charge density in real space
        rho1tnew(:,:,:)              ! new 1center PS charge density in real space
   ! pltz
-  REAL(DP), TARGET, ALLOCATABLE   :: rho1rad(:,:,:,:) ! AE charge density on radial grid
-  REAL(DP), TARGET, ALLOCATABLE   :: rho1trad(:,:,:,:)! the same, but pseudo
-  REAL(DP), TARGET, ALLOCATABLE   :: radpot(:,:,:,:,:)           ! potential on radial grid
+!   REAL(DP), TARGET, ALLOCATABLE   :: rho1rad(:,:,:,:) ! AE charge density on radial grid
+!   REAL(DP), TARGET, ALLOCATABLE   :: rho1trad(:,:,:,:)! the same, but pseudo
+!   REAL(DP), TARGET, ALLOCATABLE   :: radpot(:,:,:,:,:)           ! potential on radial grid
 
   ! new vectors needed for mixing of augm. channel occupations
   REAL(DP), ALLOCATABLE :: &

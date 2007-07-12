@@ -68,10 +68,10 @@ SUBROUTINE electrons()
   USE grid_paw_variables,   ONLY : really_do_paw, okpaw, tpawp, &
        ehart1, ehart1t, etxc1, etxc1t, deband_1ae, deband_1ps,  &
        descf_1ae, descf_1ps, rho1, rho1t, rho1new, rho1tnew,  &
-       vr1, vr1t, becnew, rho1rad, rho1trad, radpot
+       vr1, vr1t, becnew
   USE grid_paw_routines,    ONLY : compute_onecenter_potentials, &
        compute_onecenter_charges, delta_e_1, delta_e_1scf
-  USE rad_paw_routines,     ONLY : sum_rad_rho, rad_potential,coc_pwned  !pltz
+  USE rad_paw_routines !,     ONLY : sum_rad_rho, rad_potential,coc_pwned,rad_dipole  !pltz
   USE uspp,                 ONLY : becsum
   USE uspp_param,           ONLY : nhm
   !!PAW]
@@ -134,16 +134,6 @@ SUBROUTINE electrons()
   ! PU added for electric field
   COMPLEX(DP), ALLOCATABLE  :: psi(:,:)
   INTEGER inberry
-  REAL(DP)              :: becline(36)!DEBUG
-             !01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36
-!lm=3
-!data becline /0.,0.,0.,1.,0.,0.,1.,0.,0.,0.,1.,0.,0.,1.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0./
-!lm=9
-data becline /0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,1.,0.,0.,1.,0.,0.,1.,0.,0.,0.,0.,0.,1.,0./
-!lm=2
-!data becline /0.,0.,1.,0.,0.,0.,0.,0.,0.,1.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0./
-!lm=1
-!data becline /1.,0.,0.,0.,0.,0.,0.,0.,1.,0.,0.,0.,0.,0.,0.,1.,0.,0.,0.,0.,0.,1.,0.,0.,0.,0.,1.,0.,0.,0.,1.,0.,0.,1.,0.,1./
 
   !
   CALL start_clock( 'electrons' )
@@ -400,8 +390,7 @@ data becline /0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,
               !IF (nat==3) becstep(:,3,1) = becline(:)
 
               ! NEW RADIAL PAW (start)
-              CALL sum_rad_rho(becstep, rho1rad, rho1trad)  !pltz
-              CALL rad_potential(rho1rad, rho1trad,radpot)  !pltz
+              CALL PAW_energy(becstep)  !pltz
               ! NEW RADIAL PAW (end)
 
               ALLOCATE (rho1new (nrxx,nspin,nat), rho1tnew(nrxx,nspin,nat) )
