@@ -175,12 +175,11 @@ SUBROUTINE print_clock_pw()
    call print_clock ('vloc_of_g_no')
    call print_clock ('paw_setlocal')
    ! radial routines:
-   CALL start_clock ('PAW_energy')
-   CALL start_clock ('PAW_rho_lm')
-   CALL start_clock ('PAW_v_h')
-   CALL start_clock ('PAW_h_energy')
-
-
+   CALL print_clock ('PAW_energy')
+   CALL print_clock ('PAW_rho_lm')
+   CALL print_clock ('PAW_v_h')
+   CALL print_clock ('PAW_h_energy')
+   CALL print_clock ('PAW_sph_int')
    !
    RETURN
    !

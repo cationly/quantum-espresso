@@ -20,12 +20,12 @@ CONTAINS
 
 !___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___
 !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!
-!!! This function computes energy from potential and density on a radial grid
-!!! if e_na is provided it's filled with per atom energies
+!!! This is the main driver of PAW routines, it uses directly or indirectly
+!!! all the other routines of the module
 !!
-
 SUBROUTINE PAW_energy(becsum)
     USE kinds,                  ONLY : DP
+    USE constants,              ONLY : pi
     USE lsda_mod,               ONLY : nspin
     USE parameters,             ONLY : ndmx
     USE ions_base,              ONLY : nat, ityp
@@ -33,18 +33,27 @@ SUBROUTINE PAW_energy(becsum)
     USE grid_paw_variables,     ONLY : pfunc, ptfunc, tpawp
     USE uspp_param,             ONLY : augfun, nhm, lmaxq
 
-    REAL(DP), INTENT(IN)         :: becsum(nhm*(nhm+1)/2,nat,nspin)! cross band occupations
+    REAL(DP), INTENT(IN)    :: becsum(nhm*(nhm+1)/2,nat,nspin)! cross band occupations
 
-    INTEGER, PARAMETER           :: AE = 1, PS = 2   ! All-Electron and Pseudo
-    INTEGER                      :: i_what           ! counter on AE and PS
-    INTEGER                      :: na,nt,first_nat,last_nat ! atoms counters and indexes
+    INTEGER, PARAMETER      :: AE = 1, PS = 2   ! All-Electron and Pseudo
+    INTEGER                 :: i_what           ! counter on AE and PS
+    INTEGER                 :: na,nt,first_nat,last_nat ! atoms counters and indexes
 
+    ! hartree energy scalar fields expanded on Y_lm
     REAL(DP), ALLOCATABLE   :: rho_lm(:,:,:)      ! radial density expanded on Y_lm
     REAL(DP), ALLOCATABLE   :: v_h_lm(:,:,:)      ! hartree potential
     REAL(DP)                :: e_h(lmaxq**2,nspin)! hartree energy components
     REAL(DP)                :: e                  ! placeholder
+    INTEGER                 :: n!debug
+    
+    ! XC energy scalar fields sampled in radial coordinates r,th(eta),ph(i)
+    REAL(DP)                :: th,ph ! placeholder
+    REAL(DP), ALLOCATABLE   :: rho_rad(:,:)
 
     CALL start_clock ('PAW_energy')
+    ! CHECK: it may be better to switch "whattodo" and "atoms" loops: it 
+    !        saves one IF and may have additional pros with parallel
+    ! CHECk: maybe we don't need to alloc/dealloc rho_lm every time
     whattodo: DO i_what = AE, PS
         ! The following operations will be done, first on AE, then on PS part
         ! furthermore they will be done for one atom at a time (to reduce memory usage)
@@ -53,20 +62,20 @@ SUBROUTINE PAW_energy(becsum)
         ! 1. build rho_lm (PAW_rho_lm)
         ! 2. compute Hartree energy
         !   a. use rho_lm to compute hartree potential (PAW_v_h)
-        !   b. use v_h & rho_lm to build hartree energy (PAW_h_energy)
+        !   b. use v_h_lm & rho_lm to build hartree energy (PAW_h_energy)
         ! 3. compute XC energy
-        !   a. build rho1_rad(theta, phi) from rho_lm
+        !   a. build rho_rad(theta, phi) from rho_lm
         !   b. build v_xc(theta, phi)
         !   c. compute E_xc(theta, phi)
-        !   d. repeat a,b,c integrating om theta & phi
+        !   d. repeat a,b,c integrating on theta & phi
         ! 4. free memory (dealloc rho_lm) and return
         !
         first_nat = 1
         last_nat  = nat
         ! Operations from here on are (will be) parallelized on atoms
         atoms: DO na = first_nat, last_nat
+        nt = ityp(na) ! the type of atom na
         ifpaw: IF (tpawp(nt)) THEN
-            nt = ityp(na) ! the type of atom "na"
             ! STEP: 1 [ build rho_lm (PAW_rho_lm) ]
             ALLOCATE(rho_lm(ndmx,lmaxq**2,nspin))
             IF (i_what == AE) THEN
@@ -81,39 +90,79 @@ SUBROUTINE PAW_energy(becsum)
             ALLOCATE(v_h_lm(ndmx,lmaxq**2,nspin))
             !   2a. use rho_lm to compute hartree potential (PAW_v_h)
             CALL PAW_v_h(na, rho_lm, v_h_lm)
-            !   2b. use v_h & rho_lm to build hartree energy (PAW_h_energy)
+            !   2b. use v_h_lm & rho_lm to build hartree energy (PAW_h_energy)
             e = PAW_h_energy(na, rho_lm, v_h_lm, e_h)
             WRITE(6,*) "******************************"
             WRITE(6,*) e
-            WRITE(6,*) e_h
+            !WRITE(6,*) e_h
             !
-            DEALLOCATE(v_h_lm)
             ! STEP: 3 [ compute XC energy ]
+            th = pi/3._dp
+            ph   = pi/4._dp
+            ALLOCATE(rho_rad(ndmx,nspin))
+!            CALL PAW_rho_rad(th,ph, rho_lm, rho_rad)
+                n = 10
+                CALL start_clock('sph10')
+                e = PAW_sph_integral(n, rho_lm, v_h_lm)
+                CALL stop_clock('sph10')
+                write(6,*) n,e
+                !
+                n = 100
+                CALL start_clock('sph100')
+                e = PAW_sph_integral(n, rho_lm, v_h_lm)
+                CALL stop_clock('sph100')
+                write(6,*) n,e
+                !
+                n = 1000
+                CALL start_clock('sph1000')
+                e = PAW_sph_integral(n, rho_lm, v_h_lm)
+                CALL stop_clock('sph1000')
+                write(6,*) n,e
+                !
+                n = 10000
+                CALL start_clock('sph10000')
+                e = PAW_sph_integral(n, rho_lm, v_h_lm)
+                CALL stop_clock('sph10000')
+                write(6,*) n,e
+
+
+            DEALLOCATE(rho_rad)
+            DEALLOCATE(v_h_lm)
+            !
             DEALLOCATE(rho_lm)
 
         ENDIF ifpaw
         ENDDO atoms
     ENDDO whattodo
+
+    CALL print_clock('sph10')
+    CALL print_clock('sph100')
+    CALL print_clock('sph1000')
+    CALL print_clock('sph10000')
+
     CALL stop_clock ('PAW_energy')
 
 
 END SUBROUTINE PAW_energy
 
+!___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___
+!!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!
+!!! This function computes energy from potential and density on a radial grid
+!!! if e_lm is provided it's filled with energy of single lm components
+!!
 FUNCTION PAW_h_energy(na, pot_lm, rho_lm, e_lm)
     USE kinds,                  ONLY : DP
     USE lsda_mod,               ONLY : nspin
     USE uspp_param,             ONLY : nhm, nh, lmaxq
     USE atom,                   ONLY : r, rab, mesh, msh
     USE parameters,             ONLY : ndmx
-    USE ions_base,              ONLY : nat, ityp
+    USE ions_base,              ONLY : ityp
 
-    INTEGER,  INTENT(IN)             :: na ! atom index
-    REAL(DP), INTENT(IN)             :: rho_lm(ndmx,lmaxq**2,nspin)! in:  rho
-    REAL(DP), INTENT(IN)             :: pot_lm(ndmx,lmaxq**2,nspin)! in:  potential 
-    REAL(DP),OPTIONAL,INTENT(OUT)    :: e_lm(lmaxq**2,nspin)    ! out: energy components 
-    REAL(DP)                         :: PAW_h_energy            ! total hartree energy
-
-                                        ! optional output: energy per atom
+    INTEGER,  INTENT(IN)           :: na ! atom index
+    REAL(DP), INTENT(IN)           :: rho_lm(ndmx,lmaxq**2,nspin)! in:  rho
+    REAL(DP), INTENT(IN)           :: pot_lm(ndmx,lmaxq**2,nspin)! in:  potential 
+    REAL(DP), OPTIONAL,INTENT(OUT) :: e_lm(lmaxq**2,nspin)    ! out: energy components 
+    REAL(DP)                       :: PAW_h_energy            ! total hartree energy
 
     REAL(DP)                :: aux(ndmx)   ! workspace
     REAL(DP)                :: par_energy  ! workspace
@@ -147,7 +196,7 @@ SUBROUTINE PAW_v_h(na, rho_lm, pot_lm)
     USE parameters,             ONLY : ndmx, npsx
     USE lsda_mod,               ONLY : nspin
     USE uspp_param,             ONLY : nhm, nh, lmaxq
-    USE ions_base,              ONLY : nat, ityp, ntyp => nsp
+    USE ions_base,              ONLY : ityp
     USE atom,                   ONLY : r, msh, mesh
 
     INTEGER,  INTENT(IN)  :: na
@@ -211,17 +260,15 @@ END SUBROUTINE PAW_v_h
 !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!
 !!! sum up pfuncs x occupation in order to build radial density's angular momentum components
 !!
-! CALL PAW_rho_lm(becsum(:,na,:), ptfunc(:,:,:,nt), rho_lm, augfun(:,:,:,:,nt))
 SUBROUTINE PAW_rho_lm(na, becsum, pfunc, rho_lm, augfun)
     USE kinds,                  ONLY : DP
-    USE constants,              ONLY : eps8
     USE atom,                   ONLY : r, rab, mesh, msh
     USE ions_base,              ONLY : ityp, ntyp => nsp, nat 
     USE lsda_mod,               ONLY : nspin
     USE uspp_param,             ONLY : nhm, nh, lmaxq!, augfun
     USE uspp,                   ONLY : indv, ap, nhtolm,lpl,lpx
     USE parameters,             ONLY : ndmx, nbrx, lqmax
-    USE grid_paw_variables,     ONLY : okpaw, tpawp!, pfunc, ptfunc
+!    USE grid_paw_variables,     ONLY : okpaw, tpawp!, pfunc, ptfunc
 
     INTEGER,  INTENT(IN)         :: na     ! index of atom to use
     REAL(DP), INTENT(IN)         :: becsum(nhm*(nhm+1)/2,nat,nspin)    ! cross band occupation
@@ -279,10 +326,6 @@ SUBROUTINE PAW_rho_lm(na, becsum, pfunc, rho_lm, augfun)
                                 pref * augfun(1:msh(na), indv(nb,nt), indv(mb,nt), l, nt)
                 ENDIF ! augfun
             ENDDO ! lm
-!                     DO k = 1, msh(nt)
-!                         WRITE(90000+1000*i_what+100*na+10*nb+mb,"(2f15.8)")&
-!                                r(k,nt), pfunc_(k,indv(nb,nt),indv(mb,nt),nt)
-!                     ENDDO
         ENDDO !mb
         ENDDO !nb
     ENDDO spins
@@ -291,6 +334,138 @@ SUBROUTINE PAW_rho_lm(na, becsum, pfunc, rho_lm, augfun)
     CALL stop_clock ('PAW_rho_lm')
 
 END SUBROUTINE PAW_rho_lm
+
+!___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___
+!!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!
+!!! build radial charge distribution from its spherical harmonics expansion
+!!
+SUBROUTINE PAW_rho_rad(th,ph, rho_lm, rho_rad)
+    USE kinds,                  ONLY : DP
+    USE constants,              ONLY : eps8, pi
+    USE uspp_param,             ONLY : lmaxq
+    USE lsda_mod,               ONLY : nspin
+    USE parameters,             ONLY : ndmx, nbrx, lqmax
+!     USE atom,                   ONLY : r
+
+    REAL(DP), INTENT(IN)        :: rho_lm(ndmx,lmaxq**2,nspin)! Y_lm expansion of rho
+    REAL(DP), INTENT(IN)        :: th, ph                     ! direction on which rho_rad is summed
+    REAL(DP), INTENT(OUT)       :: rho_rad(ndmx,nspin)        ! charge density on rad. grid
+
+    REAL(DP)                    :: v(3,1)           ! the versor pointed by angles th,ph
+    REAL(DP),PARAMETER          :: nv(1) = (/1._dp/)! it has to be a vector
+    REAL(DP)                    :: ylm(1,lmaxq**2)  ! the spherical harmonics
+
+    INTEGER                     :: ispin, lm ! counters on angmom and spin
+!     INTEGER                     :: k !debug
+
+    CALL start_clock ('PAW_rho_rad')
+    rho_rad(:,:) = 0._dp
+
+    ! prepare the versor
+    v(1,1) = cos(th) * sin(ph)
+    v(2,1) = sin(th) * sin(ph)
+    v(3,1) = cos(ph)
+!     WRITE(100,*) 0._dp,0._dp,0._dp
+!     WRITE(100,*) v(:,1)
+!     WRITE(101,*) v(:,1)
+!     WRITE(100,*) 0._dp,0._dp,0._dp
+
+    CALL ylmr2(lmaxq**2, 1, v, nv, ylm)
+    rho_rad(:,:) = 0._dp
+    spins: DO ispin = 1,nspin
+        DO lm = 1, lmaxq**2
+            IF (ABS(ylm(1,lm)) < eps8 ) CONTINUE
+            rho_rad(:,ispin) = rho_rad(:,ispin) +&
+                    ylm(1,lm)*rho_lm(:,lm,ispin)
+        ENDDO ! lm
+    ENDDO spins
+
+    CALL stop_clock ('PAW_rho_rad')
+
+END SUBROUTINE PAW_rho_rad
+
+!___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___
+!!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!
+!!! integrate
+!!
+FUNCTION PAW_sph_integral(n, f1_lm, f2_lm)
+    USE kinds,                  ONLY : DP
+    USE constants,              ONLY : pi
+    USE uspp_param,             ONLY : lmaxq
+    USE lsda_mod,               ONLY : nspin
+    USE parameters,             ONLY : ndmx, nbrx, lqmax
+    USE atom,                   ONLY : r, rab
+
+    REAL(DP), INTENT(IN)        :: f1_lm(ndmx,lmaxq**2,nspin)! Y_lm expansion of rho
+    REAL(DP), INTENT(IN)        :: f2_lm(ndmx,lmaxq**2,nspin)! Y_lm expansion of rho
+    INTEGER,  INTENT(IN)        :: n ! 4n**2 ~= number of integration directions
+    REAL(DP)                    :: PAW_sph_integral
+
+    REAL(DP)                    :: f1_rad(ndmx,nspin)
+    REAL(DP)                    :: f2_rad(ndmx,nspin)
+    REAL(DP)                    :: aux(ndmx)
+
+    REAL(DP)                    :: th, ph    ! direction on which rho_rad is summed
+    REAL(DP)                    :: d         ! surface element
+    REAL(DP)                    :: pref      ! 
+    INTEGER                     :: i         ! counters on angmom and spin
+    INTEGER                     :: ispin, lm ! counters on angmom and spin
+    REAL(DP)                    :: integral  ! direction on which rho_rad is summed
+
+    CALL start_clock ('PAW_sph_int')
+
+    ! Angular integration is done on a spiral path on the unitary sphere
+    ! (a) use a uniform step for azimuth angle ph
+    ! (b) use a variable step so that the surface element is constant
+    ! 
+    ! it looks like (a) is 10 times more efficient, I don't know why,
+    ! tests on different atoms and configurations are necessary
+    !
+    ! pref is the number of complete loops (times pi) that theta
+    ! does while phi goes from 0 to pi. Precision is very sensitive
+    ! to it's  choice. While the dependence on sqrt(n) is quite 
+    ! clear the extra factor sqrt(pi) is choosen empirically
+    ! in order to provide:
+    ! 1. as little periodicity as possible 
+    !    (n may be a perfect square)
+    ! 2. a grid as homogeneous as possible
+    !
+    ! integration on radial grid has been tryed but are worst
+    ! 
+    ! TODO: it may be smart to choose n as a function of max(lm)
+
+    PAW_sph_integral = 0._dp
+    !
+    pref = sqrt(DBLE(n)*pi)*pi
+    d = 2._dp*pi**2/DBLE(n)  ! <-- (a)
+!    d = 4._dp*pi/DBLE(n)     ! <-- (b)
+    DO i = 0, n-1 !-n, n-1
+        ph = pi * DBLE(i) / DBLE(n)                            ! <-- (a)
+!        ph = acos(  2._dp*( DBLE(i)-DBLE(n)/2._dp )/DBLE(n)  ) ! <-- (b)
+        th = MOD(pref * DBLE(i) / DBLE(n), 2._dp*pi )
+        !
+        CALL PAW_rho_rad(th,ph, f1_lm, f1_rad)
+        CALL PAW_rho_rad(th,ph, f2_lm, f2_rad)
+        aux(:) = f1_rad(:,1) * f2_rad(:,1)
+        CALL simpson (ndmx,aux,rab(:,1),integral)
+        PAW_sph_integral = PAW_sph_integral + integral*d*sin(ph)  ! <-- (a)
+!        PAW_sph_integral = PAW_sph_integral + integral*d          ! <-- (b)
+    ENDDO
+    
+
+    CALL stop_clock ('PAW_sph_int')
+
+END FUNCTION PAW_sph_integral
+
+!***********************
+   FUNCTION int2char(i)
+   !***********************
+      INTEGER, INTENT(in) :: i
+      CHARACTER(len=15)   :: int2char
+      WRITE(int2char,"(i15)") i
+      int2char = ADJUSTL(int2char)
+   END FUNCTION int2char
+
 
 ! REMOVE ME:
 #include "rad_paw_trash.f90"
