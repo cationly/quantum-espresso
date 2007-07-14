@@ -38,7 +38,7 @@ CONTAINS
     !
     USE grid_paw_variables, ONLY : pp, ppt, prad, ptrad, rho1, rho1t, &
          vr1, vr1t, int_r2pfunc, int_r2ptfunc, ehart1, etxc1, vtxc1, &
-         ehart1t, etxc1t, vtxc1t, aerho_core, psrho_core, radial_distance, &
+         ehart1t, etxc1t, vtxc1t, aerho_core, psrho_core, radial_distance, radial_r,&
          dpaw_ae, dpaw_ps, aevloc, psvloc, aevloc_r, psvloc_r, &
          prodp, prodpt, prod0p, prod0pt
     !
@@ -59,6 +59,7 @@ CONTAINS
     ALLOCATE (aevloc_r(nrxx,ntyp))
     ALLOCATE (psvloc_r(nrxx,ntyp))
     ALLOCATE (radial_distance(nrxx))
+    ALLOCATE (radial_r(3,nrxx))
     !
     ALLOCATE(prodp(nhm*(nhm+1)/2,nhm*(nhm+1)/2,ntyp))
     ALLOCATE(prodpt(nhm*(nhm+1)/2,nhm*(nhm+1)/2,ntyp))
@@ -113,11 +114,11 @@ CONTAINS
     USE spin_orb,   ONLY : lspinorb, rot_ylm, fcoef
     !
     USE grid_paw_variables, ONLY: tpawp, pfunc, ptfunc, pp, ppt, prad, ptrad, &
-         int_r2pfunc, int_r2ptfunc, okpaw
+         int_r2pfunc, int_r2ptfunc, pmultipole, ptmultipole, okpaw
     !
     IMPLICIT NONE
     !
-    REAL(DP), POINTER :: pfunc_(:,:,:,:), prad_(:,:,:,:), pp_(:,:,:), int_r2pfunc_(:,:,:)
+    REAL(DP), POINTER :: pfunc_(:,:,:,:), prad_(:,:,:,:), pp_(:,:,:), int_r2pfunc_(:,:,:), pmultipole_(:,:,:,:)
     !
     INTEGER :: i_what
     REAL(DP) :: aux2(ndmx)
@@ -149,17 +150,21 @@ CONTAINS
     !
     whattodo: DO i_what=1, 2
        ! associate a pointer to the AE or PS part
+       write (*,*) "entering init_prad"
+       write (*,*) lmaxq, lqmax
        NULLIFY(pfunc_,pp_,prad_)
        IF (i_what==1) THEN
           pfunc_=> pfunc
           pp_   => pp
           prad_ => prad
           int_r2pfunc_ => int_r2pfunc
+          pmultipole_ => pmultipole
        ELSE IF (i_what==2) THEN
           pfunc_=> ptfunc
           pp_   => ppt
           prad_ => ptrad
           int_r2pfunc_ => int_r2ptfunc
+          pmultipole_ => ptmultipole
        END IF
 
        IF (lmaxq > 0) prad_(:,:,:,:)= 0.d0
@@ -267,6 +272,26 @@ CONTAINS
                                        augfun(1:msh(nt),nb, mb, 0, nt)* &
                                        r(1:msh(nt),nt) * r(1:msh(nt),nt)
                    CALL simpson (msh(nt),aux2,rab(1,nt),int_r2pfunc_(nb,mb,nt))
+                END DO
+             END DO
+          END IF
+       END DO
+
+       ! Compute the multipoles of pfunc   (not in init_us_1)
+       pmultipole_ = 0.0_DP
+       DO nt = 1, ntyp
+          IF (tpawp(nt)) THEN
+             DO nb = 1, nbeta (nt)
+                DO mb = nb, nbeta (nt)
+                   DO l = 0, nqlc(nt) - 1
+                      aux2(1:msh(nt))= pfunc_(1:msh(nt), nb, mb, nt) * &
+                                       r(1:msh(nt),nt)**l
+                      ! add augmentation charge if ps
+                      IF (i_what.EQ.2) aux2(1:msh(nt)) = aux2(1:msh(nt)) + &
+                                       augfun(1:msh(nt),nb, mb, l, nt)* &
+                                       r(1:msh(nt),nt)**l 
+                      CALL simpson (msh(nt),aux2,rab(1,nt),pmultipole_(nb,mb,l,nt))
+                   END DO
                 END DO
              END DO
           END IF
@@ -493,10 +518,12 @@ CONTAINS
   ! Analogous to PW/v_of_rho.f90
   ! + evaluation of the spheropole: Int dr r^2 rho(r)
 !#define __DEBUG_ONECENTER_POTENTIALS
-  SUBROUTINE compute_onecenter_potentials (becsum,inp_rho1, inp_rho1t)
+  SUBROUTINE compute_onecenter_potentials (becsum,inp_rho1, inp_rho1t,fixed_lm)
     USE kinds,            ONLY : DP
+    USE parameters,       ONLY : lqmax
+    USE cell_base,        ONLY : at, alat, omega
     USE cell_base,        ONLY : at, alat, omega, boxdimensions
-    USE ions_base,        ONLY: tau, atm, ityp, ntyp=>nsp
+    USE ions_base,        ONLY : tau, atm, ityp, ntyp=>nsp
     USE ions_base,        ONLY : nat
     USE lsda_mod,         ONLY : nspin
     USE gvect,            ONLY : ngm, gstart, nr1, nr2, nr3, nrx1, nrx2, nrx3,&
@@ -504,10 +531,11 @@ CONTAINS
     !
     USE grid_paw_variables, ONLY: vr1, vr1t, radial_distance, & 
          int_r2pfunc, int_r2ptfunc, tpawp, okpaw, ehart1, etxc1, vtxc1, &
-         ehart1t, etxc1t, vtxc1t, aerho_core, psrho_core, psvloc_r, aevloc_r,augmom
+         pmultipole, ptmultipole, &
+         ehart1t, etxc1t, vtxc1t, aerho_core, psrho_core, psvloc_r, aevloc_r
     !USE uspp, ONLY: indv, becsum, nhtolm, lpl, ap
     ! becsum now passed as parameter
-    USE uspp, ONLY: indv, nhtolm, lpl, ap,lpx
+    USE uspp, ONLY: indv, nhtolm, lpl, ap, lpx
     USE uspp_param, ONLY: nh,nhm !<-- nhm only neeed for becsum
     USE constants, ONLY: PI
     IMPLICIT NONE
@@ -517,19 +545,18 @@ CONTAINS
          inp_rho1(nrxx, nspin, nat), inp_rho1t(nrxx,nspin,nat)
     !
     REAL(DP), POINTER :: etxc1_(:), vtxc1_(:), ehart1_(:)
-    REAL(DP) :: charge, alpha, spheropole
+    REAL(DP) :: charge, spheropole, tot_multipole(lqmax*lqmax)
+    INTEGER, OPTIONAL, INTENT (IN) :: fixed_lm
     INTEGER :: na, ih, jh, ijh, nb, mb, is, nt, i
     !
-    REAL(DP), POINTER :: rho1_(:,:,:), rho_core_(:,:), vr1_(:,:,:), int_r2pfunc_(:,:,:)
+    REAL(DP), POINTER :: rho1_(:,:,:), rho_core_(:,:), vr1_(:,:,:), int_r2pfunc_(:,:,:), pmultipole_(:,:,:,:)
     INTEGER :: i_what
     REAL(DP) :: deltarho, deltav, average_rho, average_pot, rms_rho, rms_pot
-    INTEGER :: ir, nir
+    INTEGER :: ir, nir, l, lm, lp
     !
     IF (.NOT.okpaw) RETURN
     !
     call start_clock ('one-pot')
-    CALL infomsg ('compute_onecenter_potentials','alpha set manually',-1)
-    alpha = 0.1_DP
     !
     whattodo: DO i_what=1, 2
        NULLIFY(rho1_,rho_core_,vr1_,int_r2pfunc_,etxc1_,vtxc1_,ehart1_)
@@ -538,6 +565,7 @@ CONTAINS
           rho_core_ => aerho_core
           vr1_  => vr1
           int_r2pfunc_ => int_r2pfunc
+          pmultipole_ => pmultipole
           etxc1_ => etxc1
           vtxc1_ => vtxc1
           ehart1_ => ehart1
@@ -546,6 +574,7 @@ CONTAINS
           rho_core_ => psrho_core
           vr1_  => vr1t
           int_r2pfunc_ => int_r2ptfunc
+          pmultipole_ => ptmultipole
           etxc1_ => etxc1t
           vtxc1_ => vtxc1t
           ehart1_ => ehart1t
@@ -579,12 +608,46 @@ CONTAINS
                    END DO
                 END DO
              END DO
+             write (*,*) "calculate tot_multipoles", lqmax
+             tot_multipole(:)=0.d0
+             DO nt = 1, ntyp
+                IF (ityp(na)==nt) THEN
+                   ijh = 0
+                   DO ih = 1, nh (nt)
+                      nb = indv(ih,nt)
+                      DO jh = ih, nh (nt)
+                         mb = indv(jh,nt)
+                         ijh = ijh + 1
+                       if (present(fixed_lm)) then
+                            lm = fixed_lm
+                            l = INT(sqrt(DBLE(lm-1)))
+                            DO is = 1, nspin
+                               tot_multipole(lm) = tot_multipole(lm) + &
+                                   ap(lm,nhtolm(ih,nt),nhtolm(jh,nt)) * &
+                                   pmultipole_(nb,mb,l,nt) * becsum(ijh,na,is)
+                            END DO
+                       else
+                         DO lp = 1, lpx (nhtolm(ih,nt), nhtolm(jh,nt)) 
+                            lm = lpl (nhtolm(ih,nt), nhtolm(jh,nt), lp)
+                            l = INT(sqrt(DBLE(lm-1)))
+                            DO is = 1, nspin
+                               tot_multipole(lm) = tot_multipole(lm) + &
+                                   ap(lm,nhtolm(ih,nt),nhtolm(jh,nt)) * &
+                                   pmultipole_(nb,mb,l,nt) * becsum(ijh,na,is)
+                            END DO
+                         END DO
+                       end if
+                      END DO
+                   END DO
+                END IF
+             END DO
+             write (*,*) "done"
              !
              !PRINT *, 'SPHEROPOLE:',na, spheropole
              CALL v_h_grid( rho1_(:,:,na), nr1,nr2,nr3, nrx1,nrx2,nrx3, nrxx, &
                             nl, ngm, gg, gstart, nspin, alat, omega, &
-                            ehart1_(na), charge, vr1_(:,:,na), alpha, &
-                            spheropole, na)
+                            ehart1_(na), charge, vr1_(:,:,na), &
+                            spheropole, tot_multipole, na)
           END IF
        END DO
     END DO whattodo
@@ -884,18 +947,19 @@ CONTAINS
 !#define __DEBUG_V_H_GRID
 SUBROUTINE v_h_grid( rho, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, &
                 ngm, gg, gstart, nspin, alat, omega, ehart, charge, v, &
-                alpha, spheropole, na )
+                spheropole, tot_multipole, na )
   !----------------------------------------------------------------------------
   !
   ! ... Hartree potential VH(r) from n(r)
   !
   USE kinds,     ONLY : DP
-  USE constants, ONLY : fpi, e2, PI, EPS8
-  USE gvect,     ONLY : nlm
+  USE parameters,ONLY : lqmax
+  USE constants, ONLY : fpi, e2, TPI, PI, EPS8
+  USE gvect,     ONLY : nlm, g
   USE wvfct,     ONLY : gamma_only
-  USE cell_base, ONLY : tpiba2, at
+  USE cell_base, ONLY : tpiba2, at, tpiba
   USE ions_base, ONLY : tau, atm, ntyp=>nsp, nat
-  USE grid_paw_variables, ONLY : radial_distance
+  USE grid_paw_variables, ONLY : radial_distance, radial_r
   !
   IMPLICIT NONE
   !
@@ -904,22 +968,25 @@ SUBROUTINE v_h_grid( rho, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, &
   !
   REAL (DP), INTENT(IN) :: rho(nrxx,nspin), gg(ngm), alat, omega
   !
-  REAL(DP), INTENT(IN) :: alpha, spheropole
+  REAL(DP), INTENT(IN) :: spheropole, tot_multipole(lqmax*lqmax)
   INTEGER, INTENT(IN) :: na
   !
   REAL (DP), INTENT(OUT) :: v(nrxx,nspin), ehart, charge
+  REAL(DP) :: dipole(3), quad(5), alpha, edip_g0, edip_g, edip_r
   !
   ! ... local variables
   !
-  REAL (DP)              :: fac
+  REAL (DP)              :: fac, ar, ar2, pr, pg_gauss, p2
   REAL (DP), ALLOCATABLE :: aux(:,:), aux1(:,:)
-  INTEGER                     :: ir, is, ig
+  INTEGER                :: ir, is, ig, icar
   !
   REAL(DP) :: dummyx, c(3), r2, gaussrho
   INTEGER :: ir1,ir2,ir3, i,j,k
   !
   !
    call start_clock ('v_h_grid')
+   CALL infomsg ('v_h_grid','alpha set manually',-1)
+   alpha = 2.5_DP  ! 1/(4*0.1)
   ALLOCATE( aux( 2, nrxx ), aux1( 2, ngm ) )
   !
   ! ... copy total rho in aux
@@ -928,6 +995,30 @@ SUBROUTINE v_h_grid( rho, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, &
   aux(1,:) = rho(:,1)
   !
   IF ( nspin == 2 ) aux(1,:) = aux(1,:) + rho(:,2)
+  dipole(:)=0.d0
+  quad(:) = 0.d0
+  charge = 0.d0
+  do ir=1,nrxx
+     charge = charge + aux(1,ir)
+     dipole(:) = dipole(:) + aux(1,ir) * radial_r(:,ir)
+     quad(1)=quad(1)+aux(1,ir)*(radial_r(3,ir)**2-radial_distance(ir)**2/3.0_DP)
+     quad(2)=quad(2)+aux(1,ir)*radial_r(1,ir)*radial_r(3,ir)
+     quad(3)=quad(3)+aux(1,ir)*radial_r(2,ir)*radial_r(3,ir)
+     quad(4)=quad(4)+aux(1,ir)*(radial_r(1,ir)**2-radial_r(2,ir)**2)
+     quad(5)=quad(5)+aux(1,ir)*radial_r(1,ir)*radial_r(2,ir)
+  end do
+  charge = charge * omega / (nr1*nr2*nr3)
+  dipole(:) = dipole(:) * omega / (nr1*nr2*nr3)
+  quad(:) = quad(:) * omega / (nr1*nr2*nr3)
+  write (*,'(a,2f10.5)') 'charge=', charge, tot_multipole(1)*sqrt(fpi)
+  write (*,'(a,2f10.5)') 'dipole=', dipole(1),-tot_multipole(3)*sqrt(fpi/3.0_DP)
+  write (*,'(a,2f10.5)') 'dipole=', dipole(2),-tot_multipole(4)*sqrt(fpi/3.0_DP)
+  write (*,'(a,2f10.5)') 'dipole=', dipole(3), tot_multipole(2)*sqrt(fpi/3.0_DP)
+  write (*,'(a,2f10.5)') 'quad  =', quad(1), tot_multipole(5)*sqrt(fpi/5.0_DP)
+  write (*,'(a,2f10.5)') 'quad  =', quad(2), tot_multipole(6)*sqrt(fpi/5.0_DP)
+  write (*,'(a,2f10.5)') 'quad  =', quad(3), tot_multipole(7)*sqrt(fpi/5.0_DP)
+  write (*,'(a,2f10.5)') 'quad  =', quad(4), tot_multipole(8)*sqrt(fpi/5.0_DP)
+  write (*,'(a,2f10.5)') 'quad  =', quad(5), tot_multipole(9)*sqrt(fpi/5.0_DP)
   !
   ! ... bring rho (aux) to G space
   !
@@ -939,30 +1030,40 @@ SUBROUTINE v_h_grid( rho, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, &
   !
   CALL reduce( 1, charge )
   !
-  PRINT *, 'charge=', charge
+  PRINT *, 'charge=', charge, tot_multipole(1)*sqrt(fpi)
   !
   ! ... calculate hartree potential in G-space (NB: only G/=0 )
   !
   ehart     = 0.D0
   aux1(:,:) = 0.D0
   !
+  p2 =(dipole(1)*dipole(1)+dipole(2)*dipole(2)+dipole(3)*dipole(3))
+!  IF ( gstart == 2 ) ehart = ehart - p2*tpiba2/omega**2/3.0_DP
+  edip_g0 = -p2*tpiba2/omega**2/3.0_DP
+  edip_g  = 0.d0
   DO ig = gstart, ngm
      !
      ! Define a gaussian distribution of charge, to be substracted
-     gaussrho = charge * EXP(-alpha*gg(ig)*tpiba2) / omega
+     gaussrho = charge * EXP(-0.25_DP*gg(ig)*tpiba2/alpha) / omega
+     pg_gauss = (dipole(1)*g(1,ig)+dipole(2)*g(2,ig)+dipole(3)*g(3,ig))*tpiba &
+                * EXP(-0.25_DP*gg(ig)*tpiba2/alpha) / omega 
      !
      fac = 1.D0 / gg(ig)
      !
-     ehart = ehart + ( aux(1,nl(ig))**2 + aux(2,nl(ig))**2 - gaussrho**2 ) * fac
+     ehart = ehart + ( aux(1,nl(ig))**2 + aux(2,nl(ig))**2 &
+                       - gaussrho**2 - pg_gauss**2 ) * fac
+     edip_g  =  edip_g - pg_gauss**2 * fac
      !
      aux1(1,ig) = ( aux(1,nl(ig)) - gaussrho ) * fac
-     aux1(2,ig) = ( aux(2,nl(ig))            ) * fac
+     aux1(2,ig) = ( aux(2,nl(ig)) + pg_gauss ) * fac
      !
   ENDDO
   !
   fac = e2 * fpi / tpiba2
   !
   ehart = ehart * fac
+  edip_g  =  edip_g * fac
+  edip_g0 =  edip_g0 * fac
   !
   aux1 = aux1 * fac
   !
@@ -973,6 +1074,8 @@ SUBROUTINE v_h_grid( rho, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, &
   ELSE
      !
      ehart = ehart * 0.5D0 * omega
+     edip_g = edip_g * 0.5D0 * omega
+     edip_g0= edip_g0 * 0.5D0 * omega
      !
   END IF
   !
@@ -984,19 +1087,21 @@ SUBROUTINE v_h_grid( rho, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, &
   !
   ! ... Set G=0 terms
   !
-  aux1(1,1) = e2 * (FPI*alpha*charge - 2*PI/3*spheropole) / omega
+  aux1(1,1) = e2 * (PI/alpha*charge - 2*PI/3*spheropole) / omega
   ! Add G=0 contribution to Hartree energy
   ehart = ehart + charge * aux1(1,1)
   ! Add analytic contribution from gaussian charges to Hartree energy
-  ehart = ehart + 0.5_DP * e2 * charge**2 / SQRT(2*PI*alpha)
+  ehart = ehart +  e2 * (charge**2 + p2*alpha / 3.0_DP) * SQRT(alpha/TPI) 
+  edip_r = e2 * p2*alpha / 3.0_DP * SQRT(alpha/TPI) 
+  PRINT '(A,4f12.8)','EDIP',edip_g0,edip_g,edip_r, edip_g0+edip_g+edip_r
   !
 #if defined __DEBUG_NEWD_PAW_GRID
 !  PRINT '(A,3f20.10)', 'SPHEROPOLE,CHARGE:              ', charge, &
 !       spheropole
 !  PRINT '(A,3f20.10)', 'V_G=0:              ', aux1(1,1), &
-!       e2*(FPI*alpha*charge)/omega, e2*(2*PI/3*spheropole)/omega
+!       e2*(PI/alpha*charge)/omega, e2*(2*PI/3*spheropole)/omega
 !  PRINT '(A,3f20.10)', 'Hartree self-energy:', ehart, &
-!     charge * aux1(1,1),    0.5_DP * e2 * charge**2 / SQRT(2*PI*alpha)
+!     charge * aux1(1,1),    e2 * charge**2 * SQRT(alpha/TPI)
 #endif
   ! 
   aux(:,:) = 0.D0
@@ -1028,11 +1133,15 @@ SUBROUTINE v_h_grid( rho, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, &
   !
   DO ir=1,nrxx
      r2=radial_distance(ir)
+     pr=dipole(1)*radial_r(1,ir)+dipole(2)*radial_r(2,ir)+dipole(3)*radial_r(3,ir)
      !
+     ar = sqrt(alpha)*r2
+     ar2= ar*ar
      IF (r2 < EPS8) THEN
-        aux(1,ir)=aux(1,ir)+e2*charge/SQRT(PI*alpha)
+        aux(1,ir)=aux(1,ir)+e2*charge*SQRT(4.0_DP*alpha/PI)
      ELSE
-        aux(1,ir)=aux(1,ir)+e2*charge/r2*erf(r2/2/SQRT(alpha))
+        aux(1,ir)=aux(1,ir)+e2*charge/r2*erf(ar) &
+                           -e2*pr*alpha**1.5_DP*(2.0_DP/sqrt(PI)*exp(-ar2)-erf(ar)/ar)/ar2
      END IF
   END DO
   !
@@ -1060,7 +1169,7 @@ SUBROUTINE v_h_grid( rho, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl, &
 END SUBROUTINE v_h_grid
 
 SUBROUTINE set_radial_distance( radial_distance, nr1,nr2,nr3, nrx1,nrx2,nrx3, &
-               nrxx, alat)
+               nrxx, alat,radial_r)
   !----------------------------------------------------------------------------
   !
   USE kinds,     ONLY : DP
@@ -1073,6 +1182,7 @@ SUBROUTINE set_radial_distance( radial_distance, nr1,nr2,nr3, nrx1,nrx2,nrx3, &
   INTEGER,   INTENT(IN)  :: nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx
   REAL (DP), INTENT(IN)  :: alat
   REAL (DP), INTENT(OUT) :: radial_distance(nrxx)
+  REAL (DP), optional, INTENT(OUT) :: radial_r(3,nrxx)
   !
   ! ... local variables
   !
@@ -1108,6 +1218,9 @@ SUBROUTINE set_radial_distance( radial_distance, nr1,nr2,nr3, nrx1,nrx2,nrx3, &
            do k=-1,1
               pos(:) = pos_ir(:) + i*at(:,1) + j*at(:,2) + k*at(:,3) 
               dist2 = min (dist2,pos(1)**2 + pos(2)**2 + pos(3)**2)
+              if (abs( pos(1)**2 + pos(2)**2 + pos(3)**2 - dist2 ) < eps8 ) then
+                 if (present(radial_r)) radial_r(:,ir) = pos(:) * alat 
+              end if
            end do
         end do
      end do
@@ -1517,7 +1630,7 @@ subroutine paw_grid_setlocal
   USE gvect,     ONLY : nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, &
                         nl, nlm, ngm, igtongl
   USE grid_paw_variables, ONLY : aevloc, psvloc, aevloc_r, psvloc_r, &
-                        radial_distance
+                        radial_distance, radial_r
   !
   implicit none
   complex(DP), allocatable :: aux (:)
@@ -1562,7 +1675,7 @@ subroutine paw_grid_setlocal
   deallocate(aux)
   ! calculate radial distance from atoms for each grid point
   CALL set_radial_distance( radial_distance, nr1,nr2,nr3, nrx1,nrx2,nrx3, &
-               nrxx, alat)
+               nrxx, alat, radial_r)
    call stop_clock ('paw_setlocal')
   return
 end subroutine paw_grid_setlocal

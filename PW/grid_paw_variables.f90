@@ -32,6 +32,9 @@ module grid_paw_variables
 !  REAL(DP), TARGET :: &
 ! THE DEFINITION OF augfun IS IN ../Modules/uspp.f90
 !       augfun(ndmx,nbrx,nbrx,0:lqmax,npsx) 
+  REAL(DP), TARGET :: &
+       pmultipole(nbrx,nbrx,0:lqmax,npsx), &! AE multipoles
+       ptmultipole(nbrx,nbrx,0:lqmax,npsx)  ! PS multipoles
 
   ! Analogous to qq in "uspp_param" (Modules/uspp.f90)
   REAL(DP), ALLOCATABLE, TARGET :: &
@@ -98,7 +101,8 @@ module grid_paw_variables
        psvloc(:,:)              ! PS local 1-c potential for each atom type
   !
   REAL(DP), ALLOCATABLE :: &
-       radial_distance(:)     ! radial distance from na (minimum image conv)
+       radial_distance(:), &   ! radial distance from origin (minimum image conv)
+       radial_r(:,:)           ! radial r from origin (minimum image conv)
 
   ! Analogous to vltot in "scf" (PW/pwcom.f90)
   REAL(DP), ALLOCATABLE, TARGET :: &

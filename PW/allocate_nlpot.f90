@@ -35,7 +35,7 @@ subroutine allocate_nlpot
   USE noncollin_module, ONLY : noncolin
   USE wvfct,            ONLY : npwx, npw, igk, igk_l2g, g2kin
   USE us,               ONLY : qrad, tab, tab_at, dq, nqx, nqxq
-  USE uspp,             ONLY : indv, nhtol, nhtom, nhtolm, qq, dvan, deeq, vkb, nkb, &
+  USE uspp,             ONLY : indv, nhtol, nhtolm, qq, dvan, deeq, vkb, nkb, &
                                nkbus, nhtoj, becsum, qq_so, dvan_so, deeq_nc
   USE uspp_param,       ONLY : lmaxq, lmaxkb, lll, nbeta, nh, nhm, tvanp
   USE spin_orb,         ONLY : lspinorb, fcoef
@@ -87,7 +87,6 @@ subroutine allocate_nlpot
   !
   allocate (indv( nhm, nsp))    
   allocate (nhtol(nhm, nsp))    
-  allocate (nhtom(nhm, nsp))    
   allocate (nhtolm(nhm, nsp))    
   allocate (nhtoj(nhm, nsp))    
   allocate (deeq( nhm, nhm, nat, nspin))    

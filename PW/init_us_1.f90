@@ -36,7 +36,7 @@ subroutine init_us_1
   USE gvect,      ONLY : g, gg
   USE lsda_mod,   ONLY : nspin
   USE us,         ONLY : nqxq, dq, nqx, tab, qrad
-  USE uspp,       ONLY : nhtol, nhtoj, nhtolm, nhtom, dvan, qq, indv, ap,&
+  USE uspp,       ONLY : nhtol, nhtoj, nhtolm, dvan, qq, indv, ap,&
                          aainit, qq_so, dvan_so, okvan
   USE uspp_param, ONLY : lmaxq, dion, betar, qfunc, qfcoef, rinner, nbeta, &
                          kkbeta, nqf, nqlc, lll, jjj, lmaxkb, nh, tvanp, nhm, &
@@ -133,7 +133,6 @@ subroutine init_us_1
         do m = 1, 2 * l + 1
            nhtol (ih, nt) = l
            nhtolm(ih, nt) = l*l+m
-           nhtom(ih, nt) = m
            nhtoj (ih, nt) = j
            indv  (ih, nt) = nb
            ih = ih + 1

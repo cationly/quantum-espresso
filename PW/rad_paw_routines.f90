@@ -45,10 +45,13 @@ SUBROUTINE PAW_energy(becsum)
     REAL(DP)                :: e_h(lmaxq**2,nspin)! hartree energy components
     REAL(DP)                :: e                  ! placeholder
     INTEGER                 :: n!debug
+    ! BEWARE THAT HARTREE ONLY DEPENDS ON THE TOTAL RHO NOT ON RHOUP AND RHODW SEPARATELY...
+    ! TREATMENT OF NSPIN>1 MUST BE CHECKED AND CORRECTED
     
     ! XC energy scalar fields sampled in radial coordinates r,th(eta),ph(i)
     REAL(DP)                :: th,ph ! placeholder
     REAL(DP), ALLOCATABLE   :: rho_rad(:,:)
+    INTEGER :: lm
 
     CALL start_clock ('PAW_energy')
     ! CHECK: it may be better to switch "whattodo" and "atoms" loops: it 
@@ -93,8 +96,9 @@ SUBROUTINE PAW_energy(becsum)
             !   2b. use v_h_lm & rho_lm to build hartree energy (PAW_h_energy)
             e = PAW_h_energy(na, rho_lm, v_h_lm, e_h)
             WRITE(6,*) "******************************"
-            WRITE(6,*) e
-            !WRITE(6,*) e_h
+!            WRITE(6,*) e
+            WRITE(6,*) "==PAW RADIAL ENERGY: ", e
+            WRITE(6,'(a,i1,a,f15.7)') ("==RADIAL PAW ENERGY (LM=",lm,"):",e_h(lm,1),lm=1,lmaxq**2)
             !
             ! STEP: 3 [ compute XC energy ]
             th = pi/3._dp
