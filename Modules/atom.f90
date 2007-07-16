@@ -12,10 +12,15 @@ MODULE atom
   ! ... The variables needed to describe the atoms and related quantities
   !
   USE kinds,      ONLY : DP
-  USE parameters, ONLY : npsx, ndmx, nchix
+  USE parameters, ONLY : npsx, nchix
+  USE radial_grids, ONLY : ndmx, radial_grid_type
   !
   SAVE
   !
+  type(radial_grid_type) :: &
+       rgrid(npsx)               &! the information on atomic radial grids.
+                                 &! NB: some of the subsequent data are therefore redundant 
+                                  ! and will be eliminated in due course asap
   REAL(DP) :: &
        zmesh(npsx),              &! the atomic charge for mesh generation
        xmin(npsx),               &! initial linear mesh point
@@ -26,7 +31,7 @@ MODULE atom
        chi(ndmx,nchix,npsx),     &! radial atomic orbitals
        oc(nchix,npsx),           &! atomic level occupation
        rho_at(ndmx,npsx),        &! radial atomic charge density
-       rho_atc(ndmx,npsx)        ! radial core charge density
+       rho_atc(ndmx,npsx)         ! radial core charge density
   INTEGER :: &
        mesh(npsx),               &! number of mesh points
        msh(npsx),                &! the point at rcut

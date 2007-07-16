@@ -25,8 +25,8 @@ subroutine run_pseudo
        nbf      ! number of beta functions
 
   real(DP) :: &
-       vaux(ndm),  &   ! auxiliary variable
-       vnew(ndm,2)   ! the potential
+       vaux(ndmx),  &   ! auxiliary variable
+       vnew(ndmx,2)   ! the potential
 
   integer :: &
        n1,n2,nst,ikl,ind
@@ -38,8 +38,8 @@ subroutine run_pseudo
        nvalts,                  & ! number of valence electrons for this conf.
        dddnew(nwfsx,nwfsx,2),   & ! the new D coefficients
        ocstart(nwfsx),          & ! guess for the occupations
-       vd(2*(ndm+nwfsx+nwfsx)), & ! Vloc and D in one array for mixing
-       vdnew(2*(ndm+nwfsx+nwfsx)) ! the new vd array
+       vd(2*(ndmx+nwfsx+nwfsx)), & ! Vloc and D in one array for mixing
+       vdnew(2*(ndmx+nwfsx+nwfsx)) ! the new vd array
   integer :: &
        iswstart(nwfsx)            ! guess for the starting spins
 
@@ -73,14 +73,14 @@ subroutine run_pseudo
      ! Generate the corresponding local and nonlocal potentials
      CALL new_paw_hamiltonian (vpstot, ddd, etots, &
           pawsetup, pawsetup%nwfc, pawsetup%l, 1,iswstart,ocstart, pawsetup%pswfc, pawsetup%enl)
-     vpstot(1:mesh,2)=vpstot(1:mesh,1)
+     vpstot(1:grid%mesh,2)=vpstot(1:grid%mesh,1)
      ddd(1:nbeta,1:nbeta,2)=ddd(1:nbeta,1:nbeta,1)
      do is=1,nspin
-        vpstot(1:mesh,is)=vpstot(1:mesh,is)-pawsetup%psloc(1:mesh)
+        vpstot(1:grid%mesh,is)=vpstot(1:grid%mesh,is)-pawsetup%psloc(1:grid%mesh)
      enddo
-     call vdpack (mesh, ndm, nbeta, nwfsx, nspin, vpstot, ddd, vd, "PACK")
+     call vdpack (grid%mesh, ndmx, nbeta, nwfsx, nspin, vpstot, ddd, vd, "PACK")
      do is=1,nspin
-        vpstot(1:mesh,is)=vpstot(1:mesh,is)+pawsetup%psloc(1:mesh)
+        vpstot(1:grid%mesh,is)=vpstot(1:grid%mesh,is)+pawsetup%psloc(1:grid%mesh)
      enddo
   endif
   !
@@ -100,17 +100,17 @@ subroutine run_pseudo
               else
                  call errore('run-pseudo','spin-orbit?!?',3)
               endif
-              do n=1,mesh
+              do n=1,grid%mesh
                  vaux(n)=vpstot(n,is)+vnl (n,llts(ns),ind)
               enddo
            else
-              do n=1,mesh
+              do n=1,grid%mesh
                  vaux(n)=vpstot(n,is)
               enddo
            endif
            !
            call ascheqps(nnts(ns), llts(ns), jjts(ns), enls(ns),  &
-                mesh, ndm, dx, r, r2, sqr, vaux(1), thresh, phis(1,ns), &
+                grid%mesh, ndmx, grid, vaux(1), thresh, phis(1,ns), &
                 betas, ddd(1,1,is), qq, nbf, nwfsx, lls, jjs, ikk)
            ! write(6,*) 'run_pseu',ns, nwfts, nnts(ns),llts(ns), jjts(ns),enls(ns)  
         endif
@@ -121,23 +121,23 @@ subroutine run_pseudo
      if (.not.lpaw) then
         !
         call chargeps(nwfts,llts,jjts,octs,iswts)
-        call new_potential(ndm,mesh,r,r2,sqr,dx,0.0_dp,vxt,lsd, &
+        call new_potential(ndmx,grid%mesh,grid,0.0_dp,vxt,lsd, &
              nlcc,latt,enne,rhoc,rhos,vh,vnew)
 
         do is=1,nspin
            vpstot(:,is)=vpstot(:,is)-vpsloc(:)
         enddo
 
-        !         do n=1,mesh
+        !         do n=1,grid%mesh
         !            write(6,'(5f15.4)') r(n),vnew(n,1)-vpstot(n,1),
         !     +               vnew(n,1), vnew(n,2)-vpstot(n,2), vnew(n,2)
         !         enddo
-        call vpack(mesh,ndm,nspin,vnew,vpstot,1)
-        call dmixp(mesh*nspin,vnew,vpstot,beta,tr2,iter,3,eps0,conv)
-        call vpack(mesh,ndm,nspin,vnew,vpstot,-1)
+        call vpack(grid%mesh,ndmx,nspin,vnew,vpstot,1)
+        call dmixp(grid%mesh*nspin,vnew,vpstot,beta,tr2,iter,3,eps0,conv)
+        call vpack(grid%mesh,ndmx,nspin,vnew,vpstot,-1)
 
         do is=1,nspin
-           do n=1,mesh
+           do n=1,grid%mesh
               vpstot(n,is)=vpstot(n,is)+vpsloc(n)
            enddo
         enddo
@@ -148,13 +148,13 @@ subroutine run_pseudo
         call new_paw_hamiltonian (vnew, dddnew, etots, &
              pawsetup, nwfts, llts, nspin, iswts, octs, phis, enls)
         do is=1,nspin
-           vnew(1:mesh,is)=vnew(1:mesh,is)-pawsetup%psloc(1:mesh)
+           vnew(1:grid%mesh,is)=vnew(1:grid%mesh,is)-pawsetup%psloc(1:grid%mesh)
         enddo
-        call vdpack (mesh, ndm, nbeta, nwfsx, nspin, vnew, dddnew, vdnew, "PACK")
-        call dmixp((mesh+nbeta*nbeta)*nspin,vdnew,vd,beta,tr2,iter,3,eps0,conv)
-        call vdpack (mesh, ndm, nbeta, nwfsx, nspin, vpstot, ddd, vd, "UNDO")
+        call vdpack (grid%mesh, ndmx, nbeta, nwfsx, nspin, vnew, dddnew, vdnew, "PACK")
+        call dmixp((grid%mesh+nbeta*nbeta)*nspin,vdnew,vd,beta,tr2,iter,3,eps0,conv)
+        call vdpack (grid%mesh, ndmx, nbeta, nwfsx, nspin, vpstot, ddd, vd, "UNDO")
         do is=1,nspin
-           vpstot(1:mesh,is)=vpstot(1:mesh,is)+pawsetup%psloc(1:mesh)
+           vpstot(1:grid%mesh,is)=vpstot(1:grid%mesh,is)+pawsetup%psloc(1:grid%mesh)
         enddo
         !
      endif
@@ -180,17 +180,17 @@ subroutine run_pseudo
                 abs(jjts(ns)-llts(ns)-0.5_dp) < 0.001_dp) then
               ind=2
            endif
-           do n=1,mesh
+           do n=1,grid%mesh
               vaux(n)=vpstot(n,is)+vnl (n,llts(ns),ind)
            enddo
         else
-           do n=1,mesh
+           do n=1,grid%mesh
               vaux(n)=vpstot(n,is)
            enddo
         endif
         !
         call ascheqps(nnts(ns), llts(ns), jjts(ns), enls(ns),  &
-             mesh, ndm, dx, r, r2, sqr, vaux(1), thresh, phis(1,ns), &
+             grid%mesh, ndmx, grid, vaux(1), thresh, phis(1,ns), &
              betas, ddd(1,1,is), qq, nbf, nwfsx, lls, jjs, ikk)
 
         !           write(6,*) ns, nnts(ns),llts(ns), enls(ns)  

@@ -45,12 +45,12 @@ subroutine gener_pseudo
 
   real(DP) ::    &
        xc(8),        &  ! parameters of bessel functions
-       gi(ndm,2),    &  ! auxiliary to compute the integrals
+       gi(ndmx,2),    &  ! auxiliary to compute the integrals
        sum, db, work(nwfsx) ! work space
 
   character (len=2), external :: atom_name
   character(len=2) :: symbol
-  real(DP) :: vpotpaw (ndm) ! total potential to be used for PAW generation (normally the AE potential)
+  real(DP) :: vpotpaw (ndmx) ! total potential to be used for PAW generation (normally the AE potential)
   integer  :: iknc2paw
 
   real(DP), allocatable :: &
@@ -100,9 +100,9 @@ subroutine gener_pseudo
   !   initialize total potential for PAW generation
   if (lpaw) then
      if (.not.lnc2paw) then
-        vpotpaw(1:mesh) = vpot(1:mesh,1)
+        vpotpaw(1:grid%mesh) = vpot(1:grid%mesh,1)
      else
-        vpotpaw(1:mesh) = vpsloc(1:mesh)
+        vpotpaw(1:grid%mesh) = vpsloc(1:grid%mesh)
      end if
   endif
   !
@@ -131,21 +131,21 @@ subroutine gener_pseudo
      ik=0
      ikus=0
      ikloc=0
-     do n=1,mesh
-        if (r(n).lt.rcut(ns)) ik=n
-        if (r(n).lt.rcutus(ns)) ikus=n
-        if (r(n).lt.rcloc) ikloc=n
+     do n=1,grid%mesh
+        if (grid%r(n).lt.rcut(ns)) ik=n
+        if (grid%r(n).lt.rcutus(ns)) ikus=n
+        if (grid%r(n).lt.rcloc) ikloc=n
      enddo
      if (mod(ik,2) == 0) ik=ik+1
      if (mod(ikus,2) == 0) ikus=ikus+1
      if (mod(ikloc,2) == 0) ikloc=ikloc+1
      if (lnc2paw) then
-        do n=1,mesh
-           if (r(n).lt.rcutnc2paw(ns)) iknc2paw=n
+        do n=1,grid%mesh
+           if (grid%r(n).lt.rcutnc2paw(ns)) iknc2paw=n
         end do
         if (mod(iknc2paw,2) == 0) iknc2paw=iknc2paw+1
      end if
-     if (ikus.gt.mesh) call errore('gener_pseudo','ik is wrong ',1)
+     if (ikus.gt.grid%mesh) call errore('gener_pseudo','ik is wrong ',1)
      if (pseudotype == 3) then
         ikk(ns)=max(ikus+10,ikloc+5)
      else
@@ -160,7 +160,7 @@ subroutine gener_pseudo
         nnode=0
         call compute_phi(lam,iknc2paw,ik,nwf0,ns,xc,1,nnode,ocs(ns))
         if (nnode.ne.0) call errore('gener_pseudo','too many nodes',1)
-        psipaw(1:mesh,ns)=phis(1:mesh,ns)
+        psipaw(1:grid%mesh,ns)=phis(1:grid%mesh,ns)
      endif
      !
      nnode=0
@@ -169,7 +169,7 @@ subroutine gener_pseudo
      !
      !   US only on the components where ikus <> ik
      ! 
-     do n=1,mesh
+     do n=1,grid%mesh
         psipsus(n,ns)=phis(n,ns) 
      enddo
      if (ikus.ne.ik) then
@@ -182,30 +182,30 @@ subroutine gener_pseudo
      !
      !    check that the chi are zero beyond ikk
      nst=0
-     do n=1,mesh
+     do n=1,grid%mesh
         gi(n,1)=0.0_dp
      enddo
-     !   do n=ikk(ns)+1,min(ikk(ns)+20,mesh)
-     do n=ikk(ns)+1,mesh
+     !   do n=ikk(ns)+1,min(ikk(ns)+20,grid%mesh)
+     do n=ikk(ns)+1,grid%mesh
         gi(n,1)=chis(n,ns)**2
      enddo
-     do n=min(ikk(ns)+20,mesh),mesh
+     do n=min(ikk(ns)+20,grid%mesh),grid%mesh
         chis(n,ns)=0.0_dp
      enddo
-     sum=int_0_inf_dr(gi,r,r2,dx,mesh,nst)
+     sum=int_0_inf_dr(gi,grid,grid%mesh,nst)
      if (sum > 2.e-6_dp) then
         write(6, '(5x,''ns='',i4,'' l='',i4, '' sum='',f15.9, &
-             & '' r(ikk) '',f15.9)') ns, lam, sum, r(ikk(ns))
+             & '' r(ikk) '',f15.9)') ns, lam, sum, grid%r(ikk(ns))
         call infomsg ('gener_pseudo ','chi too large beyond r_c', -1)
-        do n=ikk(ns),mesh  
-           write(6,*) r(n),gi(n,1)
+        do n=ikk(ns),grid%mesh  
+           write(6,*) grid%r(n),gi(n,1)
         enddo
         stop
      endif
   enddo
 
-  !      do n=1,mesh
-  !         write(6,'(5e15.7)') r(n),psipsus(n,1),chis(n,1),
+  !      do n=1,grid%mesh
+  !         write(6,'(5e15.7)') grid%r(n),psipsus(n,1),chis(n,1),
   !     +                            psipsus(n,2),chis(n,2)
   !      enddo
   !      stop
@@ -228,10 +228,10 @@ subroutine gener_pseudo
         if (lls(ns) == lls(ns1).and.abs(jjs(ns)-jjs(ns1)).lt.1.e-7_dp) then
            nst=(lls(ns)+1)*2
            ikl=ikk(ns1)
-           do n=1,mesh
+           do n=1,grid%mesh
               gi(n,1)=phis(n,ns)*chis(n,ns1)
            enddo
-           bmat(ns,ns1)=int_0_inf_dr(gi,r,r2,dx,ikl,nst)
+           bmat(ns,ns1)=int_0_inf_dr(gi,grid,ikl,nst)
         endif
      enddo
   enddo
@@ -284,7 +284,7 @@ subroutine gener_pseudo
   betas=0.0_dp
   do ns=1,nbeta
      do ns1=1,nbeta
-        do n=1,mesh
+        do n=1,grid%mesh
            betas(n,ns)=betas(n,ns)+ binv(ns1,ns)*chis(n,ns1)
         enddo
      enddo
@@ -304,7 +304,7 @@ subroutine gener_pseudo
                    - phis(n,ns) * phis(n,ns1)
               gi(n,1)=qvan(n,ns,ns1)
            enddo
-           do n=ikl+1,mesh
+           do n=ikl+1,grid%mesh
               qvan(n,ns,ns1)=0.0_dp
            enddo
            !
@@ -312,7 +312,7 @@ subroutine gener_pseudo
            !
            if (lls(ns) == lls(ns1).and.abs(jjs(ns)-jjs(ns1)).lt.1.e-8_dp) then
               nst=(lls(ns)+1)*2
-              qq(ns,ns1)=int_0_inf_dr(gi,r,r2,dx,ikk(ns),nst)
+              qq(ns,ns1)=int_0_inf_dr(gi,grid,ikk(ns),nst)
            endif
            !
            !     set the bmat with the eigenvalue part
@@ -334,8 +334,8 @@ subroutine gener_pseudo
            bmat(ns1,ns)=bmat(ns,ns1)
            qq(ns,ns1)=0.5_dp*(qq(ns,ns1)+qq(ns1,ns))
            qq(ns1,ns)=qq(ns,ns1)
-           qvan(1:mesh,ns,ns1)=0.5_dp*(qvan(1:mesh,ns,ns1)+qvan(1:mesh,ns1,ns))
-           qvan(1:mesh,ns1,ns)=qvan(1:mesh,ns,ns1)
+           qvan(1:grid%mesh,ns,ns1)=0.5_dp*(qvan(1:grid%mesh,ns,ns1)+qvan(1:grid%mesh,ns1,ns))
+           qvan(1:grid%mesh,ns1,ns)=qvan(1:grid%mesh,ns,ns1)
         enddo
      enddo
      !
@@ -373,11 +373,11 @@ subroutine gener_pseudo
               do n=1,ikl
                  gi(n,1)=psipaw(n,ns)*(enls(ns1)-vpotpaw(n))*psipaw(n,ns1)
               end do
-              aekin(ns,ns1)=int_0_inf_dr(gi(1:mesh,1),r,r2,dx,ikl,nst)
+              aekin(ns,ns1)=int_0_inf_dr(gi(1:grid%mesh,1),grid,ikl,nst)
               do n=1,ikl
                  gi(n,1)=phis(n,ns)*( (enls(ns1)-vpsloc(n))*phis(n,ns1) - chis(n,ns1) )
               end do
-              pskin(ns,ns1)=int_0_inf_dr(gi(1:mesh,1),r,r2,dx,ikl,nst)
+              pskin(ns,ns1)=int_0_inf_dr(gi(1:grid%mesh,1),grid,ikl,nst)
            else
               aekin(ns,ns1)=0._dp
               pskin(ns,ns1)=0._dp
@@ -397,7 +397,7 @@ subroutine gener_pseudo
      !
      ! create the 'pawsetup' object containing the atomic setup for PAW
      call ld1_to_paw ( pawsetup,                                         &
-          symbol, zval, mesh, r, r2, sqr, dx, paw_rmatch_augfun, ikk,    &
+          symbol, zval, grid%mesh, grid%r, grid%r2, grid%sqr, grid%dx, grid, paw_rmatch_augfun, ikk, &
           nbeta, lls, ocs, enls, psipaw, phis, betas, qvan, kindiff,     &
           nlcc, aeccharge, psccharge, vpotpaw, vpsloc, which_paw_augfun )
      !
@@ -407,7 +407,7 @@ subroutine gener_pseudo
   !
   if (lpaw) then
      ! reread augmentation functions and descreened potentials from PAW
-     call paw_to_ld1 ( pawsetup, zval, mesh, r, r2, sqr, dx, nbeta, lls, &
+     call paw_to_ld1 ( pawsetup, zval, grid%mesh, grid%r, grid%r2, grid%sqr, grid%dx, grid, nbeta, lls, &
           ikk, betas, qq, qvan, vpsloc, bmat, rhos, pseudotype )
   else
      call descreening
@@ -420,24 +420,24 @@ subroutine gener_pseudo
           err=300)
 300  call errore('gener_pseudo','opening file '//file_wavefunctionsps,&
           abs(ios))
-     do n=1,mesh
-        write(19,'(i5,7e13.5)') n,r(n), (phis(n,ns), ns=1,nwfs)
+     do n=1,grid%mesh
+        write(19,'(i5,7e13.5)') n,grid%r(n), (phis(n,ns), ns=1,nwfs)
      enddo
      close(19)
   endif
   if (file_beta .ne. ' ') then
      open(unit=19,file=file_beta, status='unknown', iostat=ios, err=400)
 400  call errore('gener_pseudo','opening file '//file_beta,abs(ios))
-     do n=1,mesh
-        write(19,'(8f12.6)') r(n), (betas(n,ns), ns=1,nbeta)
+     do n=1,grid%mesh
+        write(19,'(8f12.6)') grid%r(n), (betas(n,ns), ns=1,nbeta)
      enddo
      close(19)
   endif
   if (file_chi .ne. ' ') then
      open(unit=19,file=file_chi, status='unknown', iostat=ios, err=600)
 600  call errore('gener_pseudo','opening file '//file_chi,abs(ios))
-     do n=1,mesh
-        write(19,'(8f12.6)') r(n), (chis(n,ns), ns=1,nbeta)
+     do n=1,grid%mesh
+        write(19,'(8f12.6)') grid%r(n), (chis(n,ns), ns=1,nbeta)
      enddo
      close(19)
   endif
@@ -454,8 +454,8 @@ subroutine gener_pseudo
         open(unit=19,file=TRIM(file_qvan)//TRIM(indqvan), status='unknown', &
              iostat=ios, err=700)
 700     call errore('gener_pseudo','opening file '//file_qvan,abs(ios))
-        do n=1,mesh
-           write(19,'(8f12.6)') r(n), (qvan(n,ns,ns1), ns=1,ns1)
+        do n=1,grid%mesh
+           write(19,'(8f12.6)') grid%r(n), (qvan(n,ns,ns1), ns=1,ns1)
         enddo
         close(19)
      enddo

@@ -16,7 +16,8 @@ SUBROUTINE calc_btq(ql,qr_k,idbes)
   USE atom, ONLY: r, rab, dx
   USE ions_base, ONLY : ntyp => nsp
   USE cell_base, ONLY: omega
-  USE parameters, ONLY:  ndmx, nbrx
+  USE parameters, ONLY:  nbrx
+  USE radial_grids, ONLY:  ndmx
   USE kinds, ONLY: DP
   USE constants, ONLY: fpi
   USE uspp_param, ONLY: lmaxq, qfunc, qfcoef, nqf, rinner, lll, &

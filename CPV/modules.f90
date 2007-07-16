@@ -270,7 +270,8 @@ end module cvan
 
 module qrl_mod
 
-  use parameters, only: nsx, ndmx, nbrx, lqmax
+  use parameters, only: nsx, nbrx, lqmax
+  use radial_grids, only: ndmx
   implicit none
   save
 !

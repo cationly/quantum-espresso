@@ -550,7 +550,8 @@ MODULE restart_module
     !     programs.
     !
     !
-    USE parameters,           ONLY : npk, nchix, ndmx, nbrx, lqmax, nqfx
+    USE parameters,           ONLY : npk, nchix, nbrx, lqmax, nqfx
+    USE radial_grids,         ONLY : ndmx
     USE constants,            ONLY : pi
     USE io_files,             ONLY : iunwfc, nwordwfc, prefix, tmp_dir
     USE kinds,                ONLY : DP

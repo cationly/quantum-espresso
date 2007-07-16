@@ -66,11 +66,11 @@ subroutine find_qi(logderae,xc,ik,lam,ncn,flag,iok)
   !
   qmax=0.1_dp
   if (flag.eq.0) then 
-     call sph_bes(7,r(ik-3),qmax,lam,j1)
+     call sph_bes(7,grid%r(ik-3),qmax,lam,j1)
   else
-     call sph_besr(7,r(ik-3),qmax,lam,j1)
+     call sph_besr(7,grid%r(ik-3),qmax,lam,j1)
   endif
-  logdermax=compute_log(j1,r(ik),dx)-logderae
+  logdermax=compute_log(j1,grid%r(ik),grid%dx)-logderae
 
   do nc=1,ncn
      !
@@ -81,11 +81,11 @@ subroutine find_qi(logderae,xc,ik,lam,ncn,flag,iok)
      do iq=1,imax
         xc(nc)=qmin+dq*iq
         if (flag.eq.0) then
-           call sph_bes(7,r(ik-3),xc(nc),lam,j1)
+           call sph_bes(7,grid%r(ik-3),xc(nc),lam,j1)
         else
-           call sph_besr(7,r(ik-3),xc(nc),lam,j1)
+           call sph_besr(7,grid%r(ik-3),xc(nc),lam,j1)
         endif
-        logdermax=compute_log(j1,r(ik),dx)-logderae
+        logdermax=compute_log(j1,grid%r(ik),grid%dx)-logderae
         !
         !    the zero has been bracketed?
         !
@@ -103,11 +103,11 @@ subroutine find_qi(logderae,xc,ik,lam,ncn,flag,iok)
      !
      xc(nc)=(qmax+qmin)/2.0_dp
      if (flag.eq.0) then
-        call sph_bes(7,r(ik-3),xc(nc),lam,j1)
+        call sph_bes(7,grid%r(ik-3),xc(nc),lam,j1)
      else
-        call sph_besr(7,r(ik-3),xc(nc),lam,j1)
+        call sph_besr(7,grid%r(ik-3),xc(nc),lam,j1)
      endif
-     logder=compute_log(j1,r(ik),dx)-logderae
+     logder=compute_log(j1,grid%r(ik),grid%dx)-logderae
      if (logder*logdermin.lt.0.0_dp) then
         qmax=xc(nc)
         logdermax=logder

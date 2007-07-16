@@ -6,11 +6,6 @@
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
 
-#include "f_defs.h"
-! FIXME: modularize code and remove the following includes
-#include "../atomic/hartree.f90"
-#include "../atomic/series.f90"
-!
 MODULE rad_paw_routines
   !
   IMPLICIT NONE
@@ -27,7 +22,7 @@ SUBROUTINE PAW_energy(becsum)
     USE kinds,                  ONLY : DP
     USE constants,              ONLY : pi
     USE lsda_mod,               ONLY : nspin
-    USE parameters,             ONLY : ndmx
+    USE radial_grids,           ONLY : ndmx
     USE ions_base,              ONLY : nat, ityp
 
     USE grid_paw_variables,     ONLY : pfunc, ptfunc, tpawp
@@ -159,7 +154,7 @@ FUNCTION PAW_h_energy(na, pot_lm, rho_lm, e_lm)
     USE lsda_mod,               ONLY : nspin
     USE uspp_param,             ONLY : nhm, nh, lmaxq
     USE atom,                   ONLY : r, rab, mesh, msh
-    USE parameters,             ONLY : ndmx
+    USE radial_grids,           ONLY : ndmx
     USE ions_base,              ONLY : ityp
 
     INTEGER,  INTENT(IN)           :: na ! atom index
@@ -197,20 +192,18 @@ END FUNCTION PAW_h_energy
 SUBROUTINE PAW_v_h(na, rho_lm, pot_lm)
     USE kinds,                  ONLY : DP
     USE constants,              ONLY : fpi
-    USE parameters,             ONLY : ndmx, npsx
+    USE parameters,             ONLY : npsx
+    USE radial_grids,           ONLY : ndmx, hartree
     USE lsda_mod,               ONLY : nspin
     USE uspp_param,             ONLY : nhm, nh, lmaxq
     USE ions_base,              ONLY : ityp
-    USE atom,                   ONLY : r, msh, mesh
+    USE atom,                   ONLY : rgrid
 
     INTEGER,  INTENT(IN)  :: na
     REAL(DP), INTENT(IN)  :: rho_lm(ndmx,lmaxq**2,nspin)! charge density as lm components
     REAL(DP), INTENT(OUT) :: pot_lm(ndmx,lmaxq**2,nspin)! potential as lm components
     REAL(DP)              :: auxrho(ndmx)               ! workspace
 
-    REAL(DP)              :: r2(ndmx,npsx)  ! r**2
-    REAL(DP)              :: rs(ndmx,npsx)  ! r**.5
-    REAL(DP)              :: dx(npsx)       ! integration step used in atomic code
     INTEGER               :: nt,&           ! atom type
                              ispin, &       ! counter on spins
                              lm,l           ! counter on composite angmom lm = l**2 +m
@@ -222,24 +215,6 @@ SUBROUTINE PAW_v_h(na, rho_lm, pot_lm)
 
     ! get type of atom
     nt = ityp(na)
-
-    ! prepare r**2 and r**.5 arrays                     !FIXME: move to init
-    r2(:,:) = r(:,:)**2
-    rs(:,:) = sqrt(r(:,:))
-
-    !  I have to initialize the integration step dx:    !FIXME: move to init
-    dx(:) = 0._dp
-!     DO nt = 1,ntyp
-    IF (r(1,nt) > 0.0_dp) THEN
-        ! r(i+1) = exp(xmin)/zmesh * exp(i*dx)
-        dx(nt)=log(r(2,nt)/r(1,nt))
-    ELSE
-        ! r(i+1) = exp(xmin)/zmesh * ( exp(i*dx) - 1 )
-        dx(nt)=log( (r(3,nt)-r(2,nt)) / r(2,nt) )
-    ENDIF
-!     ENDDO
-
-
     ! this loop computes the hartree potential using the following formula:
     !               l is the first argument in hartree subroutine
     !               r1 = min(r,r'); r2 = MAX(r,r')
@@ -251,8 +226,7 @@ SUBROUTINE PAW_v_h(na, rho_lm, pot_lm)
         DO lm = 1, lmaxq**2
             l = INT(sqrt(DBLE(lm-1)))     ! l has to start from *zero*
                 auxrho(:) = fpi/(2*l+1)*rho_lm(:,lm,ispin)
-                CALL hartree(l, 2*l+2, mesh(nt), r(:,nt),r2(:,nt),rs(:,nt),&
-                                dx(nt),auxrho(:), pot_lm(:,lm,ispin))
+                CALL hartree(l, 2*l+2, rgrid(nt)%mesh, rgrid(nt), auxrho(:), pot_lm(:,lm,ispin))
         ENDDO ! lm
     ENDDO spins
 
@@ -271,7 +245,8 @@ SUBROUTINE PAW_rho_lm(na, becsum, pfunc, rho_lm, augfun)
     USE lsda_mod,               ONLY : nspin
     USE uspp_param,             ONLY : nhm, nh, lmaxq!, augfun
     USE uspp,                   ONLY : indv, ap, nhtolm,lpl,lpx
-    USE parameters,             ONLY : ndmx, nbrx, lqmax
+    USE parameters,             ONLY : nbrx, lqmax
+    USE radial_grids,           ONLY : ndmx
 !    USE grid_paw_variables,     ONLY : okpaw, tpawp!, pfunc, ptfunc
 
     INTEGER,  INTENT(IN)         :: na     ! index of atom to use
@@ -348,7 +323,8 @@ SUBROUTINE PAW_rho_rad(th,ph, rho_lm, rho_rad)
     USE constants,              ONLY : eps8, pi
     USE uspp_param,             ONLY : lmaxq
     USE lsda_mod,               ONLY : nspin
-    USE parameters,             ONLY : ndmx, nbrx, lqmax
+    USE parameters,             ONLY : nbrx, lqmax
+    USE radial_grids,           ONLY : ndmx
 !     USE atom,                   ONLY : r
 
     REAL(DP), INTENT(IN)        :: rho_lm(ndmx,lmaxq**2,nspin)! Y_lm expansion of rho
@@ -397,7 +373,8 @@ FUNCTION PAW_sph_integral(n, f1_lm, f2_lm)
     USE constants,              ONLY : pi
     USE uspp_param,             ONLY : lmaxq
     USE lsda_mod,               ONLY : nspin
-    USE parameters,             ONLY : ndmx, nbrx, lqmax
+    USE parameters,             ONLY : nbrx, lqmax
+    USE radial_grids,           ONLY : ndmx
     USE atom,                   ONLY : r, rab
 
     REAL(DP), INTENT(IN)        :: f1_lm(ndmx,lmaxq**2,nspin)! Y_lm expansion of rho

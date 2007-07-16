@@ -143,6 +143,7 @@ SUBROUTINE electrons()
   iter = 0
   ik_  = 0
   !
+  write (*,*) "ok 3.0"
   IF ( restart ) THEN
      !
      CALL restart_in_electrons( iter, ik_, dr2 )
@@ -385,11 +386,13 @@ SUBROUTINE electrons()
            !!PAW : calculates new one-center charges in R-space
            IF (okpaw) THEN
 
+              ALLOCATE (rho1new (nrxx,nspin,nat), rho1tnew(nrxx,nspin,nat) )
+#define DEBUG_PAW
+#ifdef DEBUG_PAW
               ! NEW RADIAL PAW (start)
               CALL PAW_energy(becstep)  !pltz
               ! NEW RADIAL PAW (end)
 
-              ALLOCATE (rho1new (nrxx,nspin,nat), rho1tnew(nrxx,nspin,nat) )
               ! LM = 1
               CALL coc_pwned (becstep, rho1new, rho1tnew,1)
               CALL compute_onecenter_potentials(becstep,rho1new,rho1tnew,fixed_lm=1)
@@ -403,21 +406,22 @@ SUBROUTINE electrons()
               CALL coc_pwned (becstep, rho1new, rho1tnew,4)
               CALL compute_onecenter_potentials(becstep,rho1new,rho1tnew,fixed_lm=4)
               WRITE(6,"(a,4f15.7)") "==GRID PAW ENERGIES (LM=4): ", ehart1(1), ehart1(2), ehart1t(1), ehart1t(2)
-!              CALL coc_pwned (becstep, rho1new, rho1tnew,5)
-!              CALL compute_onecenter_potentials(becstep,rho1new,rho1tnew,fixed_lm=5)
-!              WRITE(6,"(a,4f15.7)") "==GRID PAW ENERGIES (LM=5): ", ehart1(1), ehart1(2), ehart1t(1), ehart1t(2)
-!              CALL coc_pwned (becstep, rho1new, rho1tnew,6)
-!              CALL compute_onecenter_potentials(becstep,rho1new,rho1tnew,fixed_lm=6)
-!              WRITE(6,"(a,4f15.7)") "==GRID PAW ENERGIES (LM=6): ", ehart1(1), ehart1(2), ehart1t(1), ehart1t(2)
-!              CALL coc_pwned (becstep, rho1new, rho1tnew,7)
-!              CALL compute_onecenter_potentials(becstep,rho1new,rho1tnew,fixed_lm=7)
-!              WRITE(6,"(a,4f15.7)") "==GRID PAW ENERGIES (LM=7): ", ehart1(1), ehart1(2), ehart1t(1), ehart1t(2)
-!              CALL coc_pwned (becstep, rho1new, rho1tnew,8)
-!              CALL compute_onecenter_potentials(becstep,rho1new,rho1tnew,fixed_lm=8)
-!              WRITE(6,"(a,4f15.7)") "==GRID PAW ENERGIES (LM=8): ", ehart1(1), ehart1(2), ehart1t(1), ehart1t(2)
-!              CALL coc_pwned (becstep, rho1new, rho1tnew,9)
-!              CALL compute_onecenter_potentials(becstep,rho1new,rho1tnew,fixed_lm=9)
-!              WRITE(6,"(a,4f15.7)") "==GRID PAW ENERGIES (LM=9): ", ehart1(1), ehart1(2), ehart1t(1), ehart1t(2)
+              CALL coc_pwned (becstep, rho1new, rho1tnew,5)
+              CALL compute_onecenter_potentials(becstep,rho1new,rho1tnew,fixed_lm=5)
+              WRITE(6,"(a,4f15.7)") "==GRID PAW ENERGIES (LM=5): ", ehart1(1), ehart1(2), ehart1t(1), ehart1t(2)
+              CALL coc_pwned (becstep, rho1new, rho1tnew,6)
+              CALL compute_onecenter_potentials(becstep,rho1new,rho1tnew,fixed_lm=6)
+              WRITE(6,"(a,4f15.7)") "==GRID PAW ENERGIES (LM=6): ", ehart1(1), ehart1(2), ehart1t(1), ehart1t(2)
+              CALL coc_pwned (becstep, rho1new, rho1tnew,7)
+              CALL compute_onecenter_potentials(becstep,rho1new,rho1tnew,fixed_lm=7)
+              WRITE(6,"(a,4f15.7)") "==GRID PAW ENERGIES (LM=7): ", ehart1(1), ehart1(2), ehart1t(1), ehart1t(2)
+              CALL coc_pwned (becstep, rho1new, rho1tnew,8)
+              CALL compute_onecenter_potentials(becstep,rho1new,rho1tnew,fixed_lm=8)
+              WRITE(6,"(a,4f15.7)") "==GRID PAW ENERGIES (LM=8): ", ehart1(1), ehart1(2), ehart1t(1), ehart1t(2)
+              CALL coc_pwned (becstep, rho1new, rho1tnew,9)
+              CALL compute_onecenter_potentials(becstep,rho1new,rho1tnew,fixed_lm=9)
+              WRITE(6,"(a,4f15.7)") "==GRID PAW ENERGIES (LM=9): ", ehart1(1), ehart1(2), ehart1t(1), ehart1t(2)
+#endif
               ! ---]] debug
 
               CALL compute_onecenter_charges (becstep, rho1new, rho1tnew)
@@ -437,7 +441,9 @@ SUBROUTINE electrons()
               descf_1ps = delta_e_1scf(rho1t,rho1tnew,vr1t,descf_1ps_na)  ! PS
 
               DEALLOCATE (rho1new, rho1tnew)
+#ifdef DEBUG_PAW
               STOP
+#endif
            END IF
            !!PAW]
            !

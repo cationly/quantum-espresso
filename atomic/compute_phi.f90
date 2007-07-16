@@ -46,7 +46,7 @@ subroutine compute_phi(lam,ik,iknorm,nwf0,ns,xc,iflag,iok,occ)
        m, n, nst, nnode, nc, nc1, ij, imax, iq, i
 
   real(DP) :: &
-       chir(ndm,nwfx), chi_dir(ndm,2), gi(ndm), j1(ndm,4), &
+       chir(ndmx,nwfx), chi_dir(ndmx,2), gi(ndmx), j1(ndmx,4), &
        f1aep1, f1aem1, jnor, psnor, fact(4), &
        cm(10), bm(4), ze2, cn(6), c2, &
        delta, a, b, c, deter, gamma, &
@@ -71,14 +71,14 @@ subroutine compute_phi(lam,ik,iknorm,nwf0,ns,xc,iflag,iok,occ)
   !
   if (new(ns)) then
      if (rel == 1) then
-        call lschps(3,zed,exp(dx),dx,mesh,mesh,mesh,  &
-             1,lam,enls(ns),chir(1,ns),r,vpot)
+        call lschps(3,zed,exp(grid%dx),grid%dx,grid%mesh,grid%mesh,grid%mesh,  &
+             1,lam,enls(ns),chir(1,ns),grid%r,vpot)
      elseif (rel == 2) then
-        call dir_outward(ndm,mesh,lam,jjs(ns),enls(ns),dx,chi_dir,r,rab,vpot)
+        call dir_outward(ndmx,grid%mesh,lam,jjs(ns),enls(ns),grid%dx,chi_dir,grid%r,grid%rab,vpot)
         chir(:,ns)=chi_dir(:,1)
      else
         ze2=-zed*2.0_dp
-        call intref(lam,enls(ns),mesh,dx,r,r2,sqr,vpot,ze2,chir(1,ns))
+        call intref(lam,enls(ns),grid%mesh,grid,vpot,ze2,chir(1,ns))
      endif
      !
      !    fix arbitrarily the norm at the cut-off radius equal to 0.5
@@ -86,31 +86,31 @@ subroutine compute_phi(lam,ik,iknorm,nwf0,ns,xc,iflag,iok,occ)
 !!!  Previous version: jnor=chir(ik,ns) 
 !!!  Now choose a possibly different point at which the value equals 0.5
      jnor=chir(iknorm,ns)
-     do n=1,mesh
+     do n=1,grid%mesh
         chir(n,ns)=chir(n,ns)*0.5_dp/jnor
     enddo
   else 
-     do n=1,mesh
+     do n=1,grid%mesh
         chir(n,ns)=psi(n,1,nwf0)
      enddo
   endif
   !
   !   save the all-electron function for the PAW setup
   !
-  if (lpaw.and.(.not.lnc2paw)) psipaw(1:mesh,ns) = chir(1:mesh,ns)
+  if (lpaw.and.(.not.lnc2paw)) psipaw(1:grid%mesh,ns) = chir(1:grid%mesh,ns)
   !
   !   compute the first and second derivative of all-electron function
   !
   fae=chir(ik,ns)
-  f1ae=deriv_7pts(chir(1,ns),ik,r(ik),dx)
-  f2ae=deriv2_7pts(chir(1,ns),ik,r(ik),dx)
+  f1ae=deriv_7pts(chir(1,ns),ik,grid%r(ik),grid%dx)
+  f2ae=deriv2_7pts(chir(1,ns),ik,grid%r(ik),grid%dx)
   !
   !   compute the norm of the all-electron function
   !
   do n=1,ik+1
      gi(n)=chir(n,ns)**2  
   enddo
-  faenor=int_0_inf_dr(gi,r,r2,dx,ik,nst)
+  faenor=int_0_inf_dr(gi,grid,ik,nst)
   !
   !
   if (tm) then
@@ -118,9 +118,9 @@ subroutine compute_phi(lam,ik,iknorm,nwf0,ns,xc,iflag,iok,occ)
      ! TM: the pseudo-wavefunction is written as polynomial times exponential
      !
      call find_coefficients &
-          (ik, chir(1,ns), enls(ns), r, dx, faenor, vpot, cn, c2, lam, mesh)
+          (ik, chir(1,ns), enls(ns), grid%r, grid%dx, faenor, vpot, cn, c2, lam, grid%mesh)
       do i=1,ik
-         phis(i,ns) =sign( r(i)**(lam+1)*exp(pr(cn,c2,r(i))), &
+         phis(i,ns) =sign( grid%r(i)**(lam+1)*exp(pr(cn,c2,grid%r(i))), &
                           chir(ik,ns) )
       end do
       xc(1:6) = cn(:)
@@ -136,7 +136,7 @@ subroutine compute_phi(lam,ik,iknorm,nwf0,ns,xc,iflag,iok,occ)
      !    compute the bessel functions
      !
      do nc=1,nbes
-        call sph_besr(ik+5,r,xc(nbes+nc),lam,j1(1,nc))
+        call sph_besr(ik+5,grid%r,xc(nbes+nc),lam,j1(1,nc))
         jnor=j1(ik,nc)
         fact(nc)=chir(ik,ns)/jnor
         do n=1,ik+5
@@ -149,13 +149,13 @@ subroutine compute_phi(lam,ik,iknorm,nwf0,ns,xc,iflag,iok,occ)
   !
      ij=0
      do nc=1, nbes
-        bm(nc)=deriv2_7pts(j1(1,nc),ik,r(ik),dx)
+        bm(nc)=deriv2_7pts(j1(1,nc),ik,grid%r(ik),grid%dx)
         do nc1=1,nc
            ij=ij+1
            do n=1,ik
               gi(n)=j1(n,nc)*j1(n,nc1)
            enddo
-           cm(ij)=int_0_inf_dr(gi,r,r2,dx,ik,nst)
+           cm(ij)=int_0_inf_dr(gi,grid,ik,nst)
         enddo
      enddo
      !
@@ -163,8 +163,8 @@ subroutine compute_phi(lam,ik,iknorm,nwf0,ns,xc,iflag,iok,occ)
      !
      if (nbes == 4) then
         wmax=0.0_dp
-        do n=1,mesh
-           if (abs(chir(n,ns)) > wmax .and. r(n) < 4.0_dp) then
+        do n=1,grid%mesh
+           if (abs(chir(n,ns)) > wmax .and. grid%r(n) < 4.0_dp) then
               wmax=abs(chir(n,ns))
               if(chir(n,ns).lt.0.0_dp)then
                  isign=-1
@@ -265,7 +265,7 @@ subroutine compute_phi(lam,ik,iknorm,nwf0,ns,xc,iflag,iok,occ)
   !
   !      for r > r(ik) the pseudo and all-electron psi(r) coincide
   !
-  do n=ik+1,mesh
+  do n=ik+1,grid%mesh
      phis(n,ns)= chir(n,ns)
   enddo
   !
@@ -274,7 +274,7 @@ subroutine compute_phi(lam,ik,iknorm,nwf0,ns,xc,iflag,iok,occ)
   do n=1,ik
      gi(n)=phis(n,ns)**2
   enddo
-  psnor=int_0_inf_dr(gi,r,r2,dx,ik,nst)
+  psnor=int_0_inf_dr(gi,grid,ik,nst)
 
   if (iflag == 1) then
      if (tm) then
@@ -300,13 +300,13 @@ subroutine compute_phi(lam,ik,iknorm,nwf0,ns,xc,iflag,iok,occ)
   nnode=0  
   do n=1,ik+1
      if ( phis(n,ns) .ne. sign(phis(n,ns),phis(n+1,ns)) ) then
-        write(6,150) lam,ns,r(n)
+        write(6,150) lam,ns,grid%r(n)
 150     format (5x,'l=',i4,' ns=',i4,' Node at ',f10.8)
         nnode=nnode+1
      endif
   enddo
   iok=nnode
-  if (iflag == 1) write(6,160) nnode,r(ik)
+  if (iflag == 1) write(6,160) nnode,grid%r(ik)
 160 format (5x,' This function has ',i4,' nodes', ' for 0 < r < ',f8.3)
 
   return

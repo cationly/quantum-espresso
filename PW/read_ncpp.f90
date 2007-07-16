@@ -11,7 +11,8 @@ subroutine read_ncpp (np, iunps)
   !-----------------------------------------------------------------------
   !
   USE kinds, only: dp
-  USE parameters, ONLY: nchix, lmaxx, ndmx
+  USE parameters, ONLY: nchix, lmaxx
+  USE radial_grids, ONLY: ndmx
   use atom,  only: zmesh, msh, mesh, xmin, dx, r, rab, chi, oc, &
        nchi, lchi, rho_at, rho_atc, numeric, nlcc
   use pseud, only: cc, alpc, zp, aps, alps, nlc, nnl, lmax, lloc, &

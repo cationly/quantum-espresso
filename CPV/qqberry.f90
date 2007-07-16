@@ -25,6 +25,7 @@ subroutine qqberry2( gqq,gqqm, ipol)
   use gvecw, only: ngw
   use reciprocal_vectors, only: mill_l
   use parameters
+  use radial_grids, only: ndmx
   use  constants
   use cvan, only: oldvan, nvb, indlm
   use  ions_base

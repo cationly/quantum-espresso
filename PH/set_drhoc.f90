@@ -15,7 +15,7 @@ subroutine set_drhoc (q)
 #include "f_defs.h"
   USE ions_base, ONLY : ntyp => nsp
   use pwcom
-  USE parameters, ONLY: ndmx
+  USE radial_grids, ONLY: ndmx
   USE atom, ONLY : numeric, nlcc, msh, r, rab, rho_atc
   USE kinds, only : DP
   use phcom

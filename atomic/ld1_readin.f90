@@ -11,11 +11,25 @@ subroutine ld1_readin
   !
   !     This routine reads the input parameters of the calculation
   !
-  use ld1inc
+  use ld1inc, only: dp, jj, jjs, nns, lls, ocs, isw, nwfs, nwfx, el, &
+                    isws, els, enls, lmax, rcut, rcutus, rcutnc2paw, rhoc, & 
+                    jjts, jjtsc, nntsc, nlc, nnl, iswtsc, zed, title,  &
+                    rhos, pseudotype, bmat, vpsloc, ikk, vnl, qvan, &
+                    nlcc, lloc, rcloc, rcore, ncmax1, rho0, tm, file_pseudo, &
+                    nconf,beta, tr2, nwfsx, nld, iswitch, rlderiv, &
+                    latt, prefix,isic, rel, lsd, eminld, emaxld, deld, &
+                    lpaw, zval, which_paw_augfun, lnc2paw, grid, &
+                    nspin, nwf,nn,ll, oc, oc_old, eltsc, lltsc,octsc,nwftsc, &
+                    rcuttsc, rcutustsc,pawsetup, ndmx, lmaxx, betas, qq, &
+                    paw_rmatch_augfun, file_pseudopw, file_screen, file_core, &
+                    file_beta, file_chi, file_qvan, file_recon, nbeta 
   use funct
   use atomic_paw, only : paw_to_ld1
   use read_pseudo_module, only : paw_io
   implicit none
+
+  real(DP) :: xmin, dx,rmax, zmesh, r(ndmx), r2(ndmx), rab(ndmx),sqr(ndmx)
+  integer :: mesh
 
   integer ::  &
        n,i,   &          ! counter on wavefunctions
@@ -206,7 +220,14 @@ subroutine ld1_readin
   ! is not generated but read from the pseudopotential file
   !
   if (iswitch /= 2) then
-     call do_mesh(rmax,zmesh,xmin,dx,0,ndm,mesh,r,r2,rab,sqr)
+     call do_mesh(rmax,zmesh,xmin,dx,0,grid)
+!
+      mesh = grid%mesh
+      r(1:mesh)=grid%r(1:mesh)
+      r2(1:mesh)=grid%r2(1:mesh)
+      rab(1:mesh)=grid%rab(1:mesh)
+      sqr(1:mesh)=grid%sqr(1:mesh)
+!
      rhoc=0.0_dp
   endif
   !
@@ -403,9 +424,9 @@ subroutine ld1_readin
         open(unit=111, file=trim(file_pseudo), status='unknown',  &
              form='formatted', err=50, iostat=ios)
 50      call errore('ld1_readin','open error on file '//file_pseudo,abs(ios))
-        call paw_io(pawsetup,111,"INP",ndm,nwfsx,lmaxx)
+        call paw_io(pawsetup,111,"INP",ndmx,nwfsx,lmaxx)
         close(111)
-        call paw_to_ld1 ( pawsetup, zval, mesh, r, r2, sqr, dx, nbeta, lls, &
+        call paw_to_ld1 ( pawsetup, zval, mesh, r, r2, sqr, dx, grid, nbeta, lls, &
              ikk, betas, qq, qvan, vpsloc, bmat, rhos, pseudotype )
         !
      else if ( matches('.rrkj3', file_pseudo) .or. &
@@ -438,7 +459,7 @@ subroutine ld1_readin
      if (pseudotype == 1) then
         !
         call read_pseudo  &
-             (file_pseudo,zed,xmin,rmax,dx,mesh,ndm,r,r2,rab,sqr, &
+             (file_pseudo,zed,xmin,rmax,dx,mesh,ndmx,r,r2,rab,sqr, grid, &
              dft,lmax,lloc,zval,nlcc,rhoc,vnl,vpsloc,rel)
         !
         do ns=1,lmax+1

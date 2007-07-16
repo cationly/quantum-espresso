@@ -157,6 +157,8 @@ PWOBJS = \
 ../PW/ggen.o \
 ../PW/gk_sort.o \
 ../PW/gradcorr.o \
+../PW/grid_paw_routines.o \
+../PW/grid_paw_variables.o \
 ../PW/gweights.o \
 ../PW/h_1psi.o \
 ../PW/h_1psi_nc.o \
@@ -289,7 +291,7 @@ TLDEPS= bindir mods libs pw pp
 all : tldeps pwcond.x
 
 pwcond.x : $(PWCONDOBJS) $(PWOBJS) $(PPOBJS) $(MODULES) $(LIBOBJS)
-	$(MPIF90) $(LDFLAGS) -o pwcond.x \
+	$(F90) $(LDFLAGS) -o pwcond.x \
 		$(PWCONDOBJS) $(PWOBJS) $(PPOBJS) $(MODULES) $(LIBOBJS) $(LIBS)
 	- ( cd ../bin ; ln -fs ../PWCOND/pwcond.x . )
 

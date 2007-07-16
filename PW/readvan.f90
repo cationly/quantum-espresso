@@ -18,7 +18,8 @@ subroutine readvan (is, iunps)
   !     It assume multiple rinner values.
   !
   USE kinds, only: dp
-  USE parameters, ONLY: nchix, lmaxx, nbrx, ndmx, npsx, nqfx, lqmax
+  USE parameters, ONLY: nchix, lmaxx, nbrx, npsx, nqfx, lqmax
+  USE radial_grids, ONLY: ndmx
   use atom,  only: zmesh, mesh,dx, r, rab, chi, oc, nchi, lchi, &
        rho_at, rho_atc, nlcc
   use pseud, only: zp, lmax, lloc

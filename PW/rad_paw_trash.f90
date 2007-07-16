@@ -23,7 +23,8 @@
 SUBROUTINE integrate_pfunc
     !
     USE kinds,      ONLY : DP
-    USE parameters, ONLY : lmaxx, nbrx, lqmax, ndmx
+    USE parameters, ONLY : lmaxx, nbrx, lqmax
+    USE radial_grids, ONLY: ndmx
     USE constants,  ONLY : fpi, eps8, eps4
     USE atom,       ONLY : r, rab, mesh, msh
     USE ions_base,  ONLY : ntyp => nsp
@@ -491,7 +492,8 @@ SUBROUTINE rad_dipole(rho1rad, rho1trad)
     USE kinds,                  ONLY : DP
     USE cell_base,              ONLY : at, alat
     USE constants,              ONLY : fpi, eps8
-    USE parameters,             ONLY : ndmx, npsx
+    USE parameters,             ONLY : npsx
+    USE radial_grids,           ONLY : ndmx
     USE lsda_mod,               ONLY : nspin
     USE uspp_param,             ONLY : nhm, nh, lmaxq
     USE uspp,                   ONLY : ap

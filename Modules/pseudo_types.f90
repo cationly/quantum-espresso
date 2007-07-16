@@ -15,10 +15,10 @@
 !  together with their allocation/deallocation routines
 
         USE kinds, ONLY: DP
-        USE parameters, ONLY: ndmx, cp_lmax
-        USE parameters, ONLY: lmaxx
+        USE parameters, ONLY: cp_lmax, lmaxx
+        use radial_grids, ONLY: ndmx, radial_grid_type
         !  USE ld1_parameters, ONLY: ndm, nwfsx
-        USE parameters, ONLY: ndm=>ndmx, nwfsx=>nchix
+        USE parameters, ONLY: nwfsx=>nchix
 
         IMPLICIT NONE
         SAVE
@@ -32,13 +32,14 @@ TYPE :: paw_t
    CHARACTER(LEN=2) :: symbol
    REAL (DP) :: zval
    REAL (DP) :: z
-   REAL (DP) :: zmesh
    CHARACTER(LEN=80) :: dft
-   INTEGER        :: mesh      ! the size of the mesh
-   REAL (DP), POINTER :: r(:) !r (ndm)     ! the mesh
-   REAL (DP), POINTER :: r2(:) !r2 (ndm)    ! r^2
-   REAL (DP), POINTER :: sqrtr(:) !sqrtr (ndm) ! sqrt(r)
-   REAL (DP) :: dx          ! log(r(i+1))-log(r(i))
+   TYPE(radial_grid_type) :: grid
+!   INTEGER        :: mesh      ! the size of the mesh
+!   REAL (DP), POINTER :: r(:) !r (ndmx)     ! the mesh
+!   REAL (DP), POINTER :: r2(:) !r2 (ndmx)    ! r^2
+!   REAL (DP), POINTER :: sqrtr(:) !sqrtr (ndmx) ! sqrt(r)
+!   REAL (DP) :: dx          ! log(r(i+1))-log(r(i))
+!   REAL (DP) :: zmesh
    REAL (DP) :: rmatch_augfun  ! the matching radius for augmentation charges
    LOGICAL :: nlcc ! nonlinear core correction
    INTEGER :: nwfc ! number of wavefunctions/projectors
@@ -49,16 +50,16 @@ TYPE :: paw_t
    REAL (DP), POINTER :: &
         oc(:), &!oc (nwfsx), & ! the occupations
         enl(:), &!enl (nwfsx), & ! the energy of the wavefunctions
-        aewfc(:,:), &!aewfc (ndm,nwfsx), &  ! all-electron wavefunctions
-        pswfc(:,:), &!pswfc (ndm,nwfsx),        & ! pseudo wavefunctions
-        proj(:,:), &!proj (ndm,nwfsx),     & ! projectors
-        augfun(:,:,:,:), &!augfun(ndm,nwfsx,nwfsx,0:2*lmaxx+1),      & ! augmentation functions, augfun(:,:,:,0) are AE augm. functions
+        aewfc(:,:), &!aewfc (ndmx,nwfsx), &  ! all-electron wavefunctions
+        pswfc(:,:), &!pswfc (ndmx,nwfsx),        & ! pseudo wavefunctions
+        proj(:,:), &!proj (ndmx,nwfsx),     & ! projectors
+        augfun(:,:,:,:), &!augfun(ndmx,nwfsx,nwfsx,0:2*lmaxx+1),      & ! augmentation functions, augfun(:,:,:,0) are AE augm. functions
         augmom(:,:,:), &!augmom(nwfsx,nwfsx,0:2*lmaxx) , & ! moments of the augmentation functions
-        aeccharge(:), &!aeccharge (ndm),  & ! AE core charge * 4PI r^2
-        psccharge(:), &!psccharge (ndm),  & ! PS core charge * 4PI r^2
-        pscharge(:), &!pscharge (ndm),  & ! PS charge * 4PI r^2
-        aeloc(:), &!aeloc (ndm),     & ! descreened AE potential: v_AE-v_H[n1]-v_XC[n1+nc]
-        psloc(:), &!psloc (ndm),     & ! descreened local PS potential: v_PS-v_H[n~+n^]-v_XC[n~+n^+n~c]
+        aeccharge(:), &!aeccharge (ndmx),  & ! AE core charge * 4PI r^2
+        psccharge(:), &!psccharge (ndmx),  & ! PS core charge * 4PI r^2
+        pscharge(:), &!pscharge (ndmx),  & ! PS charge * 4PI r^2
+        aeloc(:), &!aeloc (ndmx),     & ! descreened AE potential: v_AE-v_H[n1]-v_XC[n1+nc]
+        psloc(:), &!psloc (ndmx),     & ! descreened local PS potential: v_PS-v_H[n~+n^]-v_XC[n~+n^+n~c]
         kdiff(:,:), &!kdiff (nwfsx,nwfsx) ,&      ! kinetic energy differences
         dion(:,:) !dion(nwfsx,nwfsx)
 !!!  Notes about screening:
@@ -170,7 +171,6 @@ END TYPE paw_t
 
 SUBROUTINE nullify_pseudo_paw( paw )
   TYPE( paw_t ), INTENT(INOUT) :: paw
-  NULLIFY( paw%r, paw%r2, paw%sqrtr )
   NULLIFY( paw%l, paw%ikk )
   NULLIFY( paw%oc, paw%enl, paw%aewfc, paw%pswfc, paw%proj )
   NULLIFY( paw%augfun, paw%augmom, paw%aeccharge, paw%psccharge, paw%pscharge )
@@ -181,9 +181,6 @@ END SUBROUTINE nullify_pseudo_paw
 SUBROUTINE allocate_pseudo_paw( paw, size_mesh, size_nwfc, size_lmax )
   TYPE( paw_t ), INTENT(INOUT) :: paw
   INTEGER, INTENT(IN) :: size_mesh, size_nwfc, size_lmax
-  ALLOCATE ( paw%r(size_mesh) )
-  ALLOCATE ( paw%r2(size_mesh) )
-  ALLOCATE ( paw%sqrtr(size_mesh) )
   ALLOCATE ( paw%l(size_nwfc) )
   ALLOCATE ( paw%ikk(size_nwfc) )
   ALLOCATE ( paw%oc(size_nwfc) )
@@ -204,9 +201,6 @@ END SUBROUTINE allocate_pseudo_paw
 
 SUBROUTINE deallocate_pseudo_paw( paw )
   TYPE( paw_t ), INTENT(INOUT) :: paw
-  IF( ASSOCIATED( paw%r ) ) DEALLOCATE( paw%r )
-  IF( ASSOCIATED( paw%r2 ) ) DEALLOCATE( paw%r2 )
-  IF( ASSOCIATED( paw%sqrtr ) ) DEALLOCATE( paw%sqrtr )
   IF( ASSOCIATED( paw%l ) ) DEALLOCATE( paw%l )
   IF( ASSOCIATED( paw%ikk ) ) DEALLOCATE( paw%ikk )
   IF( ASSOCIATED( paw%oc ) ) DEALLOCATE( paw%oc )
@@ -225,11 +219,6 @@ SUBROUTINE deallocate_pseudo_paw( paw )
   IF( ASSOCIATED( paw%dion ) ) DEALLOCATE( paw%dion )
   RETURN
 END SUBROUTINE deallocate_pseudo_paw
-
-
-
-
-
 
 !  subroutines
 

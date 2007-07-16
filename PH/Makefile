@@ -143,6 +143,7 @@ MODULES = \
 ../Modules/printout_base.o \
 ../Modules/pseudo_types.o \
 ../Modules/read_cards.o \
+../Modules/radial_grids.o \
 ../Modules/read_namelists.o \
 ../Modules/readpseudo.o \
 ../Modules/recvec.o \
@@ -253,6 +254,8 @@ PWOBJS = \
 ../PW/ggen.o \
 ../PW/gk_sort.o \
 ../PW/gradcorr.o \
+../PW/grid_paw_routines.o \
+../PW/grid_paw_variables.o \
 ../PW/gweights.o \
 ../PW/h_1psi.o \
 ../PW/h_1psi_nc.o \
@@ -303,6 +306,7 @@ PWOBJS = \
 ../PW/pw_restart.o \
 ../PW/pwcom.o \
 ../PW/qvan2.o \
+../PW/rad_paw_routines.o \
 ../PW/rdiaghg.o \
 ../PW/read_conf_from_file.o \
 ../PW/read_file.o \
@@ -434,7 +438,7 @@ TLDEPS= bindir mods libs pw
 all : tldeps ph.x
 
 ph.x : $(PHOBJS) $(RAMAN) $(LIBOBJS)
-	$(MPIF90) $(LDFLAGS) -o ph.x \
+	$(F90) $(LDFLAGS) -o ph.x \
 		$(PHOBJS) $(RAMAN) $(PWOBJS) $(MODULES) $(LIBOBJS) $(LIBS)
 	- ( cd ../bin ; ln -fs ../PH/ph.x . )
 tldeps:

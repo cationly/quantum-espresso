@@ -1,7 +1,9 @@
 
-     program ld1 starts. version 20-May-04
-     today is  6Jul2004 at 18:27:58 
+     program ld1 starts. version 11-Feb-05
+     today is 24Jun2007 at 22:41: 5 
 
+     from scf : info #        -1
+     warning: convergence not achieved
      -------------------- All-electron run ------------------------------
 
      H                                                                          
@@ -11,35 +13,35 @@
      mesh = 849 r(mesh) =  99.48432 xmin = -6.00 dx = 0.01250
 
      n l     nl                  e(Ryd)         e(Ha)          e(eV)
-     1 0     1S 1( 1.00)        -1.0000        -0.5000       -13.6058
-     1 0     1S 2( 0.00)        -0.4211        -0.2105        -5.7294
+     1 0     1S 1( 1.00)        -1.0000        -0.5000       -13.6060
+     1 0     1S 2( 0.00)     -1263.4807      -631.7404    -17190.6659
 
-     eps = 8.4E-15  iter = 87
+     eps = 1.7E+00  iter =201
  
-     Etot =      -1.000000 Ry,      -0.500000 Ha,     -13.605803 eV
+     Etot =      -1.000064 Ry,      -0.500032 Ha,     -13.606675 eV
+     Total magnetization:    1.00 Bohr mag. 
 
-     Ekin =       1.000000 Ry,       0.500000 Ha,      13.605797 eV
-     Encl =      -2.000000 Ry,      -1.000000 Ha,     -27.211600 eV
-     Eh   =       0.625000 Ry,       0.312500 Ha,       8.503625 eV
-     Exc  =      -0.625000 Ry,      -0.312500 Ha,      -8.503625 eV
+     Ekin =       0.999966 Ry,       0.499983 Ha,      13.605340 eV
+     Encl =      -2.000030 Ry,      -1.000015 Ha,     -27.212015 eV
+     Eh   =       0.625007 Ry,       0.312504 Ha,       8.503723 eV
+     Exc  =      -0.625007 Ry,      -0.312504 Ha,      -8.503723 eV
      Evxt =       0.000000 Ry,       0.000000 Ha,       0.000000 eV
      Epseu=       0.000000 Ry,       0.000000 Ha,       0.000000 eV
  
      SIC information:
-     Esich=      -0.625000 Ry,      -0.312500 Ha,      -8.503625 eV
-     Esicxc=      0.658133 Ry,       0.329066 Ha,       8.954424 eV
-     Esictot=     0.033133 Ry,       0.016566 Ha,       0.450799 eV
+     Esich=      -0.625007 Ry,      -0.312504 Ha,      -8.503723 eV
+     Esicxc=      0.626955 Ry,       0.313478 Ha,       8.530230 eV
+     Esictot=     0.001948 Ry,       0.000974 Ha,       0.026508 eV
  
-     tot-Exc=    -0.658133 Ry,      -0.329066 Ha,      -8.954424 eV
+     tot-Exc=    -0.626955 Ry,      -0.313478 Ha,      -8.530230 eV
      int-Exc=     0.000000 Ry,       0.000000 Ha,       0.000000 eV
      int-Eh=      0.000000 Ry,       0.000000 Ha,       0.000000 eV
 
 
      normalization and overlap integrals
 
-     s(1S/1S) =  1.000000  <r> =   1.5000  <r2> =    3.0000  r(max) =   1.0000
-     s(1S/1S) =  0.925104
-     s(1S/1S) =  1.000000  <r> =   2.3824  <r2> =    7.6380  r(max) =   1.5296
+     s(1S/1S) =  1.000000  <r> =   1.5000  <r2> =    2.9999  r(max) =   1.0000
+     s(1S/1S) =  1.000000  <r> =   5.0816  <r2> =   27.0352  r(max) =   5.2070
 
      -------------------- End of All-electron run ----------------------
 

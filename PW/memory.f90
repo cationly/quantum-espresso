@@ -109,7 +109,8 @@ subroutine memory_estimate ( )
   !-----------------------------------------------------------------------
   !
   USE kinds,         ONLY : DP
-  USE parameters,    ONLY : ndmx, npsx, lmaxx, nchix, nbrx, nqfx, lqmax
+  USE parameters,    ONLY : npsx, lmaxx, nchix, nbrx, nqfx, lqmax
+  USE radial_grids,  ONLY : ndmx
   USE ions_base,     ONLY : nat, ntyp => nsp
   USE basis,         ONLY : natomwfc
   USE cellmd,        ONLY : lmovecell

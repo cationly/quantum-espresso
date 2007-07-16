@@ -13,7 +13,7 @@ subroutine write_resultsps
   implicit none
 
   integer :: i, j, n, m, l, ios
-  real(DP) :: work(ndm), int_0_inf_dr, ravg, sij
+  real(DP) :: work(ndmx), ravg, sij
   !
   !
   write(6,110)
@@ -27,7 +27,7 @@ subroutine write_resultsps
   write(6,2300) dft(1:len_trim(dft)),lsd,isic,latt,beta,tr2
 2300 format(5x,'dft =',a,'   lsd =',i1,' sic =',i1,' latt =',i1, &
        '  beta=',f4.2,' tr2=',1pe7.1)
-  write(6,1270) mesh,r(mesh),xmin,dx
+  write(6,1270) grid%mesh,grid%r(grid%mesh),grid%xmin,grid%dx
 1270 format(5x,'mesh =',i4,' r(mesh) =',f10.5,' xmin =',f6.2,' dx =',f8.5)
   if (rel.lt.2) then
      write(6,1000)
@@ -96,8 +96,8 @@ subroutine write_resultsps
      open(unit=16,file=file_wavefunctionsps,status='unknown', &
           err=1110, iostat=ios,form='formatted')
 1110 call errore('write_resultps','opening file_wavefunctionsps',abs(ios))
-     do n=1,mesh
-        write(16,'(8f10.6)') r(n),(phits(n,i), &
+     do n=1,grid%mesh
+        write(16,'(8f10.6)') grid%r(n),(phits(n,i), &
              i=nwfts,max(1,nwfts-6),-1)
         !            write(16,'(6f12.6)') r(n),(vnl(n,i)-vpsloc(n), i=lmax,0,-1)
      enddo

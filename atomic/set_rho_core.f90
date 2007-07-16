@@ -28,11 +28,11 @@ subroutine set_rho_core
      if (lpaw) write(6,'(/,5x,'' Computing core charge for PAW: '')')
   end if
   pi = 4.0_dp*atan(1.0_dp)
-  allocate (rhov(mesh), rhoco(mesh))
+  allocate (rhov(grid%mesh), rhoco(grid%mesh))
   !
   !      calculates core charge density
   !
-  do n=1,mesh
+  do n=1,grid%mesh
      rhov(n) = 0.0_dp
      rhoc(n) = 0.0_dp
      do ns=1,nwf
@@ -51,25 +51,25 @@ subroutine set_rho_core
         endif
      enddo
   enddo
-!  totrho = int_0_inf_dr(rhoc,r,r2,dx,mesh,2)
+!  totrho = int_0_inf_dr(rhoc,grid,grid%mesh,2)
 !  write(6,'("Integrated core charge",f15.10)') totrho
-  rhoco(:) = rhoc(1:mesh)
+  rhoco(:) = rhoc(1:grid%mesh)
   !
   if (rcore > 0.0_dp) then
      !      rcore read on input
-     do ik=1,mesh
-        if (r(ik) > rcore) go to 100
+     do ik=1,grid%mesh
+        if (grid%r(ik) > rcore) go to 100
      enddo
      call infomsg('set_rho_core','rcore too big', -1)
      return
   else
      !      rcore determined by the condition  rhoc(rcore) = 2*rhov(rcore)
-     do ik=1,mesh
+     do ik=1,grid%mesh
         if (rhoc(ik) < 2.0 * rhov(ik)) go to 100
      enddo
   end if
-100 rcore=r(ik)
-  drho = ( rhoc(ik+1)/r2(ik+1) - rhoc(ik)/r2(ik) ) / dx / r(ik)
+100 rcore=grid%r(ik)
+  drho = ( rhoc(ik+1)/grid%r2(ik+1) - rhoc(ik)/grid%r2(ik) ) / grid%dx / grid%r(ik)
   !
   !   true_rho = rhoc(r)/r**2/4 pi
   !      (factor 1/r from logarithmic mesh)
@@ -81,7 +81,7 @@ subroutine set_rho_core
      call infomsg('set_rho_core','d rho/ d r > 0', -1)
      return
   endif
-  const= r(ik)*drho / ( rhoc(ik)/r2(ik) ) + 1.0_dp
+  const= grid%r(ik)*drho / ( rhoc(ik)/grid%r2(ik) ) + 1.0_dp
   if (const > 0.0_dp) then
      br1 = 0.00001_dp
      br2 = pi/2.0_dp-0.00001_dp
@@ -102,36 +102,36 @@ subroutine set_rho_core
         call errore('set_rho_core','error in bisection',n)
      end if
   end do
-  b = br12/r(ik)
-  a = ( rhoc(ik)/r2(ik) ) * r(ik)/sin(br12)
+  b = br12/grid%r(ik)
+  a = ( rhoc(ik)/grid%r2(ik) ) * grid%r(ik)/sin(br12)
   do n=1,ik
-     rhoc(n) = a*sin(b*r(n))/r(n) * r2(n)
+     rhoc(n) = a*sin(b*grid%r(n))/grid%r(n) * grid%r2(n)
   end do
   if (lpaw) then
      if (lnc2paw) then
         ! Mimic NC calculation. If NLCC, the pseudized core charge.
         if (nlcc) then
-           aeccharge(1:mesh) = rhoc(1:mesh)
+           aeccharge(1:grid%mesh) = rhoc(1:grid%mesh)
            ! Here one could set another pseudized ccharge, for
            ! example with a larger matching radius. Right now,
            ! just take the same as the AE (ie NC) one:
-           psccharge(1:mesh) = rhoc(1:mesh)
+           psccharge(1:grid%mesh) = rhoc(1:grid%mesh)
         else
            ! Reference NC calculation does not have core charge.
-           aeccharge(1:mesh) = 0._dp
-           psccharge(1:mesh) = 0._dp
+           aeccharge(1:grid%mesh) = 0._dp
+           psccharge(1:grid%mesh) = 0._dp
         end if
      else
-        aeccharge(1:mesh) = rhoco(1:mesh)
+        aeccharge(1:grid%mesh) = rhoco(1:grid%mesh)
         if (nlcc) then
-           psccharge(1:mesh) = rhoc(1:mesh)
+           psccharge(1:grid%mesh) = rhoc(1:grid%mesh)
         else
-           psccharge(1:mesh) = 0._dp
+           psccharge(1:grid%mesh) = 0._dp
         end if
      end if
   end if
-  write(6,'(/,5x,''  r > '',f4.2,'' : true rho core'')') r(ik)
-  write(6,110) r(ik), a, b
+  write(6,'(/,5x,''  r > '',f4.2,'' : true rho core'')') grid%r(ik)
+  write(6,110) grid%r(ik), a, b
 110 format (5x, '  r < ',f4.2,' : rho core = a sin(br)/r', &
        '    a=',f7.2,'  b=',f7.2/)
   if (file_core .ne. ' ') then
@@ -139,14 +139,14 @@ subroutine set_rho_core
      open(unit=26,file=file_core, status='unknown', iostat=ios, &
           err=300 )
 300  call errore('set_rho_core','opening file '//file_core,abs(ios))
-     do n=1,mesh
-        write(26,'(4f20.10)') r(n),rhoc(n),rhov(n),rhoco(n)
+     do n=1,grid%mesh
+        write(26,'(4f20.10)') grid%r(n),rhoc(n),rhov(n),rhoco(n)
      enddo
      close(26)
   endif
   deallocate (rhoco, rhov)
-  totrho = int_0_inf_dr(rhoc,r,r2,dx,mesh,2)
+  totrho = int_0_inf_dr(rhoc,grid,grid%mesh,2)
   write(6,'(13x,''integrated core pseudo-charge : '',f6.2)')  totrho
-  if (.not.nlcc) rhoc(1:mesh) = 0.0_dp
+  if (.not.nlcc) rhoc(1:grid%mesh) = 0.0_dp
   return
 end subroutine set_rho_core

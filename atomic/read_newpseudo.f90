@@ -14,9 +14,15 @@
 !     a multiprojector pseudopotential. It can be in the
 !     Vanderbilt form or in the norm-conserving form
 !
-use ld1inc
+use ld1inc, only: grid, ndmx, &
+                  file_pseudo, title, pseudotype, nlcc, rel, zval, etots, &
+                  lmax,  nwfs, nbeta, rcut,nwfs,rcutus, els, nns, lls, ocs, &
+                  dp, bmat, qq, qvan, ddd, rcloc, vpsloc, rhos, rhoc, phis, &
+                  ikk, betas
 use funct
    implicit none
+  real(DP) :: xmin, dx,rmax, zmesh, r(ndmx), r2(ndmx), rab(ndmx),sqr(ndmx)
+  integer :: mesh
 
       integer :: &
              nb,mb, &  ! counters on beta functions
@@ -54,7 +60,7 @@ use funct
       read( iunps, '(4e17.11,i5)',err=100, iostat=ios ) &
                                    xmin,rmax,zmesh,dx,mesh
 
-      call do_mesh(rmax,zmesh,xmin,dx,0,ndm,mesh,r,r2,rab,sqr)
+      call do_mesh(rmax,zmesh,xmin,dx,0,grid)
 
       read( iunps, '(2i5)', err=100, iostat=ios ) nwfs, nbeta
       read( iunps, '(1p4e19.11)', err=100, iostat=ios ) &

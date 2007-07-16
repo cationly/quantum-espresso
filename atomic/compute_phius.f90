@@ -38,7 +38,7 @@ use ld1inc
                bm(2),  &              ! the derivative of the bessel
                ff,     &              ! contain deltah corrections
                fact(2), &             ! factor of normalization
-               j1(ndm,8)             ! the bessel functions
+               j1(ndmx,8)             ! the bessel functions
      
       real(DP) :: &
             deriv_7pts, deriv2_7pts
@@ -51,7 +51,7 @@ use ld1inc
 !
 !    compute first and second derivative
 !
-      ff=1-dx**2/48.0_dp
+      ff=1-grid%dx**2/48.0_dp
 !      fae=(psipsus(ik+1,ns)+psipsus(ik,ns))*0.5_dp
 !      f1aep1=psipsus(ik+1,ns)*ff/sqr(ik+1)
 !      f1ae=psipsus(ik,ns)*(-12.0_dp+10.0_dp*ff)/sqr(ik)
@@ -60,8 +60,8 @@ use ld1inc
 !      f1ae=(psipsus(ik+1,ns)-psipsus(ik,ns))/(r(ik+1)-r(ik))
 
       fae=psipsus(ik,ns)
-      f1ae=deriv_7pts(psipsus(1,ns),ik,r(ik),dx)
-      f2ae=deriv2_7pts(psipsus(1,ns),ik,r(ik),dx)
+      f1ae=deriv_7pts(psipsus(1,ns),ik,grid%r(ik),grid%dx)
+      f2ae=deriv2_7pts(psipsus(1,ns),ik,grid%r(ik),grid%dx)
 
 !
 !    find the q_i of the bessel functions
@@ -73,7 +73,7 @@ use ld1inc
 !    compute the functions
 !
       do nc=1,2
-         call sph_besr(ik+5,r,xc(3+nc),lam,j1(1,nc))
+         call sph_besr(ik+5,grid%r,xc(3+nc),lam,j1(1,nc))
          fact(nc)=psipsus(ik,ns)/j1(ik,nc)
          do n=1,ik+5
             j1(n,nc)=j1(n,nc)*fact(nc)
@@ -89,7 +89,7 @@ use ld1inc
 !          f1ae=j1(ik,nc)*(-12.0_dp+10.0_dp*ff)/sqr(ik)
 !          f1aem1=j1(ik-1,nc)*ff/sqr(ik-1)
 !          bm(nc)=(f1aep1+f1ae+f1aem1)/dx**2
-         bm(nc)=deriv2_7pts(j1(1,nc),ik,r(ik),dx)
+         bm(nc)=deriv2_7pts(j1(1,nc),ik,grid%r(ik),grid%dx)
       enddo
 
       xc(2)=(f2ae-bm(1))/(bm(2)-bm(1))
@@ -106,7 +106,7 @@ use ld1inc
          phis(n,ns)=xc(1)*j1(n,1)+xc(2)*j1(n,2)
       enddo
 
-      do n=ik+1,mesh
+      do n=ik+1,grid%mesh
          phis(n,ns)=psipsus(n,ns)
       enddo
 

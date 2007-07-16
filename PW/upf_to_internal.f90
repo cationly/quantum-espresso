@@ -30,8 +30,8 @@ subroutine set_pseudo_upf (is, upf)
   !
   ! PWSCF modules
   !
-  USE parameters, ONLY: ndmx
-  USE atom,  ONLY: zmesh, mesh, msh, dx, r, rab, &
+  USE radial_grids, ONLY: ndmx
+  USE atom,  ONLY: rgrid, zmesh, mesh, msh, dx, r, rab, &
        chi, oc, nchi, lchi, jchi, rho_at, rho_atc, nlcc
   USE pseud, ONLY: lloc, lmax, zp
   USE uspp_param, ONLY: vloc_at, dion, betar, qqq, qfcoef, qfunc, nqf, nqlc, &
@@ -98,7 +98,19 @@ subroutine set_pseudo_upf (is, upf)
   !
   r  (1:upf%mesh, is) = upf%r  (1:upf%mesh)
   rab(1:upf%mesh, is) = upf%rab(1:upf%mesh)
-
+!
+! set radial grid data
+!
+  rgrid(is)%mesh = upf%mesh
+  rgrid(is)%xmin = upf%xmin
+  rgrid(is)%rmax = upf%rmax
+  rgrid(is)%zmesh= upf%zmesh
+  rgrid(is)%dx   = upf%dx
+  rgrid(is)%r(1:upf%mesh)   = upf%r(1:upf%mesh)
+  rgrid(is)%r2(1:upf%mesh)  = upf%r(1:upf%mesh)**2
+  rgrid(is)%rab(1:upf%mesh) = upf%rab(1:upf%mesh)
+  rgrid(is)%sqr(1:upf%mesh) = sqrt(upf%r(1:upf%mesh))
+!
   if (lspinorb.and..not.upf%has_so) &
      call infomsg ('upf_to_internal','At least one non s.o. pseudo', -1)
    
@@ -152,8 +164,8 @@ subroutine set_pseudo_paw (is, pawset)
   !
   ! PWSCF modules
   !
-  USE parameters, ONLY: ndmx
-  USE atom,  ONLY: zmesh, mesh, msh, dx, r, rab, &
+  USE radial_grids, ONLY: ndmx
+  USE atom,  ONLY: rgrid, zmesh, mesh, msh, dx, r, rab, &
        chi, oc, nchi, lchi, jchi, rho_at, rho_atc, nlcc
   USE pseud, ONLY: lloc, lmax, zp
   USE uspp_param, ONLY: vloc_at, dion, betar, qqq, qfcoef, qfunc, nqf, nqlc, &
@@ -188,12 +200,12 @@ subroutine set_pseudo_paw (is, pawset)
   !
   ! Cutoffing: WARNING: arbitrary right now, for grid calculation
   pow = 1.d0
-  nrs =  Count(pawset%r(1:pawset%mesh).le. (pawset%r(pawset%irc)*1.2d0))
-  nrc =  Count(pawset%r(1:pawset%mesh).le. (pawset%r(pawset%irc)*1.8d0))
+  nrs =  Count(pawset%grid%r(1:pawset%grid%mesh).le. (pawset%grid%r(pawset%irc)*1.2d0))
+  nrc =  Count(pawset%grid%r(1:pawset%grid%mesh).le. (pawset%grid%r(pawset%irc)*1.8d0))
   PRINT *, 'PAW CUTOFF parameters'
-  PRINT *, pawset%irc, pawset%r(pawset%irc)
-  PRINT *, nrs, pawset%r(nrs)
-  PRINT *, nrc, pawset%r(nrc)
+  PRINT *, pawset%irc, pawset%grid%r(pawset%irc)
+  PRINT *, nrs, pawset%grid%r(nrs)
+  PRINT *, nrc, pawset%grid%r(nrc)
   !
   zp(is)  = pawset%zval
   psd (is)= pawset%symbol
@@ -211,7 +223,7 @@ subroutine set_pseudo_paw (is, pawset)
     CALL errore( 'upf_to_internal', 'HYBRID XC not implemented in PWscf', 1 )
 #endif
   !
-  mesh(is) = pawset%mesh
+  mesh(is) = pawset%grid%mesh
   IF ( mesh(is) > ndmx ) &
      CALL errore('upf_to_internal', 'too many grid points', 1)
   !
@@ -229,7 +241,7 @@ subroutine set_pseudo_paw (is, pawset)
         nchi(is)=nchi(is)+1
         lchi(nchi(is),is)=pawset%l(i)
         oc(nchi(is),is)=MAX(pawset%oc(i),0._DP)
-        chi(1:pawset%mesh, nchi(is), is) = pawset%pswfc(1:pawset%mesh, i)
+        chi(1:pawset%grid%mesh, nchi(is), is) = pawset%pswfc(1:pawset%grid%mesh, i)
 #if defined __DEBUG_UPF_TO_INTERNAL
      end if
 #endif
@@ -240,7 +252,7 @@ subroutine set_pseudo_paw (is, pawset)
   do nb=1,pawset%nwfc
      kkbeta(is)=max(pawset%ikk(nb),kkbeta(is))
   end do
-  betar(1:pawset%mesh, 1:pawset%nwfc, is) = pawset%proj(1:pawset%mesh, 1:pawset%nwfc)
+  betar(1:pawset%grid%mesh, 1:pawset%nwfc, is) = pawset%proj(1:pawset%grid%mesh, 1:pawset%nwfc)
   dion(1:pawset%nwfc, 1:pawset%nwfc, is) = pawset%dion(1:pawset%nwfc, 1:pawset%nwfc)
   kdiff(1:pawset%nwfc, 1:pawset%nwfc, is) = pawset%kdiff(1:pawset%nwfc, 1:pawset%nwfc)
 
@@ -264,8 +276,8 @@ subroutine set_pseudo_paw (is, pawset)
   end do
   !! NEW-AUG !! 
   nraug(is) = pawset%irc
-  dx (is) = pawset%dx
-  r2 (1:pawset%mesh, is) = pawset%r2  (1:pawset%mesh)
+  dx (is) = pawset%grid%dx
+  r2 (1:pawset%grid%mesh, is) = pawset%grid%r2  (1:pawset%grid%mesh)
   do l = 0, 2*pawset%lmax
      do i = 1, pawset%nwfc
         do j = 1, pawset%nwfc
@@ -273,27 +285,27 @@ subroutine set_pseudo_paw (is, pawset)
         end do 
      end do
   end do
-  qfunc (1:pawset%mesh, 1:pawset%nwfc, 1:pawset%nwfc, is) = &
-       pawset%augfun(1:pawset%mesh,1:pawset%nwfc,1:pawset%nwfc,0)
-  augfun(1:pawset%mesh,1:pawset%nwfc,1:pawset%nwfc,0:2*pawset%lmax,is) = &
-       pawset%augfun(1:pawset%mesh,1:pawset%nwfc,1:pawset%nwfc,0:2*pawset%lmax)
+  qfunc (1:pawset%grid%mesh, 1:pawset%nwfc, 1:pawset%nwfc, is) = &
+       pawset%augfun(1:pawset%grid%mesh,1:pawset%nwfc,1:pawset%nwfc,0)
+  augfun(1:pawset%grid%mesh,1:pawset%nwfc,1:pawset%nwfc,0:2*pawset%lmax,is) = &
+       pawset%augfun(1:pawset%grid%mesh,1:pawset%nwfc,1:pawset%nwfc,0:2*pawset%lmax)
   !
   do i=1,pawset%nwfc
      do j=1,pawset%nwfc
 #if defined __DO_NOT_CUTOFF_PAW_FUNC
-        pfunc (1:pawset%mesh, i, j, is) = &
-             pawset%aewfc(1:pawset%mesh, i) * pawset%aewfc(1:pawset%mesh, j)
-        ptfunc (1:pawset%mesh, i, j, is) = &
-             pawset%pswfc(1:pawset%mesh, i) * pawset%pswfc(1:pawset%mesh, j)
+        pfunc (1:pawset%grid%mesh, i, j, is) = &
+             pawset%aewfc(1:pawset%grid%mesh, i) * pawset%aewfc(1:pawset%grid%mesh, j)
+        ptfunc (1:pawset%grid%mesh, i, j, is) = &
+             pawset%pswfc(1:pawset%grid%mesh, i) * pawset%pswfc(1:pawset%grid%mesh, j)
 #else
-        aux(1:pawset%mesh) = pawset%aewfc(1:pawset%mesh, i) * &
-             pawset%aewfc(1:pawset%mesh, j)
-        CALL step_f( pfunc(1:pawset%mesh,i,j,is), aux(1:pawset%mesh), &
-             pawset%r(1:pawset%mesh), nrs, nrc, pow, pawset%mesh)
-        aux(1:pawset%mesh) = pawset%pswfc(1:pawset%mesh, i) * &
-             pawset%pswfc(1:pawset%mesh, j)
-        CALL step_f( ptfunc(1:pawset%mesh,i,j,is), aux(1:pawset%mesh), &
-             pawset%r(1:pawset%mesh), nrs, nrc, pow, pawset%mesh)
+        aux(1:pawset%grid%mesh) = pawset%aewfc(1:pawset%grid%mesh, i) * &
+             pawset%aewfc(1:pawset%grid%mesh, j)
+        CALL step_f( pfunc(1:pawset%grid%mesh,i,j,is), aux(1:pawset%grid%mesh), &
+             pawset%grid%r(1:pawset%grid%mesh), nrs, nrc, pow, pawset%grid%mesh)
+        aux(1:pawset%grid%mesh) = pawset%pswfc(1:pawset%grid%mesh, i) * &
+             pawset%pswfc(1:pawset%grid%mesh, j)
+        CALL step_f( ptfunc(1:pawset%grid%mesh,i,j,is), aux(1:pawset%grid%mesh), &
+             pawset%grid%r(1:pawset%grid%mesh), nrs, nrc, pow, pawset%grid%mesh)
 #endif
      end do
   end do
@@ -304,8 +316,21 @@ subroutine set_pseudo_paw (is, pawset)
   ! nqf is always 0 for this PAW format
   ! qfcoef(1:pawset%nqf, 1:pawset%nqlc, 1:pawset%nwfc, 1:pawset%nwfc, is ) = 0._dp
   !
-  r  (1:pawset%mesh, is) = pawset%r  (1:pawset%mesh)
-  rab(1:pawset%mesh, is) = pawset%r  (1:pawset%mesh)*pawset%dx
+  r  (1:pawset%grid%mesh, is) = pawset%grid%r  (1:pawset%grid%mesh)
+  rab(1:pawset%grid%mesh, is) = pawset%grid%r  (1:pawset%grid%mesh)*pawset%grid%dx
+
+!
+! set radial grid data
+!
+  rgrid(is)%mesh = pawset%grid%mesh
+  rgrid(is)%xmin = pawset%grid%xmin
+  rgrid(is)%rmax = pawset%grid%rmax
+  rgrid(is)%zmesh= pawset%grid%zmesh
+  rgrid(is)%dx   = pawset%grid%dx
+  rgrid(is)%r(1:pawset%grid%mesh)   = pawset%grid%r(1:pawset%grid%mesh)
+  rgrid(is)%r2(1:pawset%grid%mesh)  = pawset%grid%r2(1:pawset%grid%mesh)
+  rgrid(is)%rab(1:pawset%grid%mesh) = pawset%grid%rab(1:pawset%grid%mesh)
+  rgrid(is)%sqr(1:pawset%grid%mesh) = sqrt(pawset%grid%r(1:pawset%grid%mesh))
 
   ! NO spin orbit PAW implemented right now (oct 2005)
 !!$  if (lspinorb.and..not.pawset%has_so) &
@@ -321,37 +346,37 @@ subroutine set_pseudo_paw (is, pawset)
 !!$  endif
   !
   if ( pawset%nlcc) then
-     rho_atc(1:pawset%mesh, is) = pawset%psccharge(1:pawset%mesh) &
-          &                       / FPI / pawset%r2(1:pawset%mesh)
+     rho_atc(1:pawset%grid%mesh, is) = pawset%psccharge(1:pawset%grid%mesh) &
+          &                       / FPI / pawset%grid%r2(1:pawset%grid%mesh)
   else
      rho_atc(:,is) = 0.d0
   end if
 
-  aerho_atc(1:pawset%mesh, is) = pawset%aeccharge(1:pawset%mesh) &
-       &                         / FPI / pawset%r2(1:pawset%mesh)
+  aerho_atc(1:pawset%grid%mesh, is) = pawset%aeccharge(1:pawset%grid%mesh) &
+       &                         / FPI / pawset%grid%r2(1:pawset%grid%mesh)
   if ( pawset%nlcc) then
-     psrho_atc(1:pawset%mesh, is) = pawset%psccharge(1:pawset%mesh) &
-          &                         / FPI / pawset%r2(1:pawset%mesh)
+     psrho_atc(1:pawset%grid%mesh, is) = pawset%psccharge(1:pawset%grid%mesh) &
+          &                         / FPI / pawset%grid%r2(1:pawset%grid%mesh)
   else
      psrho_atc(:,is) = 0._dp
   end if
   !
-  rho_at (1:pawset%mesh, is) = pawset%pscharge(1:pawset%mesh)
+  rho_at (1:pawset%grid%mesh, is) = pawset%pscharge(1:pawset%grid%mesh)
 
   !!! TEMP       !!! this was already present in set_pseudo_upf. what does it mean?
   lloc(is) = 0
   !!!
-  vloc_at(1:pawset%mesh,is) = pawset%psloc(1:pawset%mesh)
+  vloc_at(1:pawset%grid%mesh,is) = pawset%psloc(1:pawset%grid%mesh)
 #if defined __DO_NOT_CUTOFF_PAW_FUNC
-  aevloc_at(1:pawset%mesh,is) = pawset%aeloc(1:pawset%mesh)
-  psvloc_at(1:pawset%mesh,is) = pawset%psloc(1:pawset%mesh)
+  aevloc_at(1:pawset%grid%mesh,is) = pawset%aeloc(1:pawset%grid%mesh)
+  psvloc_at(1:pawset%grid%mesh,is) = pawset%psloc(1:pawset%grid%mesh)
 #else
-  aux(1:pawset%mesh) = pawset%aeloc(1:pawset%mesh)
-  CALL step_f( aevloc_at(1:pawset%mesh,is), aux(1:pawset%mesh), &
-       pawset%r(1:pawset%mesh), nrs, nrc, pow, pawset%mesh)
-  aux(1:pawset%mesh) = pawset%psloc(1:pawset%mesh)
-  CALL step_f( psvloc_at(1:pawset%mesh,is), aux(1:pawset%mesh), &
-       pawset%r(1:pawset%mesh), nrs, nrc, pow, pawset%mesh)
+  aux(1:pawset%grid%mesh) = pawset%aeloc(1:pawset%grid%mesh)
+  CALL step_f( aevloc_at(1:pawset%grid%mesh,is), aux(1:pawset%grid%mesh), &
+       pawset%grid%r(1:pawset%grid%mesh), nrs, nrc, pow, pawset%grid%mesh)
+  aux(1:pawset%grid%mesh) = pawset%psloc(1:pawset%grid%mesh)
+  CALL step_f( psvloc_at(1:pawset%grid%mesh,is), aux(1:pawset%grid%mesh), &
+       pawset%grid%r(1:pawset%grid%mesh), nrs, nrc, pow, pawset%grid%mesh)
 #endif
 
   do ir = 1, mesh (is)
@@ -380,8 +405,8 @@ subroutine write_internals(un,is)
   ! check reading of pseudopotential format
   !
 
-  USE parameters, ONLY: ndmx
-  USE atom,  ONLY: zmesh, mesh, msh, dx, r, rab, &
+  USE radial_grids, ONLY: ndmx
+  USE atom,  ONLY: rgrid, zmesh, mesh, msh, dx, r, rab, &
        chi, oc, nchi, lchi, jchi, rho_at, rho_atc, nlcc
   USE pseud, ONLY: lloc, lmax, zp
   USE uspp_param, ONLY: vloc_at, dion, betar, qqq, qfcoef, qfunc, nqf, nqlc, &

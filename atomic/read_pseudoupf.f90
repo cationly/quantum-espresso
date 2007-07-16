@@ -17,13 +17,18 @@ subroutine read_pseudoupf
   !
   ! PWSCF modules
   !
-  use ld1inc
+  use ld1inc, only: grid, &
+              dp, file_pseudo, zval, nlcc, pseudotype, qq, qvan, lmax, &
+              zed, nwfs, nbeta, lls, jjs,ikk, els, rcut, rcutus, betas, &
+              bmat, lmax, etots, ddd, rhoc, rhos, phis, lloc, vpsloc
   use funct
   !
   use pseudo_types
   use read_pseudo_module
   !
   implicit none
+  real(DP) :: xmin, dx,rmax, zmesh, r(ndmx), r2(ndmx), rab(ndmx),sqr(ndmx)
+  integer :: mesh
   !
   integer :: iunps, ierr
   !
@@ -58,8 +63,8 @@ subroutine read_pseudoupf
   lmax = upf%lmax
   mesh = upf%mesh
   r  (1:mesh) = upf%r  (1:upf%mesh)
-  rab(1:mesh) = upf%rab(1:upf%mesh)
   r2 (1:mesh) = r(1:mesh)**2
+  rab(1:mesh) = upf%rab(1:upf%mesh)
   sqr(1:mesh) = sqrt(r(1:mesh))
   if (.not.upf%has_so) then
      if (r(1) > 0.0_dp) then
@@ -87,6 +92,16 @@ subroutine read_pseudoupf
   endif
   if (abs(exp(xmin+(mesh-1)*dx)/zed-rmax).gt.1.e-6_dp) &
        call errore('read_pseudoup','mesh not supported',1)
+
+  grid%mesh       = mesh
+  grid%r(1:mesh)  = r(1:mesh)
+  grid%r2(1:mesh) = r2(1:mesh)
+  grid%rab(1:mesh)= rab(1:mesh)
+  grid%sqr(1:mesh)= sqr(1:mesh)
+  grid%xmin       = xmin
+  grid%rmax       = rmax
+  grid%zmesh      = zmesh
+  grid%dx         = dx
 
   nwfs = upf%nwfc
 

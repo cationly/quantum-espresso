@@ -15,7 +15,8 @@ subroutine readnewvan (is, iunps)
   !     It is compatible only with the ld1 atomic code
   !
   USE kinds, only: dp
-  USE parameters, ONLY: nchix, lmaxx, nbrx, ndmx, npsx, lqmax
+  USE parameters, ONLY: nchix, lmaxx, nbrx, npsx, lqmax
+  USE radial_grids, ONLY: ndmx
   use constants, only: fpi
   use atom,  only: zmesh, mesh, xmin, dx, r, rab, chi, oc, nchi, &
        lchi, rho_at, rho_atc, nlcc

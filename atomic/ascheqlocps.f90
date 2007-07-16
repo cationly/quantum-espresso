@@ -7,8 +7,7 @@
 !
 !
 !---------------------------------------------------------------
-subroutine ascheqlocps(nn,lam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
-     thresh,y)
+subroutine ascheqlocps(nn,lam,e,mesh,ndm,grid,vpot, thresh,y)
   !---------------------------------------------------------------
   !
   !  numerical integration of the radial schroedinger equation for
@@ -16,6 +15,7 @@ subroutine ascheqlocps(nn,lam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
   !  thresh dermines the absolute accuracy for the eigenvalue
   !
   use kinds, only : DP
+  use radial_grids, only: radial_grid_type, series
   implicit none
   integer :: &
        nn, &       ! main quantum number for node number
@@ -23,12 +23,10 @@ subroutine ascheqlocps(nn,lam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
        mesh, &     ! size of radial mesh
        ndm         ! maximum radial mesh 
 
+  type(radial_grid_type),intent(in):: grid
+
   real(DP) :: &
        e,       &  ! output eigenvalue
-       dx,      &  ! linear delta x for radial mesh
-       r(mesh), &  ! radial mesh
-       r2(mesh),&  ! square of radial mesh
-       sqr(mesh),& ! square root of radial mesh
        vpot(mesh),&! the local potential 
        thresh,   & ! precision of eigenvalue
        y(mesh)     ! the output solution
@@ -81,7 +79,7 @@ subroutine ascheqlocps(nn,lam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
   allocate(c(mesh),stat=ierr)
   allocate(yi(mesh),stat=ierr)
 
-  ddx12=dx*dx/12.0_dp
+  ddx12=grid%dx*grid%dx/12.0_dp
   l1=lam+1
   nst=l1*2
   sqlhf=(DBLE(lam)+0.5_dp)**2
@@ -96,14 +94,14 @@ subroutine ascheqlocps(nn,lam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
   !
   ze2=0.0_dp
   do n=1,4
-     y(n)=vpot(n)-ze2/r(n)
+     y(n)=vpot(n)-ze2/grid%r(n)
   enddo
-  call series(y,r,r2,b)
+  call series(y,grid%r,grid%r2,b)
 
-  eup=vpot(mesh)+sqlhf/r2(mesh)
+  eup=vpot(mesh)+sqlhf/grid%r2(mesh)
   elw=eup
   do n=1,mesh
-     elw=min(elw,vpot(n)+sqlhf/r2(n))
+     elw=min(elw,vpot(n)+sqlhf/grid%r2(n))
   enddo
 
   if(e.gt.eup) e=0.9_dp*eup+0.1_dp*elw
@@ -117,9 +115,9 @@ subroutine ascheqlocps(nn,lam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
      !  f > 0         "           "        "      forbidden   "
      !
      ik=0
-     f(1)=ddx12*(r2(1)*(vpot(1)-e)+sqlhf)
+     f(1)=ddx12*(grid%r2(1)*(vpot(1)-e)+sqlhf)
      do n=2,mesh
-        f(n)=ddx12*(r2(n)*(vpot(n)-e)+sqlhf)
+        f(n)=ddx12*(grid%r2(n)*(vpot(n)-e)+sqlhf)
         if( f(n) .ne. sign(f(n),f(n-1)).and.n.ne.mesh ) ik=n
      enddo
      if (ik.eq.0) ik=mesh*3/4
@@ -127,7 +125,7 @@ subroutine ascheqlocps(nn,lam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
 
      if(ik.ge.mesh-2) then
         do n=1,mesh
-           write(6,*) r(n), vpot(n), f(n)
+           write(6,*) grid%r(n), vpot(n), f(n)
         enddo
         call errore('ascheqps','No point found for matching',1)
         stop
@@ -147,10 +145,10 @@ subroutine ascheqlocps(nn,lam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
      c2=(c1*ze2+b0e)/x4l6
      c3=(c2*ze2+c1*b0e+b(1))/x6l12
      c4=(c3*ze2+c2*b0e+c1*b(1)+b(2))/x8l20
-     rr1=(1.0_dp+r(1)*(c1+r(1)*(c2+r(1)*(c3+r(1)*c4))))*r(1)**l1
-     rr2=(1.0_dp+r(2)*(c1+r(2)*(c2+r(2)*(c3+r(2)*c4))))*r(2)**l1
-     y(1)=rr1/sqr(1)
-     y(2)=rr2/sqr(2)
+     rr1=(1.0_dp+grid%r(1)*(c1+grid%r(1)*(c2+grid%r(1)*(c3+grid%r(1)*c4))))*grid%r(1)**l1
+     rr2=(1.0_dp+grid%r(2)*(c1+grid%r(2)*(c2+grid%r(2)*(c3+grid%r(2)*c4))))*grid%r(2)**l1
+     y(1)=rr1/grid%sqr(1)
+     y(2)=rr2/grid%sqr(2)
      !
      !     and outward integration
      !
@@ -195,8 +193,7 @@ subroutine ascheqlocps(nn,lam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
         go to 300
      endif
 
-     call integrate_inward(e,mesh,ndm,dx,r,r2,sqr,f,y, &
-          c,el,ik,nstart)
+     call integrate_inward(e,mesh,ndm,grid,f,y,c,el,ik,nstart)
      !
      !  if y is too large renormalize it
      !
@@ -213,11 +210,11 @@ subroutine ascheqlocps(nn,lam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
           -f(ik-1)*y(ik-1)-f(ik+1)*y(ik+1)
 
      do n=1,nstart
-        el(n)=r(n)*y(n)*y(n)
+        el(n)=grid%r(n)*y(n)*y(n)
      enddo
-     sum=int_0_inf_dr(el,r,r2,dx,nstart,nst)
+     sum=int_0_inf_dr(el,grid,nstart,nst)
 
-     dfe=-y(ik)*f(ik)/dx/sum
+     dfe=-y(ik)*f(ik)/grid%dx/sum
      de=-fe*dfe
      !
      !    check for convergence
@@ -268,12 +265,12 @@ subroutine ascheqlocps(nn,lam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
   !  normalize the eigenfunction and exit
   !
   do n=1,mesh
-     el(n)=r(n)*y(n)*y(n)
+     el(n)=grid%r(n)*y(n)*y(n)
   enddo
-  sum=int_0_inf_dr(el,r,r2,dx,mesh,nst)
+  sum=int_0_inf_dr(el,grid,mesh,nst)
   sum=sqrt(sum)
   do n=1,mesh
-     y(n)=sqr(n)*y(n)/sum
+     y(n)=grid%sqr(n)*y(n)/sum
   enddo
 
   deallocate(yi)

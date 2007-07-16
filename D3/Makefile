@@ -270,6 +270,8 @@ PWOBJS = \
 ../PW/ggen.o \
 ../PW/gk_sort.o \
 ../PW/gradcorr.o \
+../PW/grid_paw_routines.o \
+../PW/grid_paw_variables.o \
 ../PW/gweights.o \
 ../PW/h_1psi.o \
 ../PW/h_1psi_nc.o \
@@ -400,7 +402,7 @@ TLDEPS= bindir mods libs pw ph
 all : tldeps d3.x
 
 d3.x : $(D3OBJS) $(PHOBJS) $(PWOBJS) $(MODULES) $(LIBOBJS)
-	$(MPIF90) $(LDFLAGS) -o d3.x $(D3OBJS) $(PHOBJS) $(PWOBJS) $(MODULES) $(LIBOBJS) $(LIBS)
+	$(F90) $(LDFLAGS) -o d3.x $(D3OBJS) $(PHOBJS) $(PWOBJS) $(MODULES) $(LIBOBJS) $(LIBS)
 	- ( cd ../bin ; ln -fs ../D3/d3.x . )
 tldeps:
 	test -n "$(TLDEPS)" && ( cd .. ; $(MAKE) $(MFLAGS) $(TLDEPS) || exit 1) || :

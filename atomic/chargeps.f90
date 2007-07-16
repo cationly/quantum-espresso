@@ -14,6 +14,7 @@ subroutine chargeps(nwff,lli,jji,oci,iswfi)
   !   spin polarization
   !
   use ld1inc
+  implicit none
 
   integer :: &
        nwff,       & ! input: the number of wavefunctions
@@ -32,7 +33,7 @@ subroutine chargeps(nwff,lli,jji,oci,iswfi)
   real(DP) ::    &
        work(nwfsx), & ! auxiliary variable for becp
        int_0_inf_dr,& ! integration function
-       gi(ndm)        ! used to compute the integrals
+       gi(ndmx)        ! used to compute the integrals
 
 
   rhos=0.0_dp
@@ -42,7 +43,7 @@ subroutine chargeps(nwff,lli,jji,oci,iswfi)
   do ns=1,nwff
      if (oci(ns).gt.0.0_dp) then
         is=iswfi(ns)
-        do n=1,mesh
+        do n=1,grid%mesh
            rhos(n,is)=rhos(n,is)+oci(ns)*phis(n,ns)**2
         end do
      endif
@@ -62,7 +63,7 @@ subroutine chargeps(nwff,lli,jji,oci,iswfi)
                  do n=1,ikl
                     gi(n)=betas(n,n1)*phis(n,ns)
                  enddo
-                 work(n1)=int_0_inf_dr(gi,r,r2,dx,ikl,nst)
+                 work(n1)=int_0_inf_dr(gi,grid,ikl,nst)
               else
                  work(n1)=0.0_dp
               endif
@@ -72,7 +73,7 @@ subroutine chargeps(nwff,lli,jji,oci,iswfi)
            !
            do n1=1,nbeta
               do n2=1,nbeta
-                 do n=1,mesh
+                 do n=1,grid%mesh
                     rhos(n,is)=rhos(n,is)+qvan(n,n1,n2)*oci(ns)* &
                          work(n1)*work(n2)
                  enddo

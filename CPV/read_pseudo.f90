@@ -762,6 +762,7 @@ subroutine upf2internal ( upf, is, ierr )
   use atom, only: chi, lchi, nchi, rho_atc, r, rab, mesh, nlcc, numeric
   use ions_base, only: zv
   use funct, only: dft, which_dft, ishybrid
+  use radial_grids, only: ndmx
   !
   use pseudo_types
   !
@@ -1398,7 +1399,8 @@ END SUBROUTINE read_atomic_cc
 !     Output parameters in module "uspp_param"
 !     info on DFT level in module "dft"
 !
-      use parameters, only: nsx, natx, lqmax, ndmx
+      use parameters, only: nsx, natx, lqmax
+      use radial_grids, only: ndmx
       use atom, only: rho_atc, r, rab, mesh, nlcc, lchi, chi, nchi, nchix
       use uspp_param, only: nqlc, qfunc, vloc_at, rinner,&
                        qqq, nbeta, nbrx, betar, dion, lll, kkbeta, tvanp
@@ -1652,7 +1654,8 @@ END SUBROUTINE read_atomic_cc
 !
 !
       use kinds, only: DP
-      use parameters, only: nchix, lmaxx, nbrx, ndmx, nsx, lqmax, nqfx
+      use parameters, only: nchix, lmaxx, nbrx, nsx, lqmax, nqfx
+      use radial_grids, only: ndmx
       use uspp_param, only: qfunc, qfcoef, qqq, betar, dion, vloc_at, &
            rinner, kkbeta, lll, nbeta, nqf, nqlc, tvanp
       use qrl_mod, only: cmesh, qrl

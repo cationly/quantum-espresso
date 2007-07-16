@@ -30,7 +30,8 @@ CONTAINS
   SUBROUTINE allocate_paw_internals
     USE gvect,              ONLY : nrxx
     USE lsda_mod,           ONLY : nspin
-    USE parameters,         ONLY : nbrx,ndmx
+    USE parameters,         ONLY : nbrx
+    USE radial_grids,       ONLY : ndmx
     USE ions_base,          ONLY : nsp, nat, ntyp => nsp
     USE us,                 ONLY : nqxq
     USE uspp_param,         ONLY : lmaxq, nhm
@@ -100,7 +101,8 @@ CONTAINS
   SUBROUTINE init_prad
     !
     USE kinds,      ONLY : DP
-    USE parameters, ONLY : lmaxx, nbrx, lqmax, ndmx
+    USE parameters, ONLY : lmaxx, nbrx, lqmax
+    USE radial_grids, ONLY : ndmx
     USE constants,  ONLY : fpi
     USE atom,       ONLY : r, rab, mesh, msh
     USE ions_base,  ONLY : ntyp => nsp
@@ -1452,7 +1454,7 @@ END SUBROUTINE atomic_becsum
     USE pseud,      ONLY : lloc, lmax, cc, nlc, nnl, alpc, alps, aps, zp
     USE grid_paw_variables, ONLY: aevloc_at, psvloc_at, aevloc, psvloc
     !
-    USE parameters, ONLY : ndmx
+    USE radial_grids, ONLY : ndmx
     !
     IMPLICIT NONE
     !

@@ -9,11 +9,11 @@ echo $PW, $SCRATCH
 
 fileout=O2_dist.dat
 
-DISTLIST="0.8 1.0 1.2 1.4"
+DISTLIST="1.0"
 DISTLIST="0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.2 1.4 "
+PSEUDOLIST="PAW3.PAW PAW4.PAW" 
 PSEUDOLIST="NC1.UPF NC2.UPF US1.UPF US2.UPF PAW1.PAW PAW3.PAW PAW4.PAW" 
 #ECUTWFCLIST="100 70 50 35 25 18 13"
-
 
 echo -n "#dist" > $fileout
 for pseudo in $PSEUDOLIST; do
@@ -73,6 +73,8 @@ echo -n " $energy " >> $fileout
 done
 echo >> $fileout
 done
+
+exit
 
 cat <<EOF | gnuplot
 set term post

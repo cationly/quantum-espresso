@@ -1,4 +1,4 @@
-Today is: mer ott 26 16:47:33 CEST 2005
+Today is: Sun Jun 24 23:12:15 CEST 2007
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!                          Doing tests for Oxygen                          !!!
@@ -50,7 +50,7 @@ Pseudopotential tested in the (1s2) 2s0 2s0 2p3 2p3 configuration
   Pseudo energy =  -38.937600 Ryd
   Error         =   -0.000443 Ryd
 Pseudopotential tested in the (1s2) 2s1 2s1 2p1 2p3 configuration
-  Pseudo energy =  -41.241839 Ryd
+  Pseudo energy =  -41.241840 Ryd
   Error         =   -0.000100 Ryd
 
 

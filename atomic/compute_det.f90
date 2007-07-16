@@ -7,7 +7,7 @@
 !
 !
 !---------------------------------------------------------------
-subroutine compute_det(nn,lam,jam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
+subroutine compute_det(nn,lam,jam,e,mesh,ndm,grid,vpot, &
      beta,ddd,qq,nbeta,nwfx,lls,jjs,ikk,det)
   !---------------------------------------------------------------
   !
@@ -18,8 +18,10 @@ subroutine compute_det(nn,lam,jam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
   !
   !
   use kinds, only : DP
+  use radial_grids, only: radial_grid_type, series
   implicit none
 
+  type(radial_grid_type), intent(in):: grid
   integer :: &
        nn, &       ! main quantum number for node number
        lam,&       ! angular momentum
@@ -32,11 +34,7 @@ subroutine compute_det(nn,lam,jam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
 
   real(DP) :: &
        e,       &  ! output eigenvalue
-       dx,      &  ! linear delta x for radial mesh
        jam,     &  ! the j of this calculation
-       r(mesh), &  ! radial mesh
-       r2(mesh),&  ! square of radial mesh
-       sqr(mesh), &! square root of radial mesh
        vpot(mesh),&! the local potential 
        det,     & ! the value of the wronskian
        jjs(nwfx), &! the j of each beta
@@ -88,7 +86,7 @@ subroutine compute_det(nn,lam,jam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
   allocate(amat(nwfx,nwfx), stat=ierr)
 
 
-  ddx12=dx*dx/12.0_dp
+  ddx12=grid%dx*grid%dx/12.0_dp
   l1=lam+1
   nst=l1*2
   sqlhf=(DBLE(lam)+0.5_dp)**2
@@ -101,9 +99,9 @@ subroutine compute_det(nn,lam,jam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
   !
   ze2=0.0_dp
   do n=1,4
-     y(n)=vpot(n)-ze2/r(n)
+     y(n)=vpot(n)-ze2/grid%r(n)
   enddo
-  call series(y,r,r2,b)
+  call series(y,grid%r,grid%r2,b)
   !
   !  set up the f-function and determine the position of its last
   !  change of sign
@@ -111,16 +109,16 @@ subroutine compute_det(nn,lam,jam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
   !  f > 0         "           "        "      forbidden   "
   !
   ik=0
-  f(1)=ddx12*(r2(1)*(vpot(1)-e)+sqlhf)
+  f(1)=ddx12*(grid%r2(1)*(vpot(1)-e)+sqlhf)
   do n=2,mesh
-     f(n)=ddx12*(r2(n)*(vpot(n)-e)+sqlhf)
+     f(n)=ddx12*(grid%r2(n)*(vpot(n)-e)+sqlhf)
      if( f(n) .ne. sign(f(n),f(n-1)) .and.n.lt.mesh-5) ik=n
   enddo
   if (ik.eq.0.and.nbeta.eq.0) ik=mesh*3/4
 
   if(ik.ge.mesh-2) then
      do n=1,mesh
-        write(6,*) r(n), vpot(n), f(n)
+        write(6,*) grid%r(n), vpot(n), f(n)
      enddo
      call errore('compute_det','No point found for matching',1)
      stop
@@ -145,10 +143,10 @@ subroutine compute_det(nn,lam,jam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
   c2=(c1*ze2+b0e)/x4l6
   c3=(c2*ze2+c1*b0e+b(1))/x6l12
   c4=(c3*ze2+c2*b0e+c1*b(1)+b(2))/x8l20
-  rr1=(1.0_dp+r(1)*(c1+r(1)*(c2+r(1)*(c3+r(1)*c4))))*r(1)**l1
-  rr2=(1.0_dp+r(2)*(c1+r(2)*(c2+r(2)*(c3+r(2)*c4))))*r(2)**l1
-  y(1)=rr1/sqr(1)
-  y(2)=rr2/sqr(2)
+  rr1=(1.0_dp+grid%r(1)*(c1+grid%r(1)*(c2+grid%r(1)*(c3+grid%r(1)*c4))))*grid%r(1)**l1
+  rr2=(1.0_dp+grid%r(2)*(c1+grid%r(2)*(c2+grid%r(2)*(c3+grid%r(2)*c4))))*grid%r(2)**l1
+  y(1)=rr1/grid%sqr(1)
+  y(2)=rr2/grid%sqr(2)
   !
   !     and outward integration
   !
@@ -159,8 +157,7 @@ subroutine compute_det(nn,lam,jam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
   !    an inward integration
   !
   yi(ik)=y(ik)
-  call integrate_inward(e,mesh,ndm,dx,r,r2,sqr,f,yi, &
-       c,el,ik,nstart)
+  call integrate_inward(e,mesh,ndm,grid,f,yi,c,el,ik,nstart)
   !
   !     complete the regular and irregular solutions
   !
@@ -171,11 +168,11 @@ subroutine compute_det(nn,lam,jam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
   !       compute the wronskian
   !
   n=20
-  wron1= ((y(n)*sqr(n)) &
-       *( yi(n+1)*sqr(n+1)-yi(n)*sqr(n) )  &
-       -( yi(n)*sqr(n) ) &
-       *( y(n+1)*sqr(n+1)-y(n)*sqr(n)) ) &
-       /(r(n+1)-r(n))
+  wron1= ((y(n)*grid%sqr(n)) &
+       *( yi(n+1)*grid%sqr(n+1)-yi(n)*grid%sqr(n) )  &
+       -( yi(n)*grid%sqr(n) ) &
+       *( y(n+1)*grid%sqr(n+1)-y(n)*grid%sqr(n)) ) &
+       /(grid%r(n+1)-grid%r(n))
   !
   !    compute the vector h, and the unsymmetrized bm
   !     
@@ -186,19 +183,19 @@ subroutine compute_det(nn,lam,jam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
         iib=iib+1
         c(1)= 0.0_dp
         do n=1,ikk(ib)
-           el(n)=y(n)*sqr(n)*beta(n,ib)
+           el(n)=y(n)*grid%sqr(n)*beta(n,ib)
         enddo
         do n=ikk(ib)+1,nstart
            el(n)=0.0_dp
         enddo
         do n=2,nstart-1,2
-           c(n+1)=c(n-1)+(el(n-1)*r(n-1)+ &
-                4.0_dp*el(n)*r(n) + el(n+1)*r(n+1))*dx/3.0_dp
-           c(n)=c(n-1)+(r(n)-r(n-1))*(c(n+1)-c(n-1))/ &
-                (r(n+1)-r(n-1))
+           c(n+1)=c(n-1)+(el(n-1)*grid%r(n-1)+ &
+                4.0_dp*el(n)*grid%r(n) + el(n+1)*grid%r(n+1))*grid%dx/3.0_dp
+           c(n)=c(n-1)+(grid%r(n)-grid%r(n-1))*(c(n+1)-c(n-1))/ &
+                (grid%r(n+1)-grid%r(n-1))
         enddo
         !            do n=1,nstart
-        !               write(6,*) r(n),c(n),c(n+1)
+        !               write(6,*) grid%r(n),c(n),c(n+1)
         !            enddo
         !            stop
 
@@ -208,12 +205,12 @@ subroutine compute_det(nn,lam,jam,e,mesh,ndm,dx,r,r2,sqr,vpot, &
               jjb=jjb+1
               nst=2*(lam+2)
               do n=1,ikk(jb)
-                 el(n)=sqr(n)*yi(n)*c(n)*beta(n,jb)
+                 el(n)=grid%sqr(n)*yi(n)*c(n)*beta(n,jb)
               enddo
               bm(jjb,iib)=0.0_dp
               do n=3,ikk(jb)-1,2
-                 bm(jjb,iib)=bm(jjb,iib)+(el(n-1)*r(n-1)+ &
-                      4.0_dp*el(n)*r(n) + el(n+1)*r(n+1))*dx/3.0_dp
+                 bm(jjb,iib)=bm(jjb,iib)+(el(n-1)*grid%r(n-1)+ &
+                      4.0_dp*el(n)*grid%r(n) + el(n+1)*grid%r(n+1))*grid%dx/3.0_dp
               enddo
            endif
         enddo

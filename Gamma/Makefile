@@ -92,6 +92,8 @@ PWOBJS = \
 ../PW/g_psi_mod.o \
 ../PW/g_psi_nc.o \
 ../PW/gradcorr.o \
+../PW/grid_paw_routines.o \
+../PW/grid_paw_variables.o \
 ../PW/gweights.o \
 ../PW/h_1psi.o \
 ../PW/h_1psi_nc.o \
@@ -139,6 +141,7 @@ PWOBJS = \
 ../PW/qvan2.o \
 ../PW/rcgdiagg.o \
 ../PW/rdiaghg.o \
+../PW/rad_paw_routines.o \
 ../PW/read_conf_from_file.o \
 ../PW/read_file.o \
 ../PW/readin.o \
@@ -267,6 +270,7 @@ MODULES = \
 ../Modules/parser.o \
 ../Modules/printout_base.o \
 ../Modules/pseudo_types.o \
+../Modules/radial_grids.o \
 ../Modules/readpseudo.o \
 ../Modules/recvec.o \
 ../Modules/shmem_include.o \
@@ -316,7 +320,7 @@ TLDEPS= bindir mods libs pw
 all : tldeps phcg.x
 
 phcg.x : $(PWOBJS) $(CGOBJS) $(MODULES) $(LIBOBJS)
-	$(MPIF90) $(LDFLAGS) -o phcg.x \
+	$(F90) $(LDFLAGS) -o phcg.x \
 		$(CGOBJS) $(PWOBJS) $(MODULES) $(LIBOBJS) $(LIBS)
 	- ( cd ../bin ; ln -fs ../Gamma/phcg.x . )
 tldeps:

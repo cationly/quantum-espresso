@@ -25,7 +25,7 @@ subroutine normalize
        work(nwfsx), & ! auxiliary variable for becp
        work1,       & ! the norm
        int_0_inf_dr,& ! integration function
-       gi(ndm)       ! used to compute the integrals
+       gi(ndmx)       ! used to compute the integrals
 
 
   if (pseudotype.ne.3) return 
@@ -41,15 +41,15 @@ subroutine normalize
               do n=1,ikl
                  gi(n)=betas(n,n1)*phis(n,ns)
               enddo
-              work(n1)=int_0_inf_dr(gi,r,r2,dx,ikl,nst)
+              work(n1)=int_0_inf_dr(gi,grid,ikl,nst)
            else
               work(n1)=0.0_dp
            endif
         enddo
-        do n=1,mesh
+        do n=1,grid%mesh
            gi(n)=phis(n,ns)*phis(n,ns)
         enddo
-        work1=int_0_inf_dr(gi,r,r2,dx,mesh,nst)
+        work1=int_0_inf_dr(gi,grid,grid%mesh,nst)
         !
         !   and adding to the charge density
         !
@@ -61,7 +61,7 @@ subroutine normalize
         if (work1.lt.1e-10_dp)  &
              call errore('normalize','negative or zero norm?',1)   
         work1=sqrt(work1)
-        do n=1,mesh
+        do n=1,grid%mesh
            phis(n,ns)=phis(n,ns)/work1
         enddo
      endif

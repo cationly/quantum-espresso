@@ -1,6 +1,6 @@
 
      program ld1 starts. version 11-Feb-05
-     today is 26Oct2005 at 16:47:48 
+     today is 24Jun2007 at 23:12:28 
 
      -------------------- All-electron run ------------------------------
 
@@ -81,15 +81,26 @@
       Wfc   4S  rcut= 2.800  Estimated cut-off energy=       15.92 Ry
       This function has    0 nodes for 0 < r <    2.809
 
-      The bmat matrix
+      The bmat matrix before symmetrization
     -0.86574   -25.00807     0.00000
    -24.98915 -2085.10836     0.00000
+     0.00000     0.00000    -0.01056
+
+      The bmat matrix
+    -0.86574   -24.99861     0.00000
+   -24.99861 -2085.10836     0.00000
      0.00000     0.00000    -0.01056
 
       The qq matrix
      0.79209     5.96766     0.00000
      5.96766  -110.28451     0.00000
      0.00000     0.00000     0.00000
+ MULTIPOLE  1  2:  1  2  0.7921  0.6237  0.5866  0.6336  0.7620
+ MULTIPOLE  2  2:  1  2  6.0122  2.2836 -0.5725 -3.7704 -8.3580
+ MULTIPOLE  2  2:  2  2****************************************
+ MULTIPOLE  3  0:  1  2  0.0000  0.0000 -0.0817
+ MULTIPOLE  3  0:  2  2  0.0000  0.0000  8.3341
+ MULTIPOLE  3  0:  3  0  0.0000
 
      Estimated PAW energy = -207.078185 Ryd
 
@@ -101,11 +112,6 @@
      The PAW descreened D coefficients (US)
     -0.52348   -23.79991     0.00000
    -23.79991 -2182.43508     0.00000
-     0.00000     0.00000    -0.01440
-
-      The ddd matrix
-    -0.52348   -23.78189     0.00000
-   -23.78189 -2182.43508     0.00000
      0.00000     0.00000    -0.01440
 
      ------------ End of pseudopotential generation --------------------

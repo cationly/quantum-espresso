@@ -21,7 +21,8 @@ subroutine readpp
   USE pseudo_types,       ONLY: paw_t, deallocate_pseudo_paw !!PAW
   USE read_pseudo_module, ONLY: paw_io                       !!PAW
   USE upf_to_internal,    ONLY: set_pseudo_paw               !!PAW
-  USE parameters,         ONLY: nchix, ndmx, lmaxx           !!PAW
+  USE parameters,         ONLY: nchix, lmaxx                 !!PAW
+  USE radial_grids,       ONLY: ndmx                         !!PAW
   USE grid_paw_variables, ONLY: tpawp                        !!PAW
   !
   implicit none

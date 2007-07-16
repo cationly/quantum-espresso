@@ -28,8 +28,8 @@ subroutine descreening
        ind
 
   real(DP) :: &
-       vaux(ndm,2),&   ! work space
-       phist(ndm,nwfsx)! auxiliary to save the phi
+       vaux(ndmx,2),&   ! work space
+       phist(ndmx,nwfsx)! auxiliary to save the phi
 
   real(DP), external :: int_0_inf_dr ! the integral function
 
@@ -63,7 +63,7 @@ subroutine descreening
   enddo
 
   do ns=1,nwfs
-     do n=1,mesh
+     do n=1,grid%mesh
         phist(n,ns)=phis(n,ns)
      enddo
   enddo
@@ -89,16 +89,16 @@ subroutine descreening
                 abs(jjts(ns)-llts(ns)-0.5_dp) < 0.001_dp) then
               ind=2
            endif
-           do n=1,mesh
+           do n=1,grid%mesh
               vaux(n,1)=vpsloc(n)+vnl(n,llts(ns),ind)
            enddo
         else
-           do n=1,mesh
+           do n=1,grid%mesh
               vaux(n,1)=vpsloc(n)
            enddo
         endif
         call ascheqps(nnts(ns),llts(ns),jjts(ns),enls(ns),    &
-             mesh,ndm,dx,r,r2,sqr,vaux,thresh,phis(1,ns), & 
+             grid%mesh,ndmx,grid,vaux,thresh,phis(1,ns), & 
              betas,bmat,qq,nbf,nwfsx,lls,jjs,ikk)
         !            write(6,*) ns, nnts(ns),llts(ns), jjts(ns), enls(ns)
      endif
@@ -117,7 +117,7 @@ subroutine descreening
                  vaux(n,1)=qvan(n,ib,jb)*vpsloc(n)
               enddo
               bmat(ib,jb)= bmat(ib,jb)  &
-                   - int_0_inf_dr(vaux(1,1),r,r2,dx,ikk(ib),nst)
+                   - int_0_inf_dr(vaux(1,1),grid,ikk(ib),nst)
            endif
            bmat(jb,ib)=bmat(ib,jb)
         enddo
@@ -138,10 +138,10 @@ subroutine descreening
   call chargeps(nwfts,llts,jjts,octs,iwork)
 #endif
 
-  call new_potential(ndm,mesh,r,r2,sqr,dx,0.0_dp,vxt,lsd,nlcc,latt,enne, &
+  call new_potential(ndmx,grid%mesh,grid,0.0_dp,vxt,lsd,nlcc,latt,enne, &
        rhoc,rhos,vh,vaux)
 
-  do n=1,mesh
+  do n=1,grid%mesh
      vpstot(n,1)=vpsloc(n)
      vpsloc(n)=vpsloc(n)-vaux(n,1)
   enddo
@@ -150,8 +150,8 @@ subroutine descreening
      open(unit=20,file=file_screen, status='unknown', iostat=ios, &
           err=100 )
 100  call errore('descreening','opening file'//file_screen,abs(ios))
-     do n=1,mesh
-        write(20,'(i5,7e12.4)') n,r(n), vpsloc(n)+vaux(n,1), vpsloc(n), &
+     do n=1,grid%mesh
+        write(20,'(i5,7e12.4)') n,grid%r(n), vpsloc(n)+vaux(n,1), vpsloc(n), &
              vaux(n,1),   rhos(n,1)
      enddo
      close(20)
@@ -160,7 +160,7 @@ subroutine descreening
   !  copy the phis used to construct the pseudopotential
   !
   do ns=1,nwfs
-     do n=1,mesh
+     do n=1,grid%mesh
         phis(n,ns)=phist(n,ns)
      enddo
   enddo

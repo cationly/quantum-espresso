@@ -18,6 +18,7 @@
                                                                         
       USE kinds
       USE parameters
+      use radial_grids, only: ndmx
       use fft 
       use ions_base, only: nsp, nax 
       use electrons_base, only: nx => nbnd, nspin

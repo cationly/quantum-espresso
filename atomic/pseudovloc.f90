@@ -35,8 +35,8 @@ subroutine pseudovloc
        p1aep1, p1aem1,     &  ! derivatives of the bessel functions
        xc(8),              &  ! the coefficients of the fit
        bm(2),              &  ! the derivative of the bessel
-       vaux(ndm,2),        &  ! keeps the potential
-       j1(ndm,4)              ! the bessel functions
+       vaux(ndmx,2),        &  ! keeps the potential
+       j1(ndmx,4)              ! the bessel functions
 
   real(DP) :: &
        deriv_7pts, deriv2_7pts
@@ -56,18 +56,18 @@ subroutine pseudovloc
      write(6,"(/,5x,' Generating local potential from pseudized AE ', &
           & 'potential, matching radius rcloc = ',f8.4)") rcloc
      ik=0
-     do n=1,mesh
-        if (r(n).lt.rcloc) ik=n
+     do n=1,grid%mesh
+        if (grid%r(n).lt.rcloc) ik=n
      enddo
      if (mod(ik,2).eq.0) ik=ik+1
-     if (ik <= 1 .or. ik > mesh) &
+     if (ik <= 1 .or. ik > grid%mesh) &
           call errore('pseudovloc','wrong matching point',1)
      !
      !    compute first and second derivative
      !
      fae=vpot(ik,1)
-     f1ae=deriv_7pts(vpot,ik,r(ik),dx)
-     f2ae=deriv2_7pts(vpot,ik,r(ik),dx)
+     f1ae=deriv_7pts(vpot,ik,grid%r(ik),grid%dx)
+     f2ae=deriv2_7pts(vpot,ik,grid%r(ik),grid%dx)
      !
      !    find the q_i of the bessel functions
      !      
@@ -78,7 +78,7 @@ subroutine pseudovloc
      !    compute the functions
      !
      do nc=1,2
-        call sph_bes(ik+1,r,xc(2+nc),0,j1(1,nc))
+        call sph_bes(ik+1,grid%r,xc(2+nc),0,j1(1,nc))
         jnor=j1(ik,nc)
         do n=1,ik+1
            j1(n,nc)=j1(n,nc)*vpot(ik,1)/jnor
@@ -90,9 +90,9 @@ subroutine pseudovloc
      !
 
      do nc=1,2
-        p1aep1=(j1(ik+1,nc)-j1(ik,nc))/(r(ik+1)-r(ik))
-        p1aem1=(j1(ik,nc)-j1(ik-1,nc))/(r(ik)-r(ik-1))
-        bm(nc)=(p1aep1-p1aem1)*2.0_dp/(r(ik+1)-r(ik-1))
+        p1aep1=(j1(ik+1,nc)-j1(ik,nc))/(grid%r(ik+1)-grid%r(ik))
+        p1aem1=(j1(ik,nc)-j1(ik-1,nc))/(grid%r(ik)-grid%r(ik-1))
+        bm(nc)=(p1aep1-p1aem1)*2.0_dp/(grid%r(ik+1)-grid%r(ik-1))
      enddo
 
      xc(2)=(f2ae-bm(1))/(bm(2)-bm(1))
@@ -107,7 +107,7 @@ subroutine pseudovloc
         vpsloc(n)=xc(1)*j1(n,1)+xc(2)*j1(n,2)
      enddo
 
-     do n=ik+1,mesh
+     do n=ik+1,grid%mesh
         vpsloc(n)=vpot(n,1)
      enddo
 
@@ -129,11 +129,11 @@ subroutine pseudovloc
         !    compute the ik closer to r_cut
         !
         ik=0
-        do n=1,mesh
-           if (r(n).lt.rcut(nsloc+indi)) ik=n
+        do n=1,grid%mesh
+           if (grid%r(n).lt.rcut(nsloc+indi)) ik=n
         enddo
         if (mod(ik,2).eq.0) ik=ik+1
-        if (ik <= 1 .or. ik > mesh) &
+        if (ik <= 1 .or. ik > grid%mesh) &
            call errore('pseudovloc','wrong matching point',1)
         rcloc=rcut(nsloc+indi)
         if (rep == 0) then
@@ -151,8 +151,8 @@ subroutine pseudovloc
         !
         !     set the local potential equal to the all-electron one at large r
         !
-        do n=1,mesh
-           if (r(n) > rcloc) then
+        do n=1,grid%mesh
+           if (grid%r(n) > rcloc) then
               vaux(n,indi+1)=vpot(n,1)
            else
               vaux(n,indi+1)=chis(n,nsloc+indi)/phis(n,nsloc+indi)
@@ -160,11 +160,11 @@ subroutine pseudovloc
         enddo
      enddo
      if (rep==0) then
-        do n=1,mesh
+        do n=1,grid%mesh
            vpsloc(n)=vaux(n,1)
         enddo
      else
-        do n=1,mesh
+        do n=1,grid%mesh
            vpsloc(n)=(lloc*vaux(n,1)+(lloc+1.0_dp)*vaux(n,2))/ &
                 (2.0_dp*lloc+1.0_dp)
         enddo

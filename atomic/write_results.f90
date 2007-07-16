@@ -13,7 +13,7 @@ subroutine write_results
   implicit none
 
   integer :: is, i, j, n, m, im(40), l, ios
-  real(DP):: work(ndm), dum, int_0_inf_dr, ravg, r2avg, sij, ene, mm
+  real(DP):: work(ndmx), dum, int_0_inf_dr, ravg, r2avg, sij, ene, mm
   logical :: ok, oep
   !
   !
@@ -27,7 +27,7 @@ subroutine write_results
   write(6,2300) dft(1:len_trim(dft)),lsd,isic,latt,beta,tr2
 2300 format(5x,'dft =',a,'   lsd =',i1,' sic =',i1,' latt =',i1, &
        '  beta=',f4.2,' tr2=',1pe7.1)
-  write(6,1270) mesh,r(mesh),xmin,dx
+  write(6,1270) grid%mesh,grid%r(grid%mesh),grid%xmin,grid%dx
 1270 format(5x,'mesh =',i4,' r(mesh) =',f10.5,' xmin =',f6.2,' dx =',f8.5)
   if (rel.lt.2) then
      write(6,1000)
@@ -133,7 +133,7 @@ subroutine write_results
 
   do i=1,nwf
      dum=0.0_dp
-     do m=1,mesh
+     do m=1,grid%mesh
         dum=max(dum,abs(psi(m,1,i)))
         if(dum.eq.abs(psi(m,1,i)))im(i)=m
      enddo
@@ -143,25 +143,25 @@ subroutine write_results
      do j=i,nwf
         if (ll(i)==ll(j).and.jj(i)==jj(j).and.isw(i).eq.isw(j)) then
            if (rel<2) then
-              do m=1,mesh
+              do m=1,grid%mesh
                  work(m)=psi(m,1,i)*psi(m,1,j)
               enddo
            else
-              do m=1,mesh
+              do m=1,grid%mesh
                  work(m)=psi(m,1,i)*psi(m,1,j)+psi(m,2,i)*psi(m,2,j)
               enddo
            endif
-           sij = int_0_inf_dr(work,r,r2,dx,mesh,2*ll(i)+2)
+           sij = int_0_inf_dr(work,grid,grid%mesh,2*ll(i)+2)
            if (i.eq.j) then
-              do m=1,mesh
-                 work(m)=work(m)*r(m)
+              do m=1,grid%mesh
+                 work(m)=work(m)*grid%r(m)
               enddo
-              ravg = int_0_inf_dr(work,r,r2,dx,mesh,2*ll(i)+3)
-              do m=1,mesh
-                 work(m)=work(m)*r(m)
+              ravg = int_0_inf_dr(work,grid,grid%mesh,2*ll(i)+3)
+              do m=1,grid%mesh
+                 work(m)=work(m)*grid%r(m)
               enddo
-              r2avg = int_0_inf_dr(work,r,r2,dx,mesh,2*ll(i)+4)
-              write(6,1400) el(i),el(j),sij, ravg, r2avg, r(im(i))
+              r2avg = int_0_inf_dr(work,grid,grid%mesh,2*ll(i)+4)
+              write(6,1400) el(i),el(j),sij, ravg, r2avg, grid%r(im(i))
            else
               write(6,1401) el(i),el(j),sij
            endif
@@ -177,8 +177,8 @@ subroutine write_results
           err=1110, iostat=ios,form='formatted')
 1110 call errore('write_result','opening file_wavefunctions',abs(ios))
      write(15,'("#     r",7(8x,a2))') (el(i),i=nwf,max(1,nwf-6),-1)
-     do n=1,mesh 
-        write(15,'(8f10.6)') r(n),(psi(n,1,i),i=nwf,max(1,nwf-6),-1)
+     do n=1,grid%mesh 
+        write(15,'(8f10.6)') grid%r(n),(psi(n,1,i),i=nwf,max(1,nwf-6),-1)
      enddo
      close(15)
   endif

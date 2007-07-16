@@ -80,30 +80,30 @@ subroutine run_test
         enddo
         dum=0.0_dp
         im=2
-        do ir=1,mesh-1
+        do ir=1,grid%mesh-1
            dum=abs(psi(ir+1,1,nstoae(n)))
            if(dum.gt.abs(psi(ir,1,nstoae(n)))) im=ir+1
         enddo
         if (pseudotype.lt.3) then
-           rcutts(n)=r(im)*1.1_dp
-           rcutusts(n)=r(im)*1.1_dp
+           rcutts(n)=grid%r(im)*1.1_dp
+           rcutusts(n)=grid%r(im)*1.1_dp
         else
            if (ll(nstoae(n)).eq.0) then
-              rcutts(n)=r(im)*1.6_dp
-              rcutusts(n)=r(im)*1.7_dp
+              rcutts(n)=grid%r(im)*1.6_dp
+              rcutusts(n)=grid%r(im)*1.7_dp
            elseif (ll(nstoae(n)).eq.1) then
-              rcutts(n)=r(im)*1.6_dp
-              rcutusts(n)=r(im)*1.7_dp
+              rcutts(n)=grid%r(im)*1.6_dp
+              rcutusts(n)=grid%r(im)*1.7_dp
               if (el(nstoae(n)).eq.'2P') then
-                 rcutts(n)=r(im)*1.7_dp
-                 rcutusts(n)=r(im)*1.8_dp
+                 rcutts(n)=grid%r(im)*1.7_dp
+                 rcutusts(n)=grid%r(im)*1.8_dp
               endif
            elseif (ll(nstoae(n)).eq.2) then
-              rcutts(n)=r(im)*2.0_dp
-              rcutusts(n)=r(im)*2.2_dp
+              rcutts(n)=grid%r(im)*2.0_dp
+              rcutusts(n)=grid%r(im)*2.2_dp
               if (el(nstoae(n)).eq.'3D') then
-                 rcutts(n)=r(im)*2.5_dp
-                 rcutusts(n)=r(im)*3.0_dp
+                 rcutts(n)=grid%r(im)*2.5_dp
+                 rcutusts(n)=grid%r(im)*3.0_dp
               endif
            endif
         endif

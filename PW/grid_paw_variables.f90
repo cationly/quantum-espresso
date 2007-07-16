@@ -8,7 +8,8 @@ module grid_paw_variables
   ! NO rinner > 0
   !
   USE kinds,      ONLY : DP
-  USE parameters, ONLY : lqmax, nbrx, npsx, nqfx, ndmx
+  USE parameters, ONLY : lqmax, nbrx, npsx, nqfx
+  USE radial_grids, ONLY: ndmx
   !
   implicit none
   public!              <===
@@ -29,10 +30,9 @@ module grid_paw_variables
        pfunc(ndmx,nbrx,nbrx,npsx), &! AE: \phi_{mu}(|r|)-\phi_{nu}(|r|)
        ptfunc(ndmx,nbrx,nbrx,npsx)  ! PS: \tilde{\phi}_{mu}(|r|)-\tilde{\phi}_{nu}(|r|)
 
-!  REAL(DP), TARGET :: &
-! THE DEFINITION OF augfun IS IN ../Modules/uspp.f90
-!       augfun(ndmx,nbrx,nbrx,0:lqmax,npsx) 
   REAL(DP), TARGET :: &
+! THE DEFINITION OF augfun IS IN ../Modules/uspp.f90
+!       augfun(ndmx,nbrx,nbrx,0:lqmax,npsx), & ! 
        pmultipole(nbrx,nbrx,0:lqmax,npsx), &! AE multipoles
        ptmultipole(nbrx,nbrx,0:lqmax,npsx)  ! PS multipoles
 
