@@ -49,6 +49,9 @@ SUBROUTINE PAW_energy(becsum)
     INTEGER :: lm
 
     CALL start_clock ('PAW_energy')
+
+    WRITE(6,*) "***************************************************************"
+
     ! CHECK: it may be better to switch "whattodo" and "atoms" loops: it 
     !        saves one IF and may have additional pros with parallel
     ! CHECk: maybe we don't need to alloc/dealloc rho_lm every time
@@ -100,11 +103,13 @@ SUBROUTINE PAW_energy(becsum)
             ph   = pi/4._dp
             ALLOCATE(rho_rad(ndmx,nspin))
 !            CALL PAW_rho_rad(th,ph, rho_lm, rho_rad)
+!            DO n = 10,10000,10
+               CALL start_clock('sph10')
                 n = 10
-                CALL start_clock('sph10')
                 e = PAW_sph_integral(n, rho_lm, v_h_lm)
-                CALL stop_clock('sph10')
+               CALL stop_clock('sph10')
                 write(6,*) n,e
+!            ENDDO
                 !
                 n = 100
                 CALL start_clock('sph100')
@@ -138,6 +143,8 @@ SUBROUTINE PAW_energy(becsum)
     CALL print_clock('sph100')
     CALL print_clock('sph1000')
     CALL print_clock('sph10000')
+
+    WRITE(6,*) "***************************************************************"
 
     CALL stop_clock ('PAW_energy')
 
@@ -332,6 +339,7 @@ SUBROUTINE PAW_rho_rad(th,ph, rho_lm, rho_rad)
     REAL(DP), INTENT(OUT)       :: rho_rad(ndmx,nspin)        ! charge density on rad. grid
 
     REAL(DP)                    :: v(3,1)           ! the versor pointed by angles th,ph
+    REAL(DP)                    :: sin_ph           ! aux
     REAL(DP),PARAMETER          :: nv(1) = (/1._dp/)! it has to be a vector
     REAL(DP)                    :: ylm(1,lmaxq**2)  ! the spherical harmonics
 
@@ -342,8 +350,9 @@ SUBROUTINE PAW_rho_rad(th,ph, rho_lm, rho_rad)
     rho_rad(:,:) = 0._dp
 
     ! prepare the versor
-    v(1,1) = cos(th) * sin(ph)
-    v(2,1) = sin(th) * sin(ph)
+    sin_ph = sin(ph)
+    v(1,1) = cos(th) * sin_ph
+    v(2,1) = sin(th) * sin_ph
     v(3,1) = cos(ph)
 !     WRITE(100,*) 0._dp,0._dp,0._dp
 !     WRITE(100,*) v(:,1)
@@ -354,7 +363,7 @@ SUBROUTINE PAW_rho_rad(th,ph, rho_lm, rho_rad)
     rho_rad(:,:) = 0._dp
     spins: DO ispin = 1,nspin
         DO lm = 1, lmaxq**2
-            IF (ABS(ylm(1,lm)) < eps8 ) CONTINUE
+            !IF (ABS(ylm(1,lm)) < eps8 ) CONTINUE
             rho_rad(:,ispin) = rho_rad(:,ispin) +&
                     ylm(1,lm)*rho_lm(:,lm,ispin)
         ENDDO ! lm
@@ -363,19 +372,67 @@ SUBROUTINE PAW_rho_rad(th,ph, rho_lm, rho_rad)
     CALL stop_clock ('PAW_rho_rad')
 
 END SUBROUTINE PAW_rho_rad
+!------------------------------------------------------------
+SUBROUTINE PAW_rho_rad2(x, rho_lm, rho_rad)
+    USE kinds,                  ONLY : DP
+    USE constants,              ONLY : eps8, pi
+    USE uspp_param,             ONLY : lmaxq
+    USE lsda_mod,               ONLY : nspin
+    USE parameters,             ONLY : nbrx, lqmax
+    USE radial_grids,           ONLY : ndmx
+!     USE atom,                   ONLY : r
 
+    REAL(DP), INTENT(IN)        :: rho_lm(ndmx,lmaxq**2,nspin)! Y_lm expansion of rho
+    REAL(DP), INTENT(IN)        :: x(3)
+    REAL(DP), INTENT(OUT)       :: rho_rad(ndmx,nspin)        ! charge density on rad. grid
+
+    REAL(DP)                    :: v(3,1)           ! the versor pointed by angles th,ph
+    REAL(DP)                    :: sin_ph           ! aux
+    REAL(DP),PARAMETER          :: nv(1) = (/1._dp/)! it has to be a vector
+    REAL(DP)                    :: ylm(1,lmaxq**2)  ! the spherical harmonics
+
+    INTEGER                     :: ispin, lm ! counters on angmom and spin
+!     INTEGER                     :: k !debug
+
+    CALL start_clock ('PAW_rho_rad')
+    rho_rad(:,:) = 0._dp
+
+    ! prepare the versor
+    v(1,1) = x(1)
+    v(2,1) = x(2)
+    v(3,1) = x(3)
+!     WRITE(100,*) 0._dp,0._dp,0._dp
+!     WRITE(100,*) v(:,1)
+!     WRITE(101,*) v(:,1)
+!     WRITE(100,*) 0._dp,0._dp,0._dp
+
+    CALL ylmr2(lmaxq**2, 1, v, nv, ylm)
+    rho_rad(:,:) = 0._dp
+    spins: DO ispin = 1,nspin
+        DO lm = 1, lmaxq**2
+            !IF (ABS(ylm(1,lm)) < eps8 ) CONTINUE
+            rho_rad(:,ispin) = rho_rad(:,ispin) +&
+                    ylm(1,lm)*rho_lm(:,lm,ispin)
+        ENDDO ! lm
+    ENDDO spins
+
+    CALL stop_clock ('PAW_rho_rad')
+
+END SUBROUTINE PAW_rho_rad2
 !___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___
 !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!
 !!! integrate
 !!
 FUNCTION PAW_sph_integral(n, f1_lm, f2_lm)
     USE kinds,                  ONLY : DP
-    USE constants,              ONLY : pi
+    USE constants,              ONLY : pi,eps8,fpi
     USE uspp_param,             ONLY : lmaxq
     USE lsda_mod,               ONLY : nspin
     USE parameters,             ONLY : nbrx, lqmax
     USE radial_grids,           ONLY : ndmx
     USE atom,                   ONLY : r, rab
+    USE uspp,                   ONLY : gen_rndm_r
+
 
     REAL(DP), INTENT(IN)        :: f1_lm(ndmx,lmaxq**2,nspin)! Y_lm expansion of rho
     REAL(DP), INTENT(IN)        :: f2_lm(ndmx,lmaxq**2,nspin)! Y_lm expansion of rho
@@ -391,9 +448,19 @@ FUNCTION PAW_sph_integral(n, f1_lm, f2_lm)
     REAL(DP)                    :: pref      ! 
     INTEGER                     :: i         ! counters on angmom and spin
     INTEGER                     :: ispin, lm ! counters on angmom and spin
-    REAL(DP)                    :: integral  ! direction on which rho_rad is summed
+    REAL(DP)                    :: integral  ! aux
+
+    INTEGER                     :: nx
+    INTEGER                     :: dum
+    REAL(DP)                    :: x(3,(lmaxq+1)**2)  !
+    REAL(DP)                    :: xx((lmaxq+1)**2)  ! 
+    REAL(DP)                    :: ylm((lmaxq+1)**2, (lmaxq+1)**2)  ! 
+    REAL(DP)                    :: mly((lmaxq+1)**2, (lmaxq+1)**2)  ! 
+    REAL(DP)                    :: w((lmaxq+1)**2)  ! 
+    REAL(DP)                    :: o((lmaxq+1)**2)  ! 
 
     CALL start_clock ('PAW_sph_int')
+
 
     ! Angular integration is done on a spiral path on the unitary sphere
     ! (a) use a uniform step for azimuth angle ph
@@ -411,28 +478,58 @@ FUNCTION PAW_sph_integral(n, f1_lm, f2_lm)
     !    (n may be a perfect square)
     ! 2. a grid as homogeneous as possible
     !
-    ! integration on radial grid has been tryed but are worst
+    ! integration on radial grid has been tryed but proved worst
     ! 
     ! TODO: it may be smart to choose n as a function of max(lm)
 
+    o(:) = 0._dp
+    o(1) = sqrt(fpi)
+    nx = (lmaxq+1)**2
+    ylm(:,:) = 0._dp
+    mly(:,:) = 0._dp
+    w(:) = 0._dp
+
+!     write(6,*) "lmaxq ::", lmaxq
+    CALL gen_rndm_r(nx, x, xx)
+    WRITE(6,*) "nx ",1,nx
+    CALL ylmr2(nx, nx, x, xx, ylm)
+    WRITE(6,*) "nx ",2,nx
+!     write(6,*) "ylm ::::::"
+!     write(6,"(6f12.6)") ylm
+!     write(6,*)
+    CALL invmat(nx, ylm, mly, dum)
+    WRITE(6,*) "nx ",3,nx
+!     write(6,*) "mly ::::::"
+!     write(6,"(6f12.6)") mly
+!     write(6,*)
+
+!     write(6,*) "1 ::::::"
+!     write(6,"(6f12.6)") MATMUL(mly,ylm)
+!     write(6,*)
+
+
+    w = MATMUL(mly,o)
+    WRITE(6,*) "nx ",4,nx
+!      write(6,*) "w :::::::"
+!      WRITE(6,"(16f11.6)") w(:)
+!      write(6,*)
+!    o = MATMUL(ylm,w)
+!      write(6,*) "o :::::::"
+!      WRITE(6,"(16f11.6)") o(:)
+!      write(6,*)
+
+
     PAW_sph_integral = 0._dp
-    !
-    pref = sqrt(DBLE(n)*pi)*pi
-    d = 2._dp*pi**2/DBLE(n)  ! <-- (a)
-!    d = 4._dp*pi/DBLE(n)     ! <-- (b)
-    DO i = 0, n-1 !-n, n-1
-        ph = pi * DBLE(i) / DBLE(n)                            ! <-- (a)
-!        ph = acos(  2._dp*( DBLE(i)-DBLE(n)/2._dp )/DBLE(n)  ) ! <-- (b)
-        th = MOD(pref * DBLE(i) / DBLE(n), 2._dp*pi )
+    WRITE(6,*) "nx ",5,nx
+    DO i = 1,16 !nx
         !
-        CALL PAW_rho_rad(th,ph, f1_lm, f1_rad)
-        CALL PAW_rho_rad(th,ph, f2_lm, f2_rad)
+        CALL PAW_rho_rad2(x(:,i), f1_lm, f1_rad)
+        CALL PAW_rho_rad2(x(:,i), f2_lm, f2_rad)
         aux(:) = f1_rad(:,1) * f2_rad(:,1)
         CALL simpson (ndmx,aux,rab(:,1),integral)
-        PAW_sph_integral = PAW_sph_integral + integral*d*sin(ph)  ! <-- (a)
-!        PAW_sph_integral = PAW_sph_integral + integral*d          ! <-- (b)
+        WRITE(6,*) "-->", i,integral,w(i)
+        PAW_sph_integral = PAW_sph_integral + integral*w(i)
     ENDDO
-    
 
     CALL stop_clock ('PAW_sph_int')
 
