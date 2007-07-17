@@ -177,7 +177,6 @@ SUBROUTINE print_clock_pw()
    ! radial routines:
    CALL print_clock ('PAW_energy')
    CALL print_clock ('PAW_rho_lm')
-   CALL print_clock ('PAW_v_h')
    CALL print_clock ('PAW_h_energy')
    CALL print_clock ('PAW_sph_int')
    !
