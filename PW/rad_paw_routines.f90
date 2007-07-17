@@ -448,8 +448,8 @@ FUNCTION PAW_sph_integral(nx, f1_lm, f2_lm)
 !    write(6,"(16f7.3)") mly(:,:)
 !    write(6,*) "fpi",fpi
     w(:) = mly(1,:)
-    write(200,"(e30.12)") w(:)
-    write(200,"()")
+!     write(200,"(e30.12)") w(:)
+!     write(200,"()")
 
 !     o(:) = 0._dp
 !     o(1) = sqrt(fpi)
