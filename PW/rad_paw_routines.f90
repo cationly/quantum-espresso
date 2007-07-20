@@ -297,11 +297,10 @@ FUNCTION PAW_xc_energy(na, rho_lm, rho_core, pot_lm, e_lm)
     DO i = 1, nx
         !
         CALL PAW_lm2rad(i, rho_lm, rho_rad)
-        DO k = 1,ndmx
-            ! rho_loc(2) should remain zero if nspin is 1
+        DO k = 1,rgrid(nt)%mesh
             rho_loc(1:nspin) = rho_rad(k,1:nspin)/rgrid(nt)%r2(k)
-            rho_core_loc = rho_core(k,nt)/rgrid(nt)%r2(k)
-            e_rad(k) = exc_t(rho_loc, rho_core_loc, lsd) * SUM(ABS(rho_rad(k,1:nspin)))
+            rho_core_loc = rho_core(k,nt)
+            e_rad(k) = exc_t(rho_loc, rho_core_loc, lsd) * (SUM(rho_rad(k,1:nspin))+rho_core(k,nt)*rgrid(nt)%r2(k))
         ENDDO
         !
         CALL simpson (rgrid(nt)%mesh,e_rad,rgrid(nt)%rab,e)
