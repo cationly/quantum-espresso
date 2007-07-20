@@ -60,7 +60,7 @@ SUBROUTINE PAW_energy(becsum)
     INTEGER                 :: n,lm!debug
     ! xc variables:
     REAL(DP)                :: e_xc(lmaxq**2,nspin)! hartree energy components
-    REAL(DP), POINTER       :: rho_core(:,:)      ! core charge density 
+    REAL(DP), POINTER       :: rho_core(:,:)      ! pointer to AE/PS core charge density 
 
     ! BEWARE THAT HARTREE ONLY DEPENDS ON THE TOTAL RHO NOT ON RHOUP AND RHODW SEPARATELY...
     ! TREATMENT OF NSPIN>1 MUST BE CHECKED AND CORRECTED
@@ -91,6 +91,9 @@ SUBROUTINE PAW_energy(becsum)
     !
 
     ! CHECK: maybe we don't need to alloc/dealloc rho_lm every time
+    WRITE(30,"(f20.10)") aerho_atc(:,1)
+    WRITE(31,"(f20.10)") psrho_atc(:,1)
+
     first_nat = 1
     last_nat  = nat
     ! Operations from here on are (will be) parallelized on atoms
@@ -123,6 +126,9 @@ SUBROUTINE PAW_energy(becsum)
             !WRITE(6,'(a,i1,a,f15.7)') ("==RADIAL PAW ENERGY (LM=",lm,"):",e_h(lm,1),lm=1,lmaxq**2)
             !
             ! STEP: 3 [ compute XC energy ]
+            
+            WRITE(6,*) "== rho core:",MAXVAL(ABS(rho_core(:,:)))
+            !
             CALL PAW_rad_init(2*lmaxq) !4*lmaxq) 
             e = PAW_xc_energy(na, rho_lm, rho_core, v_h_lm, e_xc)
             WRITE(6,*) "******************************"
@@ -204,7 +210,7 @@ SUBROUTINE PAW_rad_init(l)
     ! \sum_{x} w_{x} \sum_{lm} y_{lm}(\hat{x}) \int_0^{\inf} f(r) dr
     ! notice that the number of x directions must be equal to max{lm}
     ! so nx will be equal to lm_max, I keep to separate variables as 
-    ! it is clear to use one or the other in different contest
+    ! it is clearer to use one or the other in different contests
     nx = (l+1)**2
     ! the MAGIC factor is empirical: factors <= 1. or integers > 1
     ! may not work, there are no big differences for anything between 1 and 2
@@ -243,7 +249,6 @@ SUBROUTINE PAW_rad_init(l)
     lm_max  = nx
     is_init = .true.
 
-
     CALL stop_clock ('PAW_rad_init')
 
 END SUBROUTINE PAW_rad_init 
@@ -276,6 +281,7 @@ FUNCTION PAW_xc_energy(na, rho_lm, rho_core, pot_lm, e_lm)
     INTEGER               :: lsd          ! switch to control local spin density
     !
     REAL(DP)              :: rho_loc(2) = (/0._dp, 0._dp/) 
+    REAL(DP)              :: rho_core_loc
                              ! local density (workspace), up and down
     REAL(DP)              :: e            ! workspace
     REAL(DP)              :: e_rad(ndmx)  ! radial energy (to be integrated)
@@ -292,8 +298,10 @@ FUNCTION PAW_xc_energy(na, rho_lm, rho_core, pot_lm, e_lm)
         !
         CALL PAW_lm2rad(i, rho_lm, rho_rad)
         DO k = 1,ndmx
-            rho_loc(1:nspin) = rho_rad(k,1:nspin)
-            e_rad(k) = exc_t(rho_loc, rho_core(k,nt), lsd) * SUM(rho_rad(k,1:nspin))
+            ! rho_loc(2) should remain zero if nspin is 1
+            rho_loc(1:nspin) = rho_rad(k,1:nspin)/rgrid(nt)%r2(k)
+            rho_core_loc = rho_core(k,nt)/rgrid(nt)%r2(k)
+            e_rad(k) = exc_t(rho_loc, rho_core_loc, lsd) * SUM(ABS(rho_rad(k,1:nspin)))
         ENDDO
         !
         CALL simpson (rgrid(nt)%mesh,e_rad,rgrid(nt)%rab,e)
