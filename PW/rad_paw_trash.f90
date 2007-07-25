@@ -289,7 +289,7 @@ END SUBROUTINE integrate_pfunc
     CALL ylmr2 (lmaxq * lmaxq, ngm, g, gg, ylmk0)
     qmod(:) = SQRT(gg(:))
 
-    WRITE(20,*) "becsum used in GRID:"
+    !WRITE(20,*) "becsum used in GRID:"
     DO i_what =1,2
         atoms: DO na = 1, nat
         nt = ityp(na)
@@ -299,7 +299,7 @@ END SUBROUTINE integrate_pfunc
                 DO ih = 1, nh(nt)
                 DO jh = ih, nh(nt)
                     ijh = ijh+1
-                    WRITE(20,"(a,i3,a,4i3,f12.6)") "-->",ijh,":",ih,jh,na,is,becnew(ijh,na,is)
+                    !WRITE(20,"(a,i3,a,4i3,f12.6)") "-->",ijh,":",ih,jh,na,is,becnew(ijh,na,is)
                 ENDDO
                 ENDDO
             ENDDO spins

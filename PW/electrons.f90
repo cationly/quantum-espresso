@@ -438,17 +438,16 @@ SUBROUTINE electrons()
                     WRITE(6,"(a,f15.10)") "==AE-PS 2  :", ehart1(2)-ehart1t(2)
                     WRITE(6,"(a,f15.10)") "==AE-PS tot:", SUM(ehart1(:))-SUM(ehart1t(:))
                     WRITE(6,"(a,f15.10)") "================================================"
+                    !
                     WRITE(6,"(a,f15.10)") "==GRID PAW ENERGIES (XC): "
-                    WRITE(6,"(a,f15.10)") "==AE 1     :", etxc1(1)
-                    WRITE(6,"(a,f15.10)") "==AE 2     :", etxc1(2)
-                    WRITE(6,"(a,f15.10)") "==PS 1     :", etxc1t(1)
-                    WRITE(6,"(a,f15.10)") "==PS 2     :", etxc1t(2)
+                    DO i = 1,nat
+                        WRITE(6,"(a,i2,a,f15.10)") "==AE",i,"     :", etxc1(i)
+                        WRITE(6,"(a,i2,a,f15.10)") "==PS",i,"     :", etxc1t(i)
+                        WRITE(6,"(a,i2,a,f15.10)") "==AE-PS",i,"  :", etxc1(i)-etxc1t(i)
+                    ENDDO
                     WRITE(6,"(a,f15.10)") "==AE tot   :", SUM(etxc1(:))
                     WRITE(6,"(a,f15.10)") "==PS tot   :", SUM(etxc1t(:))
-                    WRITE(6,"(a,f15.10)") "==AE-PS 1  :", etxc1(1)-etxc1t(1)
-                    WRITE(6,"(a,f15.10)") "==AE-PS 2  :", etxc1(2)-etxc1t(2)
                     WRITE(6,"(a,f15.10)") "==AE-PS tot:", SUM(etxc1(:))-SUM(etxc1t(:))
-                    WRITE(6,"(a,f15.10)") "================================================"
 #endif
               descf_1ae = delta_e_1scf(rho1, rho1new, vr1, descf_1ae_na)  ! AE
               descf_1ps = delta_e_1scf(rho1t,rho1tnew,vr1t,descf_1ps_na)  ! PS
