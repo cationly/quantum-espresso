@@ -449,7 +449,7 @@ CONTAINS
     USE lsda_mod,               ONLY : nspin
     USE atom,                   ONLY : rgrid
     USE parameters,             ONLY : npsx
-    USE constants,              ONLY : fpi
+    USE constants,              ONLY : fpi,pi
 
     REAL(DP)               :: PAW_gcxc
 
@@ -468,13 +468,13 @@ CONTAINS
     arho  = ABS(rho(1)+core)
     sgn = SIGN(1.0_dp,rho(1)+core)
     IF (arho.gt.eps.and.abs(grho(1)).gt.eps) THEN
-        ! NOTE: grho(i,1)**2 --> grho(i,1) as I'm already passing 
-        ! the square of the gradient
+        ! NOTE: grho(:) is the square of the gradient
+        !CALL gcxc( arho, grho2, sx, sc, v1x, v2x, v1c, v2c )
         CALL gcxc(arho,grho(1),sx,sc,v1x,v2x,v1c,v2c)
         PAW_gcxc = (sx+sc)*sgn
 !    WRITE(20,*) rgrid(ityp(na))%r(k), (sx+sc)*sgn
     ELSE IF (k.gt.rgrid(ityp(na))%mesh/2) THEN
-        PAW_gcxc = -1.0_dp/(2.0_dp*rgrid(ityp(na))%r(k)) ! <-- someone has drunk some booze before writing this?
+        PAW_gcxc = -0.0_dp/(2.0_dp*rgrid(ityp(na))%r(k)) ! <-- someone has drunk some booze before writing this?
 !    WRITE(20,*) rgrid(ityp(na))%r(k), -1.0_dp/(2.0_dp*rgrid(ityp(na))%r(k))
     ELSE
         PAW_gcxc = 0.0_dp ! <-- as I would have to add zero I can just do nothing
@@ -523,8 +523,8 @@ SUBROUTINE PAW_grad(na, ix, rho_lm, rho_rad, rho_core, grho_rad)
     ! core density has to be added to the spherical component (lm=1)
     ! FIXME: probabily rho_core has to be multiplied/divided by fpi or sqrt(fpi)
     !        depending on Y_00 normalization
-    aux_lm(1:g(nt)%mesh,lm,is) = rho_lm(1:g(nt)%mesh,lm,is) / g(nt)%r2(1:g(nt)%mesh) &
-                               + rho_core(1:g(nt)%mesh,nt)/nspin
+    aux_lm(1:g(nt)%mesh,1,is) = rho_lm(1:g(nt)%mesh,1,is) / g(nt)%r2(1:g(nt)%mesh) &
+                              + rho_core(1:g(nt)%mesh,nt)/nspin
     DO lm = 2, lmaxq**2
         aux_lm(1:g(nt)%mesh,lm,is) = rho_lm(1:g(nt)%mesh,lm,is) / g(nt)%r2(1:g(nt)%mesh)
     ENDDO
@@ -570,9 +570,9 @@ SUBROUTINE PAW_grad(na, ix, rho_lm, rho_rad, rho_core, grho_rad)
     DO is = 1,nspin
     DO lm = 1,lmaxq**2
         ! 5:
-        aux(:) = aux(1:g(nt)%mesh) + dylmp(ix,lm)* (aux_lm(1:g(nt)%mesh,lm,is)) 
+        aux(:) = aux(1:g(nt)%mesh) + dylmp(ix,lm)* (aux_lm(1:g(nt)%mesh,lm,is))
         ! 6:
-        aux2(:) = aux2(1:g(nt)%mesh) + dylmt(ix,lm)* (aux_lm(1:g(nt)%mesh,lm,is))  
+        aux2(:) = aux2(1:g(nt)%mesh) + dylmt(ix,lm)* (aux_lm(1:g(nt)%mesh,lm,is))
     ENDDO
     !
     grho_rad(1:g(nt)%mesh,is) = grho_rad(1:g(nt)%mesh,is)&
