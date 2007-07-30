@@ -19,7 +19,7 @@ MODULE rad_paw_routines
 
     ! the following variables are used to convert spherical harmonics expansion
     ! to radial sampling, they are initialized for an angular momentum up to
-    ! l = max_l and (l+1)**2 = max_lm = nx
+    ! l = max_l and (l+1)**2 = lm_max = nx
     ! see function PAW_rad_init for details
     INTEGER              :: l_max  = 0
     INTEGER              :: lm_max = 0
@@ -27,12 +27,9 @@ MODULE rad_paw_routines
     REAL(DP),ALLOCATABLE :: ww(:)
     ! additional variables for gradient correction
     REAL(DP),PARAMETER   :: delta = 1.e-5_dp ! for numerical derivatives
-    REAL(DP),ALLOCATABLE :: ylm(:,:),&
-                            dylm2(:,:),&!  |grad(ylm)|**2
+    REAL(DP),ALLOCATABLE :: ylm(:,:),&  ! Y_lm(nx,lm_max)
                             dylmt(:,:),&! |d(ylm)/dtheta|**2
-                            dylmp(:,:),&! |d(ylm)/dphi|**2
-                            ylm_dth(:,:,:),&! spherical harmonics r + \delta \hat{\theta}
-                            ylm_dph(:,:,:)  ! as above, but s/theta/phi/
+                            dylmp(:,:)  ! |d(ylm)/dphi|**2
 
 CONTAINS
 ! these has to be modularized too:
@@ -63,10 +60,10 @@ SUBROUTINE PAW_energy(becsum)
 
     ! hartree energy scalar fields expanded on Y_lm
     REAL(DP), ALLOCATABLE   :: rho_lm(:,:,:)      ! radial density expanded on Y_lm
-    REAL(DP), ALLOCATABLE   :: v_h_lm(:,:)      ! hartree potential, summed on spins
+    REAL(DP), ALLOCATABLE   :: v_h_lm(:,:)        ! hartree potential, summed on spins
+    !
     REAL(DP)                :: e_h(lmaxq**2,nspin)! hartree energy components
-    REAL(DP)                :: e,e1,e2,e3         ! placeholder
-    INTEGER                 :: n,lm!debug
+    REAL(DP)                :: e,e1,e2            ! placeholders
     ! xc variables:
     REAL(DP)                :: e_xc(lmaxq**2,nspin)! hartree energy components
     REAL(DP), POINTER       :: rho_core(:,:)      ! pointer to AE/PS core charge density 
@@ -77,24 +74,21 @@ SUBROUTINE PAW_energy(becsum)
     CALL start_clock ('PAW_energy')
 
     ! initialize for integration on angular momentum and gradient
-    CALL PAW_rad_init(5*lmaxq)
+    CALL PAW_rad_init(4*lmaxq)
 
     ! The following operations will be done, first on AE, then on PS part
     ! furthermore they will be done for one atom at a time (to reduce memory usage)
     ! in the future code will be parallelized on atoms:
     !
     ! 1. build rho_lm (PAW_rho_lm)
-    ! 2. compute Hartree energy
-    !   a. use rho_lm to compute hartree potential (PAW_v_h)
-    !   b. use v_h_lm & rho_lm to build hartree energy (PAW_h_energy)
-    !   NOTE: a. & b. have been unified in PAW_h_energy
+    ! 2. compute v_h_lm and use it to compute HARTREE 
+    !    energy (PAW_h_energy)
     ! 3. compute XC energy
     !   a. build rho_rad(theta, phi) from rho_lm
-    !   b. build v_xc(theta, phi)
-    !   c. compute E_xc(theta, phi)
-    !   d. repeat a,b,c integrating on theta & phi
-    ! 4. free memory (dealloc rho_lm) and return
-    !
+    !     + if using gradient correction compute also grad(rho)
+    !   b. compute XC energy from rho_rad
+    !   c. iterate on enough directions to compute the 
+    !      spherical integral
 
     ! CHECK: maybe we don't need to alloc/dealloc rho_lm every time
 
@@ -131,19 +125,9 @@ SUBROUTINE PAW_energy(becsum)
 
             ! STEP: 3 [ compute XC energy ]
             WRITE(6,*) "******************************"
-            e1 = PAW_xc_energy(na, rho_lm, rho_core, v_h_lm, e_xc,1)
-            e2 = PAW_xc_energy(na, rho_lm, rho_core, v_h_lm, e_xc,2)
-            e3 = PAW_xc_energy(na, rho_lm, rho_core, v_h_lm, e_xc,3)
-            WRITE(6,"(a,2i3,3f25.15)") "==XCa: ", i_what, na, e1,e2,e3
-            e1 = PAW_xc_energy(na, rho_lm, rho_core, v_h_lm, e_xc,-1)
-            e2 = PAW_xc_energy(na, rho_lm, rho_core, v_h_lm, e_xc,-2)
-            e3 = PAW_xc_energy(na, rho_lm, rho_core, v_h_lm, e_xc,-3)
-            WRITE(6,"(a,2i3,3f25.15)") "==XCb: ", i_what, na, e1,e2,e3
-            e1 = PAW_xc_energy(na, rho_lm, rho_core, v_h_lm, e_xc,8)
-            e2 = PAW_xc_energy(na, rho_lm, rho_core, v_h_lm, e_xc,9)
-            e3 = PAW_xc_energy(na, rho_lm, rho_core, v_h_lm, e_xc,10)
-            WRITE(6,"(a,2i3,3f25.15)") "==vxcgc", i_what, na, e1,e2,e3
-
+            e1 = PAW_xc_energy(na, rho_lm, rho_core, v_h_lm, e_xc,0)
+            e2 = PAW_xc_energy(na, rho_lm, rho_core, v_h_lm, e_xc,1)
+            WRITE(6,"(a,2i3,3f25.15)") "==XC: ", i_what, na, e1,e2
 
             ! check if integration is working
             e = PAW_sph_integral(rho_lm, v_h_lm)
@@ -165,7 +149,7 @@ END SUBROUTINE PAW_energy
 !___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___
 !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!! 
 !!! initialize several quantities related to radial integration: spherical harmonics and their 
-!!! gradients along several (depending on lmaxq) directions, weights for spherical integration
+!!! gradients along a few (depending on lmaxq) directions, weights for spherical integration
 !!
 SUBROUTINE PAW_rad_init(l)
     USE constants,              ONLY : pi, fpi, eps8
@@ -178,11 +162,10 @@ SUBROUTINE PAW_rad_init(l)
                                    r2(:),&      ! square modulus of r
                                    ath(:),aph(:)! angles in sph coords for r
 
-    INTEGER                     :: i,ii,n,dum   ! counters
+    INTEGER                     :: i,ii,n       ! counters
     INTEGER                     :: lm,m         ! indexes for ang.mom
     REAL(DP)                    :: phi,dphi,rho ! spherical coordinates
     REAL(DP)                    :: z            ! cartesian coordinates
-    REAL(DP)                    :: int_lm       ! workspace
     ! for gradient corrections:
     INTEGER                     :: ipol
     REAL(DP),ALLOCATABLE        :: aux(:,:),&   ! workspace
@@ -197,7 +180,8 @@ SUBROUTINE PAW_rad_init(l)
               'PAW radial integration already initialized but for a different l: reinitializing.',&
               -l-100*l_max)
               DEALLOCATE(ww, ylm)
-              IF (allocated(dylm2)) DEALLOCATE(dylm2)
+              IF (allocated(dylmt)) DEALLOCATE(dylmt)
+              IF (allocated(dylmp)) DEALLOCATE(dylmp)
         ELSE
             ! if already initialized correctly nothing to be done
             RETURN
@@ -249,54 +233,13 @@ SUBROUTINE PAW_rad_init(l)
 
     ! if gradient corrections will be used than we need
     ! to initialize the gradient of ylm, as we are working in spherical
-    ! coordinates the formula involves \hat{theta} and \hat{phi} 
+    ! coordinates the formula inv0.080708852364528olves \hat{theta} and \hat{phi} 
     gradient: IF (igcx>0 .or. igcc>0) THEN
         do_gcxc = .true.
         ALLOCATE (s(3,nx),s2(nx))
-        ALLOCATE(dylm2(nx,lm_max),dylmt(nx,lm_max),dylmp(nx,lm_max),aux(nx,lm_max))
-        ! last dimension is +/- delta on theta/phi direction
-        ALLOCATE(ylm_dth(nx,lm_max,2), ylm_dph(nx,lm_max,2))
-        dylm2(:,:)  = 0._dp
+        ALLOCATE(dylmt(nx,lm_max),dylmp(nx,lm_max),aux(nx,lm_max))
         dylmt(:,:) = 0._dp
         dylmp(:,:) = 0._dp
-        ylm_dth(:,:,:) = 0._dp
-        ylm_dph(:,:,:) = 0._dp
-
-        ! compute ylm at r +/- delta * vth/vph, code needs massive cleanup
-        ! + theta
-        DO i = 1,nx
-            vph = (/-sin(aph(i)), cos(aph(i)), 0._dp/)
-            ! this is the explicit form, but the cross product trick (below) is much faster:
-            ! vth = (/cos(aph(i))*cos(ath(i)), sin(aph(i))*cos(ath(i)), -sin(ath(i))/)
-            vth = (/vph(2)*r(3,i)-vph(3)*r(2,i), vph(3)*r(1,i)-vph(1)*r(3,i), vph(1)*r(2,i)-vph(2)*r(1,i)/)
-            s(:,i) = r(:,i) + delta * vth(:)
-            s2(i) = s(1,i)**2 + s(2,i)**2 + s(3,i)**2
-        ENDDO
-        CALL ylmr2(lm_max, nx, s,s2,ylm_dth(:,:,2))
-        ! - theta
-        DO i = 1,nx
-            vph = (/-sin(aph(i)), cos(aph(i)), 0._dp/)
-            vth = (/vph(2)*r(3,i)-vph(3)*r(2,i), vph(3)*r(1,i)-vph(1)*r(3,i), vph(1)*r(2,i)-vph(2)*r(1,i)/)
-            s(:,i) = r(:,i) - delta * vth(:)
-            s2(i) = s(1,i)**2 + s(2,i)**2 + s(3,i)**2
-        ENDDO
-        CALL ylmr2(lm_max, nx, s,s2,ylm_dth(:,:,1)) 
-        ! + phi
-        DO i = 1,nx
-            vph = (/-sin(aph(i)), cos(aph(i)), 0._dp/)
-            vth = (/vph(2)*r(3,i)-vph(3)*r(2,i), vph(3)*r(1,i)-vph(1)*r(3,i), vph(1)*r(2,i)-vph(2)*r(1,i)/)
-            s(:,i) = r(:,i) + delta * vph(:)
-            s2(i) = s(1,i)**2 + s(2,i)**2 + s(3,i)**2
-        ENDDO
-        CALL ylmr2(lm_max, nx, s,s2,ylm_dph(:,:,2)) 
-            ! - phi
-        DO i = 1,nx
-            vph = (/-sin(aph(i)), cos(aph(i)), 0._dp/)
-            vth = (/vph(2)*r(3,i)-vph(3)*r(2,i), vph(3)*r(1,i)-vph(1)*r(3,i), vph(1)*r(2,i)-vph(2)*r(1,i)/)
-            s(:,i) = r(:,i) - delta * vph(:)
-            s2(i) = s(1,i)**2 + s(2,i)**2 + s(3,i)**2
-        ENDDO
-        CALL ylmr2(lm_max, nx, s,s2,ylm_dph(:,:,1)) 
 
         ! compute derivative along x, y and z => gradient, then compute the
         ! scalar products with \hat{theta} and \hat{phi} and store them in
@@ -309,9 +252,9 @@ SUBROUTINE PAW_rad_init(l)
                 ! this is the explicit form, but the cross product trick (below) is much faster:
                 ! vth = (/cos(aph(i))*cos(ath(i)), sin(aph(i))*cos(ath(i)), -sin(ath(i))/)
                 vth = (/vph(2)*r(3,i)-vph(3)*r(2,i), vph(3)*r(1,i)-vph(1)*r(3,i), vph(1)*r(2,i)-vph(2)*r(1,i)/)
-                dylm2(i,lm) = dylm2(i,lm) + ABS(aux(i,lm)) ** 2
                 dylmt(i,lm) = dylmt(i,lm) + aux(i,lm)*vth(ipol)
-                dylmp(i,lm) = dylmp(i,lm) + aux(i,lm)*vph(ipol)/cos(ath(i))
+                ! CHECK: the 1/cos(th) factor should be correct, but deals wrong result, why?
+                dylmp(i,lm) = dylmp(i,lm) + aux(i,lm)*vph(ipol) !/cos(ath(i))
             ENDDO
             ENDDO
         ENDDO
@@ -390,18 +333,13 @@ FUNCTION PAW_xc_energy(na, rho_lm, rho_core, pot_lm, e_lm, task)
     !
     REAL(DP)              :: rho_loc(2) = (/0._dp, 0._dp/) 
                              ! local density (workspace), up and down
-    REAL(DP)              :: e, e_aux     ! workspace
+    REAL(DP)              :: e            ! workspace
     REAL(DP)              :: e_rad(ndmx)  ! radial energy (to be integrated)
     REAL(DP)              :: rho_rad(ndmx,nspin) ! workspace (radial slice of rho)
     INTEGER               :: nt, &        ! ityp(na)
-                             ix,k          ! counters on directions and radial grid
-    ! for gradient correction
+                             ix,k         ! counters on directions and radial grid
+    ! for gradient correction only:
     REAL(DP),ALLOCATABLE  :: grho_rad(:,:)! workspace (radial slice of grad(rho))
-    REAL(DP)              :: grho_loc(2) = (/0._dp, 0._dp/) !I can afford to waste 16 bytes
-    ! for STUPID gradient correction
-    REAL(DP)              :: frr(ndmx,2), frc(ndmx), vgc(ndmx), egc(ndmx) !fake rho and rho_core
-    REAL(DP)              :: fr(ndmx), fr2(ndmx) !fake rho and rho_core
-    INTEGER               :: fns !fake spin number
 
     CALL start_clock ('PAW_xc_nrg')
     lsd = nspin-1
@@ -409,7 +347,6 @@ FUNCTION PAW_xc_energy(na, rho_lm, rho_core, pot_lm, e_lm, task)
 
     ! init for gradient correction
     IF (do_gcxc) ALLOCATE(grho_rad(ndmx,nspin))
-#define RADIAL_GRADIENT
 
     PAW_xc_energy = 0._dp
     DO ix = 1, nx
@@ -424,52 +361,10 @@ FUNCTION PAW_xc_energy(na, rho_lm, rho_core, pot_lm, e_lm, task)
         ENDDO
         gradient_correction:& ! add it!
         IF (do_gcxc) THEN
-            IF ( task == 1) THEN
-                CALL PAW_ngrad(na, ix, rho_lm, rho_rad, rho_core, grho_rad)
-                CALL PAW_gcxc(na, rho_rad,rho_core,grho_rad, e_rad,task)
-            ELSE IF (task == 2) THEN
-                e_rad(:) = 0._dp
-                CALL PAW_ngrad(na, ix, rho_lm, rho_rad, rho_core, grho_rad)
-                CALL PAW_gcxc(na, rho_rad,rho_core,grho_rad, e_rad,task)
-            ELSE IF (task == 3) THEN
-                ! nothing to do
-            ELSE IF (task == -1) THEN
-                CALL PAW_grad(na, ix, rho_lm, rho_rad, rho_core, grho_rad)
-                CALL PAW_gcxc(na, rho_rad,rho_core,grho_rad, e_rad,task)
-            ELSE IF (task == -2) THEN
-                e_rad(:) = 0._dp
-                CALL PAW_grad(na, ix, rho_lm, rho_rad, rho_core, grho_rad)
-                CALL PAW_gcxc(na, rho_rad,rho_core,grho_rad, e_rad,task)
-            ELSE IF (task == -3) THEN
-                ! nothing to do
-            ELSE IF (task > 7) THEN
-                fns = nspin
-                DO k = 1,rgrid(nt)%mesh
-                    frr(k,1) = fpi*rho_rad(k,1)
-                    frr(k,2) = 0._dp
-                    frc(k)   = fpi*rgrid(nt)%r2(k)*rho_core(k,nt)
-                    fr(k)    = rgrid(nt)%r(k)
-                    fr2(k)   = rgrid(nt)%r2(k)
-                ENDDO
-                write(6,*) "+entering vxcgc"
-!              real(DP) :: r(mesh), r2(mesh), rho(ndm,2), rhoc(ndm), &
-!                    vxcgc(ndm,mesh, nspin,r,r2,  rho,rhoc, vgc,egc)
-                CALL vxcgc(ndmx, ndmx, fns,fr,fr2,frr, frc, vgc,egc)
-                write(6,*) "+exiting vxcgc"
-                IF (task == 9) e_rad(:) = e_rad(:) + egc(:)
-                IF (task == 8) e_rad(:) = egc(:)
-                IF (task == 10) THEN
-                    e_rad(:) = 0._dp
-                    CALL PAW_ngrad(na, ix, rho_lm, rho_rad, rho_core, grho_rad)
-                    CALL PAW_gcxc(na, rho_rad,rho_core,grho_rad, e_rad,task)
-                    DO k = 1,rgrid(nt)%mesh
-                        write(510,"(90f20.12)") rgrid(nt)%r(k), egc(k), e_rad(k), egc(k)-e_rad(k)
-                    ENDDO
-                    e_rad(:) = egc(:) - e_rad(:)
-                ENDIF
-                
-
-            ENDIF
+            IF (task == 1) e_rad(:) = 0._dp ! reset the energy, so that only the correction is displayed
+            CALL PAW_grad(na, ix, rho_lm, rho_rad, rho_core, grho_rad)
+            !                                      v-------------^
+            CALL PAW_gcxc(na, rho_rad,rho_core,grho_rad, e_rad)
         ENDIF gradient_correction
         !
         ! integrate radial slice of xc energy:
@@ -478,170 +373,57 @@ FUNCTION PAW_xc_energy(na, rho_lm, rho_core, pot_lm, e_lm, task)
         PAW_xc_energy = PAW_xc_energy + e * ww(ix)
     ENDDO
 
-    IF (allocated(grho_rad)) DEALLOCATE(grho_rad)
+    ! cleanup for gc
+    IF (do_gcxc) DEALLOCATE(grho_rad)
 
     CALL stop_clock ('PAW_xc_nrg')
 
 END FUNCTION PAW_xc_energy
-
-! add gradient correction, code adapted from ../atomic/vxcgc.f90
-SUBROUTINE PAW_gcxc(na, rho,core,grho,e,task)
-
-USE kinds,                  ONLY : DP
-USE ions_base,              ONLY : ityp
-USE radial_grids,           ONLY : ndmx
-USE lsda_mod,               ONLY : nspin
-USE atom,                   ONLY : g => rgrid
-USE parameters,             ONLY : npsx
-USE constants,              ONLY : fpi,pi,e2
-
-INTEGER, INTENT(IN)    :: na              ! atom index
-INTEGER, INTENT(IN)    :: task !DEBUG
-REAL(DP), INTENT(IN)   :: rho(ndmx,nspin) ! radial density,
-REAL(DP), INTENT(IN)   :: grho(ndmx,nspin)! square gradient of rho
-REAL(DP), INTENT(IN)   :: core(ndmx,npsx) ! spherical core density
-REAL(DP), INTENT(INOUT):: e(ndmx)         ! radial local xc energy
-!
-INTEGER                :: i               ! counter for mesh
-INTEGER                :: nt              ! atom type
-! workspaces:
-REAL(DP)               :: arho, sgn
-REAL(DP)               :: sx,sc,v1x,v2x,v1c,v2c
-REAL(DP),PARAMETER     :: eps = 1.e-12_dp
-
-nt = ityp(na)
-
-IF (nspin.eq.1) THEN
-    DO i=1,g(nt)%mesh
-        arho = rho(i,1)/g(nt)%r2(i) + core(i,ityp(na))
-        sgn  = sign(1.0_dp,arho)
-        arho = abs(arho)
-        IF (arho.gt.eps.and.abs(grho(i,1)).gt.eps) THEN
-            CALL gcxc(arho,grho(i,1),sx,sc,v1x,v2x,v1c,v2c)
-            e(i) = e(i) + sgn *e2 *(sx+sc)*g(nt)%r2(i) !&
-                    !*(SUM(rho(i,1:nspin))+core(i,nt)*g(nt)%r2(i))
-        ELSE IF (i.gt.g(nt)%mesh/2) THEN
-            ! asymptotic formula
-            e(i) = e(i)-0.0_dp/(2.0_dp*g(nt)%r(i))!&
-                !*(SUM(rho(i,1:nspin))+core(i,nt)*g(nt)%r2(i))
-        ENDIF
-    write(500+task/2,"(90f20.12)") g(nt)%r(i), grho(i,1), e(i), arho,sx,sc,v1x,v2x,v1c,v2c
-    ENDDO
-ENDIF
+!___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___
+!!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!! 
+!!! add gradient correction, code mostly adapted from ../atomic/vxcgc.f90
+SUBROUTINE PAW_gcxc(na, rho,core,grho,e)
+    USE kinds,                  ONLY : DP
+    USE ions_base,              ONLY : ityp
+    USE radial_grids,           ONLY : ndmx
+    USE lsda_mod,               ONLY : nspin
+    USE atom,                   ONLY : g => rgrid
+    USE parameters,             ONLY : npsx
+    USE constants,              ONLY : fpi,pi,e2
+    !
+    INTEGER, INTENT(IN)    :: na              ! atom index
+    REAL(DP), INTENT(IN)   :: rho(ndmx,nspin) ! radial density,
+    REAL(DP), INTENT(IN)   :: grho(ndmx,nspin)! square gradient of rho
+    REAL(DP), INTENT(IN)   :: core(ndmx,npsx) ! spherical core density
+    REAL(DP), INTENT(INOUT):: e(ndmx)         ! radial local xc energy
+    !
+    INTEGER            :: i               ! counter for mesh
+    INTEGER            :: nt              ! atom type
+    ! workspaces:
+    REAL(DP)           :: arho, sgn
+    REAL(DP)           :: sx,sc           ! x and c energy from gcxc
+    REAL(DP)           :: v1x,v2x,v1c,v2c ! potentials from gcxc (unused)
+    REAL(DP),PARAMETER :: eps = 1.e-30_dp ! 1.e-12 may be small enough
+    
+    nt = ityp(na)
+    
+    IF (nspin.eq.1) THEN
+        DO i=1,g(nt)%mesh
+            arho = rho(i,1)/g(nt)%r2(i) + core(i,ityp(na))
+            sgn  = sign(1.0_dp,arho)
+            arho = abs(arho)
+            IF (arho.gt.eps.and.abs(grho(i,1)).gt.eps) THEN
+                CALL gcxc(arho,grho(i,1),sx,sc,v1x,v2x,v1c,v2c)
+                e(i) = e(i) + sgn *e2 *(sx+sc)*g(nt)%r2(i) !&
+            ENDIF
+        ENDDO
+    ENDIF
 
 END SUBROUTINE PAW_gcxc
-
 !___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___
 !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!
-!!! build *gradient* in a (not so much, after all) ignorant and brutal numerical way
-SUBROUTINE PAW_ngrad(na, ix, rho_lm, rho_rad, rho_core, grho_rad)
-    USE kinds,                  ONLY : DP
-    USE constants,              ONLY : fpi
-    USE uspp_param,             ONLY : lmaxq
-    USE lsda_mod,               ONLY : nspin
-    USE radial_grids,           ONLY : ndmx
-    USE ions_base,              ONLY : ityp
-    USE parameters,             ONLY : npsx
-    USE atom,                   ONLY : g => rgrid
-
-    REAL(DP), INTENT(IN)        :: rho_lm(ndmx,lmaxq**2,nspin)! Y_lm expansion of rho
-    REAL(DP), INTENT(IN)        :: rho_rad(ndmx,nspin)        ! radial density along direction ix
-    REAL(DP), INTENT(IN)        :: rho_core(ndmx,npsx)             ! core density
-    INTEGER, INTENT(IN)         :: ix ! line of the dylm2 matrix to use
-                                      ! actually it is one of the nx directions
-    INTEGER, INTENT(IN)         :: na ! atom index
-    REAL(DP), INTENT(OUT)       :: grho_rad(ndmx,nspin)   ! grad of charge density on rad. grid
-    !
-    REAL(DP)                    :: aux(ndmx,nspin),aux2(ndmx),aux3(ndmx,2) ! workspace
-    REAL(DP)                    :: r(ndmx)         ! placeholder (for lazyer programming)
-    INTEGER                     :: i, is, lm, nt,k,dir ! counters on angmom and spin
-
-    CALL start_clock ('PAW_grad')
-    nt = ityp(na)
-    r(:) = g(nt)%r(:) !FIXME: remove this when code works
-
-    ! The problem in computing this gradient is that the radial functions
-    ! are sampled on a logarithmic grid, so it is not possible to use simple 
-    ! finite difference formulas, furthermore deriving along x,y and z is
-    ! almost impossible. I will have to derive along r, theta and phi instead;
-    ! it has the additional advantage that I can (actually I have to) consider
-    ! lm components of rho constants for (small) displacement along theta and phi,
-    ! spherical harmonics are constant for displacements along r
-
-    ! 1. rho_lm has to be divided by r**2
-    DO is = 1,nspin
-    ! rho/r*2 + rho_core/nspin = real density
-    aux(1:g(nt)%mesh,is) = rho_rad(1:g(nt)%mesh,is)/g(nt)%r2(1:g(nt)%mesh) &
-                         + rho_core(1:g(nt)%mesh,nt)/nspin
-    ENDDO
-
-    ! 2. compute the partial derivative of rho_lm
-    ! 3. \sum \partial rho(r) \over \partial r Y_{lm}(th,ph)
-    ! 4. compute the square *after* summing the components
-    grho_rad(:,:) = 0._dp
-    DO is = 1,nspin
-        ! numerical derivative by ADC ../atomic/vxcgc.f90
-        DO k  = 2,g(nt)%mesh-1
-            aux2(k) = (  (r(k+1)-r(k))**2 * (aux(k-1,is)-aux(k,is))  &
-                       -(r(k-1)-r(k))**2 * (aux(k+1,is)-aux(k,is))  )&
-                    / ( (r(k+1)-r(k)) * (r(k-1)-r(k)) * (r(k+1)-r(k-1)) )
-        ENDDO
-        ! extremes:
-        aux2(g(nt)%mesh)=0.0_dp
-        aux2(1)=aux2(2)+(aux2(3)-aux2(2))*(r(1)-r(2))/(r(3)-r(2))
-        ! compute the square
-        DO k  = 1,g(nt)%mesh
-            grho_rad(k,is) = aux2(k)**2
-        ENDDO
-    ENDDO
-
-#ifdef RADIAL_GRADIENT
-    ! now I have to compute numerical derivatives along theta and phi
-    ! directions, I will use ylm_dth and ylm_dph that should be already 
-    ! initialized
-    DO is = 1,nspin
-        aux3(:,:) = 0._dp
-        DO dir = 1,2 ! positive or negative difference along theta
-            ! derivation along theta
-            ! core charge has to be added to the spherical component
-            aux3(:,dir) = aux3(:,dir) +ylm_dth(ix,1,dir)&
-                        *(rho_lm(:,1,is)/g(nt)%r2(:)+rho_core(:,nt)/nspin)
-            DO lm = 2, lmaxq**2 ! 
-                aux3(:,dir) = aux3(:,dir) + ylm_dth(ix,lm,dir)&
-                            * rho_lm(:,lm,is)/g(nt)%r2(:)
-            ENDDO ! lm
-        ENDDO ! dir
-        ! compute the differences and sum them to grho
-        DO k  = 1,g(nt)%mesh
-            grho_rad(k,is) = grho_rad(k,is)&
-                           + ( (aux3(k,1) - aux3(k,2))/ 2/delta/g(nt)%r(k) )**2
-        ENDDO
-    ENDDO ! spin
-
-    ! the same for phi (yes, this code is duplicated)...
-    DO is = 1,nspin
-        aux3(:,:) = 0._dp
-        DO dir = 1,2 ! positive or negative difference along theta
-            aux3(:,dir) = aux3(:,dir) +ylm_dph(ix,1,dir)&
-                        *(rho_lm(:,1,is)/g(nt)%r2(:)+rho_core(:,nt)/nspin)
-            DO lm = 2, lmaxq**2 ! 
-                aux3(:,dir) = aux3(:,dir) + ylm_dph(ix,lm,dir)&
-                            * rho_lm(:,lm,is)/g(nt)%r2(:)
-            ENDDO ! lm
-        ENDDO ! dir
-        DO k  = 1,g(nt)%mesh
-            grho_rad(k,is) = grho_rad(k,is)&
-                           + ( (aux3(k,1) - aux3(k,2))/ 2/delta/g(nt)%r(k) )**2
-        ENDDO
-    ENDDO ! spin
-#endif
-
-    CALL stop_clock ('PAW_grad')
-
-END SUBROUTINE PAW_ngrad
-!___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___
-!!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!
-!!! build *gradient* of radial charge distribution from its spherical harmonics expansion
+!!! build gradient of radial charge distribution from its spherical harmonics expansion
+!!! uses pre-computed rho_rad
 SUBROUTINE PAW_grad(na, ix, rho_lm, rho_rad, rho_core, grho_rad)
     USE kinds,                  ONLY : DP
     USE constants,              ONLY : fpi
@@ -652,83 +434,62 @@ SUBROUTINE PAW_grad(na, ix, rho_lm, rho_rad, rho_core, grho_rad)
     USE parameters,             ONLY : npsx
     USE atom,                   ONLY : g => rgrid
 
-    REAL(DP), INTENT(IN)        :: rho_lm(ndmx,lmaxq**2,nspin)! Y_lm expansion of rho
-    REAL(DP), INTENT(IN)        :: rho_rad(ndmx,nspin)        ! radial density along direction ix
-    REAL(DP), INTENT(IN)        :: rho_core(ndmx,npsx)             ! core density
-    INTEGER, INTENT(IN)         :: ix ! line of the dylm2 matrix to use
-                                      ! actually it is one of the nx directions
-    INTEGER, INTENT(IN)         :: na ! atom index
-    REAL(DP), INTENT(OUT)       :: grho_rad(ndmx,nspin)   ! grad of charge density on rad. grid
+    INTEGER, INTENT(IN)  :: ix ! line of the dylm2 matrix to use
+                               ! actually it is one of the nx directions
+    INTEGER, INTENT(IN)  :: na ! atom index
+    REAL(DP), INTENT(IN) :: rho_lm(ndmx,lmaxq**2,nspin)! Y_lm expansion of rho
+    REAL(DP), INTENT(IN) :: rho_rad(ndmx,nspin)        ! radial density along direction ix
+    REAL(DP), INTENT(IN) :: rho_core(ndmx,npsx)        ! core density
+    REAL(DP), INTENT(OUT):: grho_rad(ndmx,nspin)       ! grad of charge density on rad. grid
     !
-    REAL(DP)                    :: aux(ndmx),aux2(ndmx),aux_lm(ndmx,lmaxq**2,nspin) ! workspace
-    REAL(DP)                    :: r(ndmx)         ! placeholder (for easyer programming)
-    INTEGER                     :: i, is, lm, nt,k   ! counters on angmom and spin
+    REAL(DP)             :: aux(ndmx),aux2(ndmx)       ! workspace
+    INTEGER              :: i, is, lm, nt,k   !
 
     CALL start_clock ('PAW_grad')
     nt = ityp(na)
-    r(:) = g(nt)%r(:) !FIXME: remove this when code works
-    ! TODO: include core correction charge
-
-
-    ! from here on \sum => \sum_{l=0,l_max}\sum_{ m=-l,l}
-    !                   => \sum_{(lm) = 1,l_max**2}
-
     ! 1. build real charge density = rho/r**2 + rho_core
-    ! 2. compute the partial derivative of rho_lm
-    ! 3. \sum \partial rho(r) \over \partial r Y_{lm}(th,ph)
-    ! 4. compute the square *after* summing the components
-    !
+    ! 2. compute the partial derivative of rho_rad
     grho_rad(:,:) = 0._dp
     DO is = 1,nspin
         ! build real charge density
         aux(1:g(nt)%mesh) = rho_rad(1:g(nt)%mesh,is)/g(nt)%r2(1:g(nt)%mesh) &
                           + rho_core(1:g(nt)%mesh,nt)/nspin
-
         ! numerical derivative by ADC ../atomic/vxcgc.f90
         DO k  = 2,g(nt)%mesh-1
-            aux2(k) = (  (r(k+1)-r(k))**2 * (aux(k-1)-aux(k))  &
-                        -(r(k-1)-r(k))**2 * (aux(k+1)-aux(k))  )&
-                    / ( (r(k+1)-r(k)) * (r(k-1)-r(k)) * (r(k+1)-r(k-1)) )
+            aux2(k) = (  (g(nt)%r(k+1)-g(nt)%r(k))**2 * (aux(k-1)-aux(k)) &
+                        -(g(nt)%r(k-1)-g(nt)%r(k))**2 * (aux(k+1)-aux(k)) &
+                      )&
+                    / (   (g(nt)%r(k+1)-g(nt)%r(k)  ) &
+                        * (g(nt)%r(k-1)-g(nt)%r(k)  ) &
+                        * (g(nt)%r(k+1)-g(nt)%r(k-1)) &
+                      )
         ENDDO
         ! extremes:
         aux2(g(nt)%mesh)=0.0_dp
-        aux2(1)=aux2(2)+(aux2(3)-aux2(2))*(r(1)-r(2))/(r(3)-r(2))
+        aux2(1)= aux2(2) + (aux2(3)-aux2(2)) &
+               * (g(nt)%r(1)-g(nt)%r(2))/(g(nt)%r(3)-g(nt)%r(2))
         ! compute the square
-        DO k  = 1,g(nt)%mesh
-            grho_rad(k,is) = aux2(k)**2
-        ENDDO
+        grho_rad(:,is) = aux2(:)**2
     ENDDO
 
-#ifdef RADIAL_GRADIENT
-    ! 1. rho_lm has to be divided by r**2
-    DO is = 1,nspin
-        ! core density has to be added to the spherical component (lm=1)
-        ! FIXME: probabily rho_core has to be multiplied/divided by fpi or sqrt(fpi)
-        !        depending on Y_00 normalization
-        aux_lm(1:g(nt)%mesh,1,is) = rho_lm(1:g(nt)%mesh,1,is) / g(nt)%r2(1:g(nt)%mesh) &
-                                + rho_core(1:g(nt)%mesh,nt)/nspin
-        DO lm = 2, lmaxq**2
-            aux_lm(1:g(nt)%mesh,lm,is) = rho_lm(1:g(nt)%mesh,lm,is) / g(nt)%r2(1:g(nt)%mesh)
-        ENDDO
-    ENDDO
-
-    ! 5. [ \sum rho(r) (dY_{lm}/dphi /cos(theta))  ]**2
-    ! 6. [ \sum rho(r) (dY_{lm}/dtheta)  ]**2
     aux(:)  = 0._dp
     aux2(:) = 0._dp
     DO is = 1,nspin
-    DO lm = 1,lmaxq**2
-        ! 5:
-        aux(:) = aux(1:g(nt)%mesh) + dylmp(ix,lm)* (aux_lm(1:g(nt)%mesh,lm,is))
-        ! 6:
-        aux2(:) = aux2(1:g(nt)%mesh) + dylmt(ix,lm)* (aux_lm(1:g(nt)%mesh,lm,is))
+    ! Spherical (lm=1) component (that would also include core correction) can be omitted
+    ! as its contribution to non-radial derivative is zero
+    DO lm = 2,lmaxq**2
+        ! 5. [ \sum_{lm} rho(r) (dY_{lm}/dphi /cos(theta))  ]**2
+        aux(1:g(nt)%mesh) = aux(1:g(nt)%mesh) + dylmp(ix,lm)* (rho_lm(1:g(nt)%mesh,lm,is))
+        ! 6. [ \sum_{lm} rho(r) (dY_{lm}/dtheta)  ]**2
+        aux2(1:g(nt)%mesh) = aux2(1:g(nt)%mesh) + dylmt(ix,lm)* (rho_lm(1:g(nt)%mesh,lm,is))
     ENDDO
-    !
+    ! Square and sum up these 2 components, the (1/r**2)**3 factor come from:
+    !  a. 1/r**2 from the derivative in spherical coordinates
+    !  b. (1/r**2)**2 from rho_lm being multiplied by r**2 
     grho_rad(1:g(nt)%mesh,is) = grho_rad(1:g(nt)%mesh,is)&
-                              + (aux(1:g(nt)%mesh)**2 + aux2(1:g(nt)%mesh)**2 )&
-                                / g(nt)%r2(1:g(nt)%mesh)
+                              + (aux(1:g(nt)%mesh)**2 + aux2(1:g(nt)%mesh)**2)&
+                                / g(nt)%r2(1:g(nt)%mesh)**3
     ENDDO
-#endif
 
     CALL stop_clock ('PAW_grad')
 
@@ -824,11 +585,11 @@ SUBROUTINE PAW_rho_lm(na, becsum, pfunc, rho_lm, augfun)
 
     INTEGER                 :: nb,mb, &     ! counters for pfunc nb,mb = 1, nh
                                nmb, &       ! composite "triangular" index for pfunc nmb = 1,nh*(nh+1)/2
-                               lm,lp,l,m, & ! counters for angular momentum lm = l**2+m
+                               lm,lp,l, &   ! counters for angular momentum lm = l**2+m
                                ispin,&      ! counter for spin (FIXME: may be unnecessary)
                                nt           ! type of atom na
 
-    ! This functions computes the angular momentum components of rho
+    ! This subroutine computes the angular momentum components of rho
     ! using the following formula:
     !   rho(\vec{r}) = \sum_{LM} Y_{LM} \sum_{i,j} (\hat{r}) a_{LM}^{(lm)_i(lm)_j} becsum_ij pfunc_ij(r)
     !
@@ -847,15 +608,16 @@ SUBROUTINE PAW_rho_lm(na, becsum, pfunc, rho_lm, augfun)
     ! initialize density
     rho_lm(:,:,:) = 0._dp
 
-    !ifpaw: IF (tpawp(nt)) THEN !FIXME:: do this check outside
     spins: DO ispin = 1, nspin
     nmb = 0
         ! loop on all pfunc for this kind of pseudo
         DO nb = 1, nh(nt)
         DO mb = nb, nh(nt)
             nmb = nmb+1 ! nmb = 1, nh*(nh+1)/2
-!           DO lm = 1, lmaxq**2  ! loop on all lm has been replaced by lpl+lpx trick
+            angular_momentum: &
             DO lp = 1, lpx (nhtolm(mb,nt), nhtolm(nb,nt)) !lmaxq**2
+                ! the lpl array contains the possible combination of LM,lm_j,lm_j that
+                ! have non-zero a_{LM}^{(lm)_i(lm)_j} (it saves some loops)
                 lm = lpl (nhtolm(mb,nt), nhtolm(nb,nt), lp)
                 ! becsum already contains a factor 2 for off-diagonal pfuncs
                 pref = becsum(nmb,na,ispin) * ap(lm, nhtolm(nb,nt), nhtolm(mb,nt))
@@ -868,11 +630,10 @@ SUBROUTINE PAW_rho_lm(na, becsum, pfunc, rho_lm, augfun)
                     rho_lm(1:msh(nt),lm,ispin) = rho_lm(1:msh(nt),lm,ispin) +&
                                 pref * augfun(1:msh(na), indv(nb,nt), indv(mb,nt), l, nt)
                 ENDIF ! augfun
-            ENDDO ! lm
+            ENDDO angular_momentum 
         ENDDO !mb
         ENDDO !nb
     ENDDO spins
-!   ENDIF ifpaw
 
     CALL stop_clock ('PAW_rho_lm')
 
@@ -891,7 +652,7 @@ SUBROUTINE PAW_lm2rad(ix, rho_lm, rho_rad)
     INTEGER                     :: ix ! line of the ylm matrix to use
                                       ! actually it is one of the nx directions
     REAL(DP), INTENT(OUT)       :: rho_rad(ndmx,nspin) ! charge density on rad. grid
-
+    !
     INTEGER                     :: ispin, lm ! counters on angmom and spin
 
     CALL start_clock ('PAW_lm2rad')
@@ -899,7 +660,6 @@ SUBROUTINE PAW_lm2rad(ix, rho_lm, rho_rad)
     ! cycling on spin is a bit less general...
     spins: DO ispin = 1,nspin
         DO lm = 1, lmaxq**2 ! 
-            !IF (ABS(ylm(1,lm)) < eps8 ) CONTINUE
             rho_rad(:,ispin) = rho_rad(:,ispin) +&
                     ylm(ix,lm)*rho_lm(:,lm,ispin)
         ENDDO ! lm
@@ -910,7 +670,7 @@ SUBROUTINE PAW_lm2rad(ix, rho_lm, rho_rad)
 END SUBROUTINE PAW_lm2rad
 !___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___   ___
 !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!  !!!!
-!!! example of rdial integration
+!!! example of radial integration
 FUNCTION PAW_sph_integral(f1_lm, f2_lm)
     USE kinds,                  ONLY : DP
     USE constants,              ONLY : pi,eps8,fpi
