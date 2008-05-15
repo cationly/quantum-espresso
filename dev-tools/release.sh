@@ -41,7 +41,8 @@ wget -O Doc/developer_man.html http://www.quantum-espresso.org/wiki/index.php/De
 
 # package using Makefile
 
-make tar tar-gui
+make tar
+make tar-gui
 
 # unpackage in directory with version
 
@@ -54,6 +55,5 @@ cd ..
 tar -cvzf espresso-$VERSION.tar.gz  $ESPRESSO_DIR >  espresso-$VERSION.lst
 tar -cvzf $GUI.tar.gz $ESPRESSO_DIR/$GUI >  $GUI.lst
 echo "espresso-$VERSION.tar.gz and  $GUI.tar.gz saved in directory:" `pwd`
-echo "List of files in espresso-$VERSION.lst and $GUI.lst
-
+echo "List of files in espresso-$VERSION.lst and $GUI.lst"
 
