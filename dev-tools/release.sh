@@ -5,7 +5,7 @@ LC_ALL=C
 export LC_ALL
 
 #
-VERSION=4.0
+VERSION=4.0.1
 #
 ESPRESSO_DIR=espresso-$VERSION
 GUI_VERSION=`cat GUI/PWgui/VERSION`
@@ -23,9 +23,9 @@ if test -d $ESPRESSO_DIR; then /bin/rm -rf $ESPRESSO_DIR; fi
 
 # produce updated ChangeLogs
 
-make log
-mv ChangeLog Doc/ChangeLog-$VERSION
-mv ChangeLog.html Doc/ChangeLog-$VERSION.html
+#make log
+#mv ChangeLog Doc/ChangeLog-$VERSION
+#mv ChangeLog.html Doc/ChangeLog-$VERSION.html
 
 # produce documentation
 

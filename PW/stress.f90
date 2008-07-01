@@ -1,5 +1,5 @@
 !
-! Copyright (C) 20012007 Quantum-Espresso group
+! Copyright (C) 2001-2007 Quantum-Espresso group
 ! This file is distributed under the terms of the
 ! GNU General Public License. See the file `License'
 ! in the root directory of the present distribution,
@@ -26,6 +26,7 @@ subroutine stress
   USE control_flags, ONLY : iverbosity, gamma_only
   USE noncollin_module, ONLY : noncolin
   USE funct,         ONLY : dft_is_meta, dft_is_gradient
+  USE symme,         ONLY : s, nsym
   !
   implicit none
   !
@@ -95,6 +96,11 @@ subroutine stress
   sigma(:,:) = sigmakin(:,:) + sigmaloc(:,:) + sigmahar(:,:) + &
                sigmaxc(:,:) + sigmaxcc(:,:) + sigmaewa(:,:) + &
                sigmanlc(:,:) + sigmah(:,:)
+  ! Resymmetrize the total stress: this should not be strictly necessary,
+  ! but prevents loss of symmetry in long vc-bfgs runs
+   CALL trntns(sigma,at,bg,-1)
+   CALL symtns(sigma,nsym,s)
+   CALL trntns(sigma,at,bg,1)
   !
   ! write results in Ryd/(a.u.)^3 and in kbar
   !

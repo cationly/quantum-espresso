@@ -266,6 +266,7 @@ program pp_punch
   !   
   
 
+  USE kinds,     ONLY : i4b
   use pwcom
   use io_global, ONLY : stdout, ionode, ionode_id
   use io_files,  ONLY : psfile, pseudo_dir, trimcheck
@@ -282,7 +283,7 @@ program pp_punch
   character(len=200) :: pp_file
   character(len=iotk_attlenx) :: attr
   logical :: found, uspp_spsi, ascii, single_file, raw
-  INTEGER, EXTERNAL :: C_MKDIR
+  INTEGER(i4b), EXTERNAL :: C_MKDIR
 
   NAMELIST /inputpp/ prefix, outdir, pp_file, uspp_spsi, ascii, single_file, raw, &
                      psfile, pseudo_dir

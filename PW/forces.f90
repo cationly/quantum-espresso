@@ -51,6 +51,7 @@ SUBROUTINE forces()
                            forceh(:,:)
     ! nonlocal, local, core-correction, ewald, scf correction terms, and hubbard
   REAL(DP) :: sumfor, sumscf
+  REAL(DP),PARAMETER :: eps = 1.e-12_dp
   INTEGER  :: ipol, na
     ! counter on polarization
     ! counter on atoms
@@ -216,7 +217,7 @@ SUBROUTINE forces()
   !
   CALL stop_clock( 'forces' )
   !
-  IF ( lbfgs .AND. ( sumfor < 10.D0*sumscf ) ) &
+  IF ( lbfgs .AND. ( sumfor < 10.D0*sumscf ) .AND. (sumfor > eps) ) &
   WRITE( stdout,'(5x,"SCF correction compared to forces is too large, reduce conv_thr")')
 !     CALL errore( 'forces', 'scf correction on ' // &
 !                & 'the force is too large: reduce conv_thr', 1 )
