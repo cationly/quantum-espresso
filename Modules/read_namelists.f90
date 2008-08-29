@@ -1,5 +1,5 @@
 !
-! Copyright (C) 2002-2005 Quantum-ESPRESSO group
+! Copyright (C) 2002-2008 Quantum-ESPRESSO group
 ! This file is distributed under the terms of the
 ! GNU General Public License. See the file `License'
 ! in the root directory of the present distribution,
@@ -309,7 +309,7 @@ MODULE read_namelists_module
        occupation_damping = 0.0_DP
        !
        tcg     = .FALSE.
-       maxiter = 40
+       maxiter = 100
        passop  = 0.3_DP
        niter_cg_restart = 20
        etresh  = 1.E-6_DP

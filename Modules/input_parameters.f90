@@ -1,5 +1,5 @@
 !
-! Copyright (C) 2002-2005 Quantum-ESPRESSO group
+! Copyright (C) 2002-2008 Quantum-ESPRESSO group
 ! This file is distributed under the terms of the
 ! GNU General Public License. See the file `License'
 ! in the root directory of the present distribution,
@@ -886,8 +886,8 @@ MODULE input_parameters
         LOGICAL :: tcg = .true.
           ! if true perform in cpv conjugate gradient minimization of electron energy
 
-        INTEGER :: maxiter = 40
-          ! man number of conjugate gradient iterations
+        INTEGER :: maxiter = 100
+          ! max number of conjugate gradient iterations
 
         REAL(DP)  :: etresh =1.0E-7_DP
           ! treshhold on energy

@@ -65,13 +65,17 @@
       use cp_electronic_mass,       ONLY : emass_cutoff
       use orthogonalize_base,       ONLY : calphi
       use cp_interfaces,            ONLY : rhoofr, dforce, compute_stress
-      USE cp_main_variables,        ONLY : nlax, collect_lambda, distribute_lambda, descla, nrlx
+      USE cp_main_variables,        ONLY : nlax, collect_lambda, distribute_lambda, descla, nrlx, nlam
       USE descriptors,              ONLY : la_npc_ , la_npr_ , la_comm_ , la_me_ , la_nrl_ , ldim_cyclic
+      USE io_files,                 ONLY : outdir, prefix
+      USE mp_global, ONLY:  me_image,my_image_id
 
 
 !
       implicit none
 !
+      CHARACTER(LEN=80) :: uname
+      CHARACTER(LEN=6), EXTERNAL :: int_to_char
       integer :: nfi
       logical :: tfirst , tlast
       complex(dp) :: eigr(ngw,nat)
@@ -90,8 +94,8 @@
       complex(dp) :: sfac( ngs, nsp )
       real(dp) :: fion(3,nat)
       real(dp) :: ema0bg(ngw)
-      real(dp) :: lambdap(nlax,nlax,nspin)
-      real(dp) :: lambda(nlax,nlax,nspin)
+      real(dp) :: lambdap(nlam,nlam,nspin)
+      real(dp) :: lambda(nlam,nlam,nspin)
 !
 !
       integer :: i, j, ig, k, is, iss,ia, iv, jv, il, ii, jj, kk, ip
@@ -142,7 +146,12 @@
       maxiter3=250
 
 
-      if(ionode) open(37,file='convergence.dat',status='unknown')!for debug and tuning purposes
+      if(ionode) then
+         uname = trim(prefix) // '.' // trim(int_to_char( my_image_id )) &
+              // '_' // trim(int_to_char( me_image))
+         !open(37,file='convergence.dat',status='unknown')!for debug and tuning purposes
+         open(37,file=uname,status='unknown')!for debug and tuning purposes
+      endif
       if(tfirst.and.ionode) write(stdout,*) 'PERFORMING CONJUGATE GRADIENT MINIMIZATION OF EL. STATES'
       
 !set tpa preconditioning
@@ -913,7 +922,7 @@
            !
            ! in the ensemble case matrix labda must be multiplied with f
 
-           ALLOCATE( lambda_dist( nlax, nlax ) )
+           ALLOCATE( lambda_dist( nlam, nlam ) )
  
            do iss = 1, nspin
               !
@@ -921,12 +930,12 @@
               !
               lambdap(:,:,iss) = 0.0d0
               !
-              CALL cyc2blk_redist( nss, fmat0(1,1,iss), nrlx, lambda_dist, nlax, descla(1,iss) )
+              CALL cyc2blk_redist( nss, fmat0(1,1,iss), nrlx, lambda_dist, nlam, descla(1,iss) )
               !
               ! Perform lambdap = lambda * fmat0
               !
-              CALL sqr_mm_cannon( 'N', 'N', nss, 1.0d0, lambda(1,1,iss), nlax, lambda_dist, nlax, &
-                                  0.0d0, lambdap(1,1,iss), nlax, descla(1,iss) )
+              CALL sqr_mm_cannon( 'N', 'N', nss, 1.0d0, lambda(1,1,iss), nlam, lambda_dist, nlam, &
+                                  0.0d0, lambdap(1,1,iss), nlam, descla(1,iss) )
               !
               lambda_dist      = lambda(:,:,iss)
               lambda(:,:,iss)  = lambdap(:,:,iss)
@@ -954,7 +963,6 @@
         if( tefield2.and.(evalue2 .ne. 0.d0) ) then
            call bforceion(fion,tfor.or.tprnfor,ipolp2, qmat2,bec,becdr,gqq2,evalue2)
         endif
-
         deallocate(hpsi0,hpsi,gi,hi)
         deallocate( s_minus1,k_minus1)
        if(ionode) close(37)!for debug and tuning purposes
