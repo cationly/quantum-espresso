@@ -46,7 +46,7 @@ SUBROUTINE cprmain( tau_out, fion_out, etot_out )
   USE reciprocal_vectors,       ONLY : gstart, mill_l
   USE ions_base,                ONLY : na, nat, pmass, nax, nsp, rcmax
   USE ions_base,                ONLY : ind_srt, ions_cofmass, ions_kinene, &
-                                       ions_temp, ions_thermal_stress, if_pos, extfor
+                                       ions_temp, ions_thermal_stress, if_pos
   USE ions_base,                ONLY : ions_vrescal, fricp, greasp, &
                                        iforce, ndfrz, ions_shiftvar, ityp, &
                                        atm, ind_bck, cdm, cdms, ions_cofmsub
