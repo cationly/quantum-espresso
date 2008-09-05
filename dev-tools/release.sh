@@ -1,11 +1,13 @@
 #!/bin/sh -x
 
+# Run this as "./dev-tools/release.sh"
+
 # make sure there is no locale setting creating unneeded differences.
 LC_ALL=C
 export LC_ALL
 
 #
-VERSION=4.0.1
+VERSION=4.0.2
 #
 ESPRESSO_DIR=espresso-$VERSION
 GUI_VERSION=`cat GUI/PWgui/VERSION`
