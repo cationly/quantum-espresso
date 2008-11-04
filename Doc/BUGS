@@ -1,3 +1,12 @@
+
+  *  the phonon code was not working when wf_collect=.true. and
+     either ldisp=.true. or lnscf=.true. 
+
+  *  incorrect make.sys produced by configure on some IBM machines
+
+  *  rigid.f90: the fix introduced in v. 4.0.1 to improve convergence
+     wasn't really correct 
+
 Fixed in version 4.0.3:
 
   * CPV: array qv allocated in newd wasn't deallocated in all cases,

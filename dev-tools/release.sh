@@ -7,7 +7,7 @@ LC_ALL=C
 export LC_ALL
 
 #
-VERSION=4.0.2
+VERSION=4.0.4
 #
 ESPRESSO_DIR=espresso-$VERSION
 GUI_VERSION=`cat GUI/PWgui/VERSION`
@@ -31,15 +31,15 @@ if test -d $ESPRESSO_DIR; then /bin/rm -rf $ESPRESSO_DIR; fi
 
 # produce documentation
 
-cd doc-def/
-make all
-make clean
-cd ../
+#cd doc-def/
+#make all
+#make clean
+#cd ../
 
 # get wiki documentation
 
-wget -O Doc/user_guide.html http://www.quantum-espresso.org/wiki/index.php/Printable_Quantum-Espresso_Documentation
-wget -O Doc/developer_man.html http://www.quantum-espresso.org/wiki/index.php/Developer_Manual
+#wget -O Doc/user_guide.html http://www.quantum-espresso.org/wiki/index.php/Printable_Quantum-Espresso_Documentation
+#wget -O Doc/developer_man.html http://www.quantum-espresso.org/wiki/index.php/Developer_Manual
 
 # package using Makefile
 

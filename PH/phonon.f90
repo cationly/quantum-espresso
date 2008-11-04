@@ -17,7 +17,7 @@ PROGRAM phonon
   !
   USE kinds,           ONLY : DP
   USE io_global,       ONLY : stdout, ionode, ionode_id
-  USE control_flags,   ONLY : gamma_only
+  USE control_flags,   ONLY : gamma_only, twfcollect
   USE klist,           ONLY : xk, wk, xqq, lgauss, nks, nkstot        
   USE basis,           ONLY : startingwfc, startingpot, startingconfig
   USE force_mod,       ONLY : force
@@ -282,7 +282,7 @@ PROGRAM phonon
         CALL init_run()
         !
         CALL electrons()
-        !
+        twfcollect=.true.
         CALL close_files()
         !
      END IF
