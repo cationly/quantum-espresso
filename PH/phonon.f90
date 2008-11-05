@@ -282,7 +282,7 @@ PROGRAM phonon
         CALL init_run()
         !
         CALL electrons()
-        twfcollect=.true.
+        twfcollect=.false.
         CALL close_files()
         !
      END IF
