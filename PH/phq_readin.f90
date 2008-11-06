@@ -328,6 +328,7 @@ SUBROUTINE phq_readin()
         CALL errore ('phq_readin', 'no elec. field with metals', 1)
   IF (maxirr.LT.0.OR.maxirr.GT.3 * nat) CALL errore ('phq_readin', ' &
        &Wrong maxirr ', ABS (maxirr) )
+  IF (maxirr.NE.0) CALL infomsg ('phq_readin', 'maxirr no longer implemented')
   IF (MOD (nkstot, 2) .NE.0.AND..NOT.lgamma.and..not.lnscf) &
            CALL errore ('phq_readin', 'k-points are odd', nkstot)
   IF (modenum > 0) THEN

@@ -1,3 +1,8 @@
+Fixed in version 4.0.4:
+
+  *  option maxirr disabled
+
+  *  memory leak in pw_readfile in parallel
 
   *  the phonon code was not working when wf_collect=.true. and
      either ldisp=.true. or lnscf=.true. 

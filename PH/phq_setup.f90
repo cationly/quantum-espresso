@@ -347,7 +347,6 @@ subroutine phq_setup
   !  set maxirr if not already set
   !
   if (maxirr.le.0.or.maxirr.gt.nirr) maxirr = nirr + 1
-  if (niter_ph.lt.maxter) maxirr = 1
   !
   !  set the alpha_mix parameter
   !
