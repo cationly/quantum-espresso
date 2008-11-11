@@ -1072,11 +1072,11 @@ then
 		# test of blas) 
                 if test have_essl -eq 0
                 then
-		   unset ac_cv_search_zggev # clear cached value
+		   unset ac_cv_search_dspev # clear cached value
 		   FFLAGS="$test_fflags"
 		   LDFLAGS="$test_ldflags"
 		   LIBS="$blas_libs"
-		   AC_SEARCH_LIBS(zggev, essl, have_essl=1
+		   AC_SEARCH_LIBS(dspev, essl, have_essl=1
 		  	          lapack_libs="-lessl" 
  				  try_dflags="$try_dflags -D__ESSL")
                 fi
