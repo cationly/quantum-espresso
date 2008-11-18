@@ -1,5 +1,7 @@
 Fixed in version 4.0.4:
 
+  *  problem in FFTW v.3 driver in parallel execution (Davide)
+
   *  option maxirr disabled
 
   *  memory leak in pw_readfile in parallel
@@ -15,7 +17,7 @@ Fixed in version 4.0.4:
 Fixed in version 4.0.3:
 
   * CPV: array qv allocated in newd wasn't deallocated in all cases,
-    leading to either ia crash or a memory leak (Ralph)
+    leading to either a crash or a memory leak (Ralph)
 
   * Task groups bug fix: array tg_rho was not cleared at every k point cycle. 
     This was causing problems with some combinations of "-npool" and "-ntg".
