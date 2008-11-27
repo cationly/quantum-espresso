@@ -1,5 +1,9 @@
 Fixed in version 4.0.4:
 
+  * Structural optimization with external sawtooth potential was not
+    working correctly (electric field disappeared after first run).
+    All versions after october 2005 affected.
+
   *  problem in FFTW v.3 driver in parallel execution (Davide)
 
   *  option maxirr disabled
@@ -37,10 +41,6 @@ Fixed in version 4.0.2:
   * Probably all results for EFG (electric field gradients) were wrong,
     due to an incorrect multiplication of "r" with "alat" inside a loop
     (should have been outside: routine PW/ewald_dipole.f90)
-
-  * Structural optimization with external sawtooth potential was not
-    working correctly (electric field disappeared after first run).
-    All versions after october 2005 affected.
 
   * Calculation with fixed magnetization and nspin=2 (using 2 fermi
     levels) was not working in v. 4.0.1
