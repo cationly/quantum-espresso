@@ -1,3 +1,13 @@
+Fixed in version 4.0.5:
+
+  * calculation of ionic dipole, used for calculations with sawtooth 
+    potential, used wrong reference point assuming the field parallel
+    to z axis (while it can be parallel to any reciprocal basis vector). 
+    All relax calculation in non-orthorombic cells, and all calculations
+    with option tefield and edir/=3, were completely wrong. Non-relax 
+    calculation in the same cathegory were correct, apart from a constant, 
+    but system-dependent, addictive factor in total energy.
+
   * generation of supercells in matdyn was not working (since a long time)
 
   * PWCOND: two more small bug fixed (in CVS since june)
