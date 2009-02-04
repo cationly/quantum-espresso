@@ -486,6 +486,7 @@ subroutine solve_e
   deallocate (aux1)
   deallocate (auxg)
   deallocate (dbecsum)
+  if (noncolin) deallocate(dbecsum_nc)
   deallocate (dvscfout)
   if (doublegrid) deallocate (dvscfins)
   deallocate (dvscfin)
