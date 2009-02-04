@@ -187,6 +187,7 @@ SUBROUTINE do_cond(nodenumber)
      ALLOCATE( tran_tot(nenergy) )
   ENDIF
   IF (nkpts>0) THEN
+     CALL mp_bcast( nkpts, ionode_id )
      CALL mp_bcast( xyk, ionode_id )
      CALL mp_bcast( wkpt, ionode_id )
   ENDIF

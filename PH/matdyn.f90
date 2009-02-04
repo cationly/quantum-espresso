@@ -240,7 +240,7 @@ PROGRAM matdyn
      !!!
      nax_blk = nat_blk
      !!!
-     ALLOCATE ( tau (3, nat), ityp(nat), itau_blk(nat_blk) )
+     ALLOCATE ( tau (3, nat), ityp(nat), itau_blk(nat) )
      !
      IF (readtau) THEN
         CALL read_tau &

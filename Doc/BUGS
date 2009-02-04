@@ -1,3 +1,7 @@
+  * generation of supercells in matdyn was not working (since a long time)
+
+  * PWCOND: two more small bug fixed (in CVS since june)
+
 Fixed in version 4.0.4:
 
   * Structural optimization with external sawtooth potential was not
