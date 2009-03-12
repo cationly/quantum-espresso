@@ -148,7 +148,7 @@
 
 #if defined __PARA
          call mp_barrier()
-         call mpi_gatherv( rhor(1,is), recvcount(me_image), MPI_DOUBLE_PRECISION,        &
+         call mpi_gatherv( rhor(1,is), recvcount(me_image+1), MPI_DOUBLE_PRECISION,        &
      &                     rhodist,recvcount, displs, MPI_DOUBLE_PRECISION,        &
      &                     ionode_id, intra_image_comm, ierr)
          call errore('mpi_gatherv','ierr<>0',ierr)

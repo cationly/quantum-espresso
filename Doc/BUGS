@@ -1,5 +1,7 @@
 Fixed in version 4.0.5:
 
+  * option calwf=1 (CPV with Wannier functions) was not working
+
   * more problems in symmetry analysis in special cases for D_2h symmetry
 
   * various small memory leaks or double allocations in special cases
