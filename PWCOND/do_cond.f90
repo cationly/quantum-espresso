@@ -187,7 +187,6 @@ SUBROUTINE do_cond(nodenumber)
      ALLOCATE( tran_tot(nenergy) )
   ENDIF
   IF (nkpts>0) THEN
-     CALL mp_bcast( nkpts, ionode_id )
      CALL mp_bcast( xyk, ionode_id )
      CALL mp_bcast( wkpt, ionode_id )
   ENDIF
@@ -311,11 +310,13 @@ IF (nkpts==0) THEN
    IF (ionode) THEN
       CALL kpoint_grid( nsym, time_reversal, s, t_rev, bg, npk, &
                         k1ts, k2ts, 0, nk1ts, nk2ts, 1, nkpts, xk, wkpt )
+      call cryst_to_cart(nkpts,xk,bg,-1)
       DO ik=1,nkpts
          xyk(1,ik)=xk(1,ik)
          xyk(2,ik)=xk(2,ik)
       ENDDO
    ENDIF
+   CALL mp_bcast( nkpts, ionode_id )
    CALL mp_bcast( xyk, ionode_id )
    CALL mp_bcast( wkpt, ionode_id )
 ENDIF
