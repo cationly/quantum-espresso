@@ -1,10 +1,11 @@
 !
-! Copyright (C) 2001-2007 Quantum ESPRESSO group
+! Copyright (C) 2001-2007 Quantum-ESPRESSO group
 ! This file is distributed under the terms of the
 ! GNU General Public License. See the file `License'
 ! in the root directory of the present distribution,
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
+#include "f_defs.h"
 !
 !----------------------------------------------------------------------------
 MODULE realus
@@ -15,7 +16,6 @@ MODULE realus
   ! ... module originally written by Antonio Suriano and Stefano de Gironcoli
   ! ... modified by Carlo Sbraccia
   ! ... modified by O. Baris Malcioglu (2008)
-  ! ... modified by P. Umari and G. Stenuit (2009)
   ! ... TODO : Write the k points part
   INTEGER,  ALLOCATABLE :: box(:,:), maxbox(:)
   REAL(DP), ALLOCATABLE :: qsave(:)
@@ -1589,7 +1589,7 @@ MODULE realus
     !COMPLEX(DP), allocatable, dimension(:) :: bt
     !integer :: ir, k
     !
-    REAL(DP), external :: ddot
+    REAL(DP), external :: DDOT
     !
     !
     CALL start_clock( 'calbec_rs' )
@@ -1640,8 +1640,8 @@ MODULE realus
                    ! that dble(psic) corresponds to ibnd, and aimag(psic) to ibnd+1:
                    ! this is the standard way to perform fourier transform in pwscf
                    ! in the gamma_only case
-                   bcr  = ddot( mbia, betasave(ia,ih,:), 1, wr(:) , 1 )
-                   bci  = ddot( mbia, betasave(ia,ih,:), 1, wi(:) , 1 )
+                   bcr  = DDOT( mbia, betasave(ia,ih,:), 1, wr(:) , 1 )
+                   bci  = DDOT( mbia, betasave(ia,ih,:), 1, wi(:) , 1 )
                    ! in the previous two lines the real space integral is performed, using
                    ! few points of the real space mesh only
                    rbecp(ikb,ibnd)   = fac * bcr
@@ -1696,7 +1696,7 @@ MODULE realus
     !COMPLEX(DP), allocatable, dimension(:) :: bt
     !integer :: ir, k
     !
-    REAL(DP), external :: ddot
+    REAL(DP), external :: DDOT
     !
     !
     CALL start_clock( 'calbec_rs' )
@@ -1728,9 +1728,9 @@ MODULE realus
                    iqsp = iqs+mbia-1
                    wr(:) = DBLE ( psic( box_beta(1:mbia,ia) ) )
                    wi(:) = AIMAG( psic( box_beta(1:mbia,ia) ) )
-                   bcr  = ddot( mbia, betasave(ia,ih,:), 1, wr(:) , 1 )
-                   bci  = ddot( mbia, betasave(ia,ih,:), 1, wi(:) , 1 )
-                   becp(ikb,ibnd)   = fac * CMPLX( bcr, bci,kind=DP)
+                   bcr  = DDOT( mbia, betasave(ia,ih,:), 1, wr(:) , 1 )
+                   bci  = DDOT( mbia, betasave(ia,ih,:), 1, wi(:) , 1 )
+                   becp(ikb,ibnd)   = fac * CMPLX( bcr, bci)
                    iqs = iqsp + 1
                    !
                 END DO
@@ -1780,7 +1780,7 @@ MODULE realus
       REAL(DP) :: fac
       REAL(DP), allocatable, dimension(:) :: w1, w2, bcr, bci
       !
-      real(DP), external :: ddot
+      real(DP), external :: DDOT
       !
        
       
@@ -1832,7 +1832,7 @@ MODULE realus
                   DO ir = 1, mbia
                      !
                      iqs = jqs + ir
-                     psic( box_beta(ir,ia) ) = psic(  box_beta(ir,ia) ) + betasave(ia,ih,ir)*CMPLX( w1(ih), w2(ih) ,kind=DP)
+                     psic( box_beta(ir,ia) ) = psic(  box_beta(ir,ia) ) + betasave(ia,ih,ir)*CMPLX( w1(ih), w2(ih) )
                      !
                   END DO
                   !
@@ -1882,7 +1882,7 @@ MODULE realus
       REAL(DP), allocatable, dimension(:) :: bcr, bci
       COMPLEX(DP) , allocatable, dimension(:) :: w1
       !
-      real(DP), external :: ddot
+      real(DP), external :: DDOT
       !
        
       
@@ -1984,7 +1984,7 @@ MODULE realus
   REAL(DP) :: fac
   REAL(DP), allocatable, dimension(:) :: w1, w2, bcr, bci
   ! 
-  real(DP), external :: ddot
+  real(DP), external :: DDOT
   !
   CALL start_clock( 'add_vuspsir' )
   
@@ -2034,7 +2034,7 @@ MODULE realus
                DO ir = 1, mbia
                   ! 
                   iqs = jqs + ir
-                  psic( box_beta(ir,ia) ) = psic(  box_beta(ir,ia) ) + betasave(ia,ih,ir)*CMPLX( w1(ih), w2(ih) ,kind=DP)
+                  psic( box_beta(ir,ia) ) = psic(  box_beta(ir,ia) ) + betasave(ia,ih,ir)*CMPLX( w1(ih), w2(ih) )
                   ! 
                END DO
                   !
@@ -2090,7 +2090,7 @@ MODULE realus
   ! 
   COMPLEX(DP), allocatable, dimension(:) :: w1
   !
-  real(DP), external :: ddot
+  real(DP), external :: DDOT
   !
   CALL start_clock( 'add_vuspsir' )
   
@@ -2250,10 +2250,10 @@ MODULE realus
 !           if (ibnd .eq. nbnd) alpha=(0.d0,0.d0)
 !           
 !           allocate (psic_temp2(npw_k(1)))
-!           call zcopy(npw_k(1),orbital(:, ibnd),1,psic_temp2,1)
-!           call zaxpy(npw_k(1),alpha,orbital(:, ibnd+1),1,psic_temp2,1)
+!           call ZCOPY(npw_k(1),orbital(:, ibnd),1,psic_temp2,1)
+!           call ZAXPY(npw_k(1),alpha,orbital(:, ibnd+1),1,psic_temp2,1)
 !           psic (nls (igk_k(:,1)))=psic_temp2(:)
-!           call zaxpy(npw_k(1),(-2.d0,0.d0)*alpha,orbital(:, ibnd+1),1,psic_temp2,1)
+!           call ZAXPY(npw_k(1),(-2.d0,0.d0)*alpha,orbital(:, ibnd+1),1,psic_temp2,1)
 !           psic (nlsm (igk_k(:,1)))=conjg(psic_temp2(:))
 !           deallocate(psic_temp2)
            
@@ -2281,7 +2281,7 @@ MODULE realus
         if (present(conserved)) then
          if (conserved .eqv. .true.) then
            if (.not. allocated(psic_temp) ) allocate (psic_temp(size(psic))) 
-           call zcopy(size(psic),psic,1,psic_temp,1)
+           call ZCOPY(size(psic),psic,1,psic_temp,1)
          endif
         endif
 
@@ -2371,8 +2371,8 @@ MODULE realus
               DO j = 1, npw_k(1)
                  fp= ( tg_psic( nls(igk_k(j,1)) + ioff ) +  tg_psic( nlsm(igk_k(j,1)) + ioff ) ) * 0.5d0
                  fm= ( tg_psic( nls(igk_k(j,1)) + ioff ) -  tg_psic( nlsm(igk_k(j,1)) + ioff ) ) * 0.5d0
-                 orbital (j, ibnd+idx-1) =  CMPLX( DBLE(fp), AIMAG(fm),kind=DP)
-                 orbital (j, ibnd+idx  ) =  CMPLX(AIMAG(fp),- DBLE(fm),kind=DP)
+                 orbital (j, ibnd+idx-1) =  CMPLX( DBLE(fp), AIMAG(fm))
+                 orbital (j, ibnd+idx  ) =  CMPLX(AIMAG(fp),- DBLE(fm))
               END DO
            ELSE IF( idx + ibnd - 1 == nbnd ) THEN
               DO j = 1, npw_k(1)
@@ -2401,8 +2401,8 @@ MODULE realus
            do j = 1, npw_k(1)
               fp = (psic (nls(igk_k(j,1))) + psic (nlsm(igk_k(j,1))))*0.5d0
               fm = (psic (nls(igk_k(j,1))) - psic (nlsm(igk_k(j,1))))*0.5d0
-              orbital( j, ibnd)   = CMPLX( DBLE(fp), AIMAG(fm),kind=DP)
-              orbital( j, ibnd+1) = CMPLX(AIMAG(fp),- DBLE(fm),kind=DP)
+              orbital( j, ibnd)   = CMPLX( DBLE(fp), AIMAG(fm))
+              orbital( j, ibnd+1) = CMPLX(AIMAG(fp),- DBLE(fm))
            enddo
         else
            do j = 1, npw_k(1)
@@ -2430,9 +2430,9 @@ MODULE realus
     !      fm=(psic(nls(igk_k(ig,1)))&
     !           -psic(nlsm(igk_k(ig,1))))*(0.50d0,0.0d0)
     !      !
-    !      orbital(ig,ibnd)=CMPLX(dble(fp),aimag(fm),dp)
+    !      orbital(ig,ibnd)=cmplx(dble(fp),aimag(fm),dp)
     !      !
-    !      orbital(ig,ibnd+1)=CMPLX(aimag(fp),-dble(fm),dp)
+    !      orbital(ig,ibnd+1)=cmplx(aimag(fp),-dble(fm),dp)
     !      !
     !   enddo
     !   !
@@ -2703,369 +2703,6 @@ MODULE realus
     enddo
     END SUBROUTINE check_fft_orbital_gamma
 
-! NOW start the part added by GWW team
 
     !
-  subroutine adduspos_gamma_r(iw,jw,r_ij,ik,becp_iw,becp_jw)
-  !----------------------------------------------------------------------
-  !
-  !  This routine adds the US term < Psi_iw|r><r|Psi_jw>
-  !  to the array r_ij
-  !  this is a GAMMA only routine (i.e. r_ij is real)
-  !
-  USE kinds,                ONLY : DP
-  USE ions_base,            ONLY : nat, ntyp => nsp, ityp
-  USE gvect,                ONLY : nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, &
-                                   ngm, nl, nlm, gg, g, eigts1, eigts2, &
-                                   eigts3, ig1, ig2, ig3
-  USE lsda_mod,             ONLY : lsda, nspin, current_spin, isk
-  USE uspp,                 ONLY : okvan, becsum, nkb
-  USE uspp_param,           ONLY : upf, lmaxq, nh
-  USE wvfct,                ONLY : wg
-  USE control_flags,        ONLY : gamma_only
-  USE wavefunctions_module, ONLY : psic
-  USE io_global,            ONLY : stdout
-  USE cell_base,            ONLy : omega
-  !
-  USE mp_global,        ONLY : intra_pool_comm
-  USE mp,               ONLY : mp_sum
-  !
-  implicit none
-  !
-  !
-  INTEGER, INTENT(in) :: iw,jw!the states indices
-  REAL(kind=DP), INTENT(inout) :: r_ij(nrxx)!where to add the us term
-  INTEGER, INTENT(in) :: ik!spin index for spin polarized calculations NOT IMPLEMENTED YET
-  REAL(kind=DP), INTENT(in) ::  becp_iw( nkb)!overlap of wfcs with us  projectors
-  REAL(kind=DP), INTENT(in) ::  becp_jw( nkb)!overlap of wfcs with us  projectors
-
-  !     here the local variables
-  !
-
-  integer :: na, nt, nhnt, ir, ih, jh, is , ia, mbia, irb, iqs, sizeqsave
-  INTEGER :: ikb, jkb, ijkb0, np
-  ! counters
-
-  ! work space for rho(G,nspin)
-  ! Fourier transform of q
-
-  if (.not.okvan) return
-  if( .not.gamma_only) then
-     write(stdout,*) ' adduspos_gamma_r is a gamma only routine'
-     stop
-  endif
-
-  ijkb0 = 0
-  do is=1,nspin
-     !
-     DO np = 1, ntyp
-        !
-        iqs = 0
-        !
-        IF ( upf(np)%tvanp ) THEN
-           !
-           DO ia = 1, nat
-              !
-              mbia = maxbox(ia)
-              nt = ityp(ia)
-              nhnt = nh(nt)
-              !
-              IF ( ityp(ia) /= np ) iqs=iqs+(nhnt+1)*nhnt*mbia/2
-              IF ( ityp(ia) /= np ) CYCLE
-              !
-              DO ih = 1, nhnt
-                 !
-                 ikb = ijkb0 + ih
-                 !
-                 DO jh = ih, nhnt
-                    !
-                    jkb = ijkb0 + jh
-                    !
-                    DO ir = 1, mbia
-                       !
-                       irb = box(ir,ia)
-                       iqs = iqs + 1
-                       !
-                       r_ij(irb) = r_ij(irb) + qsave(iqs)*becp_iw(ikb)*becp_jw(jkb)*omega
-                       !
-                       if ( ih /= jh ) then
-                          r_ij(irb) = r_ij(irb) + qsave(iqs)*becp_iw(jkb)*becp_jw(ikb)*omega
-                       endif
-                    ENDDO
-                 ENDDO
-              ENDDO
-              ijkb0 = ijkb0 + nhnt
-              !
-           ENDDO
-           !
-        ELSE
-           !
-           DO na = 1, nat
-              !
-              IF ( ityp(na) == np ) ijkb0 = ijkb0 + nh(np)
-              !
-           END DO
-           !
-        END IF
-     ENDDO
-  enddo
-  !
-  return
-  !
-  end subroutine adduspos_gamma_r
-  !
-  subroutine adduspos_r(r_ij,becp_iw,becp_jw)
-  !----------------------------------------------------------------------
-  !
-  !  This routine adds the US term < Psi_iw|r><r|Psi_jw>
-  !  to the array r_ij
-
-
-  USE kinds,                ONLY : DP
-  USE ions_base,            ONLY : nat, ntyp => nsp, ityp
-  USE gvect,                ONLY : nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, &
-                                   ngm, nl, nlm, gg, g, eigts1, eigts2, &
-                                   eigts3, ig1, ig2, ig3
-  USE lsda_mod,             ONLY : lsda, nspin, current_spin, isk
-  USE uspp,                 ONLY : okvan, becsum, nkb
-  USE uspp_param,           ONLY : upf, lmaxq, nh
-  USE wvfct,                ONLY : wg
-  USE control_flags,        ONLY : gamma_only
-  USE wavefunctions_module, ONLY : psic
-  USE cell_base,            ONLy : omega
-  !
-  implicit none
-  !
-  COMPLEX(kind=DP), INTENT(inout) :: r_ij(nrxx)!where to add the us term
-  COMPLEX(kind=DP), INTENT(in) ::  becp_iw( nkb)!overlap of wfcs with us  projectors
-  COMPLEX(kind=DP), INTENT(in) ::  becp_jw( nkb)!overlap of wfcs with us  projectors
-
-  !     here the local variables
-  !
-  integer :: na, ia, nt, nhnt, ir, ih, jh, is, mbia, irb, iqs
-  INTEGER :: ikb, jkb, ijkb0, np
-  ! counters
-
-  ! work space for rho(G,nspin)
-  ! Fourier transform of q
-
-  if (.not.okvan) return
-
-  ijkb0 = 0
-  do is=1,nspin
-     !
-     DO np = 1, ntyp
-        !
-        iqs = 0
-        !
-        IF ( upf(np)%tvanp ) THEN
-           !
-           DO ia = 1, nat
-              !
-              mbia = maxbox(ia)
-              nt = ityp(ia)
-              nhnt = nh(nt)
-              !
-              IF ( ityp(ia) /= np ) iqs=iqs+(nhnt+1)*nhnt*mbia/2
-              IF ( ityp(ia) /= np ) CYCLE
-              !
-              DO ih = 1, nhnt
-                 !
-                 ikb = ijkb0 + ih
-                 DO jh = ih, nhnt
-                    !
-                    jkb = ijkb0 + jh
-                    !
-                    DO ir = 1, mbia
-                       !
-                       irb = box(ir,ia)
-                       iqs = iqs + 1
-                       !
-                       r_ij(irb) = r_ij(irb) + qsave(iqs)*conjg(becp_iw(ikb))*becp_jw(jkb)*omega
-                       !
-                       if ( ih /= jh ) then
-                          r_ij(irb) = r_ij(irb) + qsave(iqs)*conjg(becp_iw(jkb))*becp_jw(ikb)*omega
-                       endif
-                    ENDDO
-                 ENDDO
-              ENDDO
-              ijkb0 = ijkb0 + nhnt
-              !
-           ENDDO
-           !
-        ELSE
-           !
-           DO na = 1, nat
-              !
-              IF ( ityp(na) == np ) ijkb0 = ijkb0 + nh(np)
-              !
-           END DO
-           !
-        END IF
-     ENDDO
-  enddo
-  !
-  return
-  end subroutine adduspos_r
-  !
-  subroutine adduspos_real(sca,qq_op,becp_iw,becp_jw)
-  !----------------------------------------------------------------------
-  !
-  !  This routine adds the US term < Psi_iw|r><r|Psi_jw>
-  !  to the array r_ij
-
-
-  USE kinds,                ONLY : DP
-  USE ions_base,            ONLY : nat, ntyp => nsp, ityp
-  USE gvect,                ONLY : nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, &
-                                   ngm, nl, nlm, gg, g, eigts1, eigts2, &
-                                   eigts3, ig1, ig2, ig3
-  USE lsda_mod,             ONLY : lsda, nspin, current_spin, isk
-  USE uspp,                 ONLY : okvan, becsum, nkb, qq
-  USE uspp_param,           ONLY : upf, lmaxq, nh, nhm
-  USE wvfct,                ONLY : wg
-  USE control_flags,        ONLY : gamma_only
-  USE wavefunctions_module, ONLY : psic
-  USE cell_base,            ONLY : omega
-  !
-  USE mp_global,            ONLY : intra_pool_comm
-  USE mp,                   ONLY : mp_sum
-  !
-  implicit none
-  !
-  REAL(kind=DP), INTENT(inout) :: sca!where to add the us term
-  REAL(kind=DP), INTENT(in) ::  becp_iw( nkb)!overlap of wfcs with us  projectors
-  REAL(kind=DP), INTENT(in) ::  becp_jw( nkb)!overlap of wfcs with us  projectors
-  REAL(kind=DP), INTENT(in) ::  qq_op(nhm, nhm,nat)!US augmentation charges
-
-  !     here the local variables
-  !
-
-  integer :: na, ia, nhnt, nt, ir, ih, jh, is, mbia
-  INTEGER :: ikb, jkb, ijkb0, np
-  ! counters
-
-  ! work space for rho(G,nspin)
-  ! Fourier transform of q
-
-  if (.not.okvan) return
-
-  ijkb0 = 0
-  do is=1,nspin
-     !
-     DO np = 1, ntyp
-        !
-        IF ( upf(np)%tvanp ) THEN
-           !
-           DO ia = 1, nat
-              !
-              IF ( ityp(ia) /= np ) CYCLE
-              !
-              mbia = maxbox(ia)
-              nt = ityp(ia)
-              nhnt = nh(nt)
-              !
-              DO ih = 1, nhnt
-                 !
-                 ikb = ijkb0 + ih
-                 DO jh = ih, nhnt
-                    !
-                    jkb = ijkb0 + jh
-                    !
-                    sca = sca + qq_op(ih,jh,ia) * becp_iw(ikb)*becp_jw(jkb)
-                    !
-                    if ( ih /= jh ) then
-                       sca = sca + qq_op(jh,ih,ia) * becp_iw(ikb)*becp_jw(jkb)
-                    endif
-                    !
-                 ENDDO
-              ENDDO
-              ijkb0 = ijkb0 + nhnt
-              !
-           ENDDO
-           !
-        ELSE
-           !
-           DO ia = 1, nat
-              !
-              IF ( ityp(ia) == np ) ijkb0 = ijkb0 + nh(np)
-              !
-           END DO
-           !
-        END IF
-     ENDDO
-  enddo
-  !
-  return
-  !
-  end subroutine adduspos_real
-  !
-  subroutine augmentation_qq(op,qq_op)
-  !----------------------------------------------------------------------
-  !
-  ! this routine calculates the augmentaion charghe qq=\int q_ij(r)*op(r)
-  !
-  USE kinds,                ONLY : DP
-  USE ions_base,            ONLY : nat, ntyp => nsp, ityp
-  USE gvect,                ONLY : nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, &
-                                   ngm, nl, nlm, gg, g, eigts1, eigts2, &
-                                   eigts3, ig1, ig2, ig3
-  USE lsda_mod,             ONLY : lsda, nspin, current_spin, isk
-  USE uspp,                 ONLY : okvan, becsum, nkb, qq
-  USE uspp_param,           ONLY : upf, lmaxq, nh, nhm
-  USE wvfct,                ONLY : wg
-  USE control_flags,        ONLY : gamma_only
-  USE wavefunctions_module, ONLY : psic
-  USE cell_base,            ONLY : omega
-  !  USE mp,                   ONLY : mp_sum
-  USE mp,                   ONLY : mp_sum
-  !
-  implicit none
-  !
-  INTEGER :: is, ia, nhnt, na, nt, ih, jh, ir, mbia, irb, iqs
-  REAL(kind=DP) :: sca
-  REAL(kind=DP), INTENT(out) ::  qq_op(nhm, nhm,nat)!US augmentation charges to be calculated
-  REAL(kind=DP), INTENT(in)  ::   op(nrxx)!operator
-
-  qq_op(:,:,:)=0.d0
-  do is=1,nspin
-     !
-     iqs = 0
-     !
-     DO ia = 1, nat
-        !
-        mbia = maxbox(ia)
-        !
-        nt = ityp(ia)
-        !
-        IF ( .NOT. upf(nt)%tvanp ) CYCLE
-        !
-        nhnt = nh(nt)
-        !
-        DO ih = 1, nhnt
-           !
-           DO jh = ih, nhnt
-              !
-              sca = 0.d0
-              DO ir = 1, mbia
-                 !
-                 irb = box(ir,ia)
-                 iqs = iqs + 1
-                 !
-                 sca=sca+op(irb)*qsave(iqs)
-              ENDDO
-              !!!! call mp_sum(sca , intra_pool_comm)
-              call mp_sum(sca)
-              sca=sca/dble(nr1*nr2*nr3)
-              qq_op(ih,jh,ia)=sca
-              qq_op(jh,ih,ia)=sca
-           ENDDO
-        ENDDO
-     ENDDO
-  enddo
-  !
-  return
-  !
-  end subroutine augmentation_qq
-  !
 END MODULE realus

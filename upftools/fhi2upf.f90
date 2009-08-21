@@ -1,11 +1,12 @@
 !
-! Copyright (C) 2001-2006 Quantum ESPRESSO group
+! Copyright (C) 2001-2006 Quantum-espresso group
 ! This file is distributed under the terms of the
 ! GNU General Public License. See the file 'License'
 ! in the root directory of the present distribution,
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
 !
+#include "f_defs.h"
 !---------------------------------------------------------------------
 program fhi2upf  
   !---------------------------------------------------------------------
@@ -13,9 +14,8 @@ program fhi2upf
   !     Convert a pseudopotential file in Fritz-Haber numerical format
   !     either ".cpi" (fhi88pp) or ".fhi" (abinit)
   !     to unified pseudopotential format
-  !     Restrictions:
-  !     - no semicore states
   !     Adapted from the converter written by Andrea Ferretti 
+  !     May or may not work: carefully check what you get
   !
   implicit none
   character(len=256) filein, fileout

@@ -1,10 +1,11 @@
 !
-! Copyright (C) 2001-2007 Quantum ESPRESSO group
+! Copyright (C) 2001-2007 Quantum-ESPRESSO group
 ! This file is distributed under the terms of the
 ! GNU General Public License. See the file `License'
 ! in the root directory of the present distribution,
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
+#include "f_defs.h"
 !
 #define ONE  (1.D0,0.D0)
 #define ZERO (0.D0,0.D0)
@@ -161,9 +162,9 @@ SUBROUTINE update_pot()
      !
      tau (:,:) = tauold (:,:,2)
      !
-     DEALLOCATE( tauold )
-     !
   END IF
+  !
+  DEALLOCATE( tauold )
   !
   ! ... determines the maximum effective order of the extrapolation on the
   ! ... basis of the files that are really available (for the charge density)
@@ -202,8 +203,6 @@ SUBROUTINE update_pot()
   !
   CALL extrapolate_charge( rho_extr )
   !
-  IF( ALLOCATED( tauold ) ) DEALLOCATE( tauold )
-  !
   CALL stop_clock( 'update_pot' )
   !
   RETURN
@@ -236,6 +235,7 @@ SUBROUTINE extrapolate_charge( rho_extr )
   USE io_rho_xml,           ONLY : write_rho, read_rho
   USE paw_variables,        ONLY : okpaw, ddd_paw
   USE paw_onecenter,        ONLY : PAW_potential
+  USE uspp,                 ONLY : becsum
   !
   IMPLICIT NONE
   !
@@ -605,7 +605,7 @@ SUBROUTINE extrapolate_wfcs( wfc_extr )
         IF ( gamma_only ) THEN
            ALLOCATE( rp_m ( nbnd, nbnd ) )
            CALL calbec ( npw, aux, evcold, rp_m )
-           sp_m(:,:) = CMPLX(rp_m(:,:),0.0_DP,kind=DP)
+           sp_m(:,:) = CMPLX(rp_m(:,:),0.0_DP)
            DEALLOCATE( rp_m )
         ELSE IF ( noncolin) THEN
            CALL calbec ( npwx*npol, aux, evcold, sp_m )

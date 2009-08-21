@@ -6,6 +6,7 @@
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
 !
+#include "f_defs.h"
 !---------------------------------------------------------------------
 PROGRAM casino2upf
   !---------------------------------------------------------------------
@@ -87,13 +88,6 @@ END MODULE casino
 SUBROUTINE read_casino(iunps,nofiles)
   !     ----------------------------------------------------------
   ! 
-#ifdef __GFORTRAN
-#define __ALLOCATABLE pointer
-#define __allocated   associated
-#else
-#define __ALLOCATABLE allocatable
-#define __allocated   allocated
-#endif
   USE casino
   USE upf , ONLY : els
   USE kinds
@@ -101,9 +95,12 @@ SUBROUTINE read_casino(iunps,nofiles)
   TYPE :: wavfun_list
      INTEGER :: occ,eup,edwn, nquant, lquant 
      CHARACTER(len=2) :: label
-     REAL*8, __ALLOCATABLE :: wavefunc(:)
+#ifdef __GFORTRAN
+     REAL*8, POINTER :: wavefunc(:)
+#else
+     REAL*8, ALLOCATABLE :: wavefunc(:)
+#endif
      TYPE (wavfun_list), POINTER :: p
-
   END TYPE wavfun_list
 
   TYPE (wavfun_list), POINTER :: mhead
@@ -302,7 +299,11 @@ SUBROUTINE read_casino(iunps,nofiles)
               CYCLE
            END IF
         END IF
-        IF ( __allocated(mtail%wavefunc) ) THEN
+#ifdef __GFORTRAN
+        IF ( ASSOCIATED(mtail%wavefunc) ) THEN
+#else
+        IF ( ALLOCATED(mtail%wavefunc) ) THEN
+#endif
            ALLOCATE(mtail%p)
            mtail=>mtail%p
            NULLIFY(mtail%p)
