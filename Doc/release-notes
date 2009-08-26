@@ -1,5 +1,9 @@
 Fixed in version 4.1.1:
 
+  * small error in the definition of the saw-tooth potential for slab
+    calculations with E-field: the "physical" dimensions of the R-space
+    grid are nr1,nr2,nr3 NOT nrx1,nrx2,nrx3
+
   * Misc compilation problem for: gfortran v.4.1 (casino2upf),
     pathscale 3.2 (mp_base),  xlf 12.1 (buggy compilation of iotk)
 
