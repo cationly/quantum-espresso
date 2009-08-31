@@ -1,5 +1,5 @@
 !
-! Copyright (C) 2001-2007 Quantum ESPRESSO group
+! Copyright (C) 2001-2007 Quantum-ESPRESSO group
 ! This file is distributed under the terms of the
 ! GNU General Public License. See the file `License'
 ! in the root directory of the present distribution,
@@ -134,7 +134,8 @@ CONTAINS
     
     job = ''
     prefix = 'pwscf'
-    tmp_dir = './scratch/'
+    CALL get_env( 'ESPRESSO_TMPDIR', tmp_dir ) 
+    IF ( TRIM( tmp_dir ) == ' ' ) tmp_dir = './scratch/' 
     conv_threshold = 1e-14_dp
     q_gipaw = 0.01_dp
     iverbosity = 0
@@ -170,6 +171,7 @@ CONTAINS
   !-----------------------------------------------------------------------
   SUBROUTINE gipaw_bcast_input
 #ifdef __PARA
+#include "f_defs.h"
     USE mp,            ONLY : mp_bcast
     USE io_files,      ONLY : prefix, tmp_dir
     USE us,            ONLY : spline_ps
@@ -405,7 +407,7 @@ CONTAINS
        END IF
     END DO
     
-    if ( iverbosity > 20 ) then
+    if ( iverbosity > 10 ) then
        ! Write the wave functions and local potentials for debugging/testing
        do nt = 1, ntyp
           do il = 1, paw_recon(nt)%paw_nbeta
@@ -490,7 +492,7 @@ CONTAINS
              CALL simpson( nrc, work, rgrid(nt)%rab(:nrc), &
                   radial_integral_diamagnetic(il1,il2,nt) )
              if (iverbosity > 10) then
-                write(stdout,*) "DIA (NMR) :", nt, l1, l2, &
+                write(stdout,*) "Debug: dia ", l2, il1, il2, &
                      radial_integral_diamagnetic(il1,il2,nt) &
                      * alpha ** 2 * 1e6 * 4
              end if
@@ -511,7 +513,7 @@ CONTAINS
              call simpson( nrc, work, rgrid(nt)%rab(:nrc), &
                   radial_integral_paramagnetic(il1,il2,nt) )
              if (iverbosity > 10) then
-                write(stdout,*) "PARA (NMR):", nt, l1, l2, &
+                write(stdout,*) "Debug: int1 ", l2, il1, il2, &
                      radial_integral_paramagnetic(il1,il2,nt) &
                      * alpha ** 2 * 1e6 * 4
              end if
@@ -538,7 +540,7 @@ CONTAINS
              CALL simpson ( nrc, work, rgrid(nt)%rab(:nrc), &
                   radial_integral_rmc(il1,il2,nt) )
              if (iverbosity > 10) then
-                write(stdout,*) "RMC (SO)  :", nt, l1, l2, &
+                write(stdout,*) "Debug: int2 ", l2, il1, il2, &
                      radial_integral_rmc(il1,il2,nt)
              end if
              
@@ -564,7 +566,7 @@ CONTAINS
              call simpson( nrc, work, rgrid(nt)%rab(:nrc), &
                   radial_integral_diamagnetic_so(il1,il2,nt) )
              if (iverbosity > 10) then
-                write(stdout,*) "DIA (SO)  :", nt, l1, l2, &
+                write(stdout,*) "Debug: int3 ", nt, l2, il1, il2, &
                      radial_integral_diamagnetic_so(il1,il2,nt) * alpha
              end if
              
@@ -578,7 +580,7 @@ CONTAINS
                      / rgrid(nt)%r(j)
              end do
              
-             if ( iverbosity > 20 ) then
+             if ( iverbosity > 1000 ) then
                 if ( l1 == 0 ) then
                    do j = 1, nrc
                       write(90,*) rgrid(nt)%r(j), work(j)*rgrid(nt)%r(j)**2
@@ -589,8 +591,8 @@ CONTAINS
              
              call simpson( nrc,work,rgrid(nt)%rab(:nrc), &
                   radial_integral_paramagnetic_so(il1,il2,nt) )
-             if ( iverbosity > 10 ) then
-                write(stdout,*) "PARA (SO) :", nt, l1, l2, &
+             if ( iverbosity > 100 ) then
+                write(stdout,*) "Debug: int4 ", l2, il1, il2, &
                      radial_integral_paramagnetic_so(il1,il2,nt) * alpha
              end if
              
@@ -676,7 +678,7 @@ CONTAINS
        end do
     end do
     
-    if (iverbosity > 20) then
+    if (iverbosity > 10) then
        write(stdout,'(A)') "lx:"
        write(stdout,'(9F8.5)') lx
        

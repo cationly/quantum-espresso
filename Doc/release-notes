@@ -1,5 +1,9 @@
 Fixed in version 4.1.1:
 
+  * ESPRESSO_TMPDIR is caught by gipaw.x as well
+
+  * phonon calculation could not be performed with local PP 
+
   * small error in the definition of the saw-tooth potential for slab
     calculations with E-field: the "physical" dimensions of the R-space
     grid are nr1,nr2,nr3 NOT nrx1,nrx2,nrx3

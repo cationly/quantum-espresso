@@ -1,10 +1,11 @@
 !
-! Copyright (C) 2001-2008 Quantum ESPRESSO group
+! Copyright (C) 2001-2008 Quantum-ESPRESSO group
 ! This file is distributed under the terms of the
 ! GNU General Public License. See the file `License'
 ! in the root directory of the present distribution,
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
+#include "f_defs.h"
 !
 !----------------------------------------------------------------------------
 SUBROUTINE phq_init()
@@ -78,7 +79,7 @@ SUBROUTINE phq_init()
     ! the argument of the phase
   COMPLEX(DP), ALLOCATABLE :: aux1(:,:)
     ! used to compute alphap
-  COMPLEX(DP), EXTERNAL :: zdotc
+  COMPLEX(DP), EXTERNAL :: ZDOTC
   !
   !
   IF (all_done) RETURN
@@ -93,7 +94,7 @@ SUBROUTINE phq_init()
              xq(2) * tau(2,na) + &
              xq(3) * tau(3,na) ) * tpi
      !        
-     eigqts(na) = CMPLX( COS( arg ), - SIN( arg ) ,kind=DP)
+     eigqts(na) = CMPLX( COS( arg ), - SIN( arg ) )
      !
   END DO
   !
@@ -107,9 +108,13 @@ SUBROUTINE phq_init()
   !
   DO nt = 1, ntyp
      !
-     CALL setlocq( xq, rgrid(nt)%mesh, msh(nt), rgrid(nt)%rab, rgrid(nt)%r,&
+     IF (upf(nt)%tcoulombp) then
+        CALL setlocq_coul ( xq, upf(nt)%zp, tpiba2, ngm, g, omega, vlocq(1,nt))
+     ELSE
+        CALL setlocq( xq, rgrid(nt)%mesh, msh(nt), rgrid(nt)%rab, rgrid(nt)%r,&
                    upf(nt)%vloc(1), upf(nt)%zp, tpiba2, ngm, g, omega, &
                    vlocq(1,nt) )
+     END IF
      !
   END DO
   !
@@ -218,7 +223,7 @@ SUBROUTINE phq_init()
         END DO
      END IF
      DO ibnd=1,nbnd_occ(ikk)
-        eprec (ibnd,ik) = 1.35d0 * zdotc(npwx*npol,evq(1,ibnd),1,aux1(1,ibnd),1)
+        eprec (ibnd,ik) = 1.35d0 * ZDOTC(npwx*npol,evq(1,ibnd),1,aux1(1,ibnd),1)
      END DO
      !
   END DO
