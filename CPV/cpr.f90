@@ -5,6 +5,7 @@
 ! in the root directory of the present distribution,
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
+#include "f_defs.h"
 !
 !----------------------------------------------------------------------------
 SUBROUTINE cprmain( tau_out, fion_out, etot_out )
@@ -622,6 +623,7 @@ SUBROUTINE cprmain( tau_out, fion_out, etot_out )
            !
            CALL  ions_vrescal( tcap, tempw, tempp, taup, &
                                tau0, taum, na, nsp, fion, iforce, pmass, delt )
+           CALL r_to_s( taup, tausp, na, nsp, ainv ) 
            !
         END IF
         !
@@ -894,7 +896,7 @@ SUBROUTINE cprmain( tau_out, fion_out, etot_out )
   !
   IF( tprojwfc ) CALL print_projwfc( c0, lambda, eigr, vkb )
   !
-  IF( iprsta > 1 ) CALL print_lambda( lambda, nbsp, nbsp, 1.D0 )
+  IF( iprsta > 2 ) CALL print_lambda( lambda, nbsp, nbsp, 1.D0 )
   !
   IF (lda_plus_u) DEALLOCATE( forceh )
 
