@@ -1,5 +1,5 @@
 !
-! Copyright (C) 2005 Quantum ESPRESSO group
+! Copyright (C) 2005 Quantum-ESPRESSO group
 ! This file is distributed under the terms of the
 ! GNU General Public License. See the file `License'
 ! in the root directory of the present distribution,
@@ -1624,6 +1624,8 @@ MODULE cp_restart
          DO iss = 1, nspin
             !
             ! ... read matrix lambda to file
+            !
+            cspin = iotk_index( iss )
             !
             ALLOCATE( mrepl( nudx, nudx ) )
             !
