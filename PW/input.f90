@@ -5,6 +5,7 @@
 ! in the root directory of the present distribution,
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
+#include "f_defs.h"
 !
 !----------------------------------------------------------------------------
 SUBROUTINE iosys()
@@ -175,8 +176,7 @@ SUBROUTINE iosys()
   !
   USE wvfct,         ONLY : nbnd_ => nbnd
   !
-  USE fixed_occ,     ONLY : tfixed_occ, f_inp, &
-                            one_atom_occupations_ => one_atom_occupations
+  USE fixed_occ,     ONLY : tfixed_occ, f_inp
   !
   USE path_variables, ONLY : nstep_path, lsteep_des, lquick_min, lbroyden, &
                              llangevin, &
@@ -243,7 +243,7 @@ SUBROUTINE iosys()
                                angle1, angle2, constrained_magnetization,     &
                                B_field, fixed_magnetization, report, lspinorb,&
                                assume_isolated, spline_ps, london, london_s6, &
-                               london_rcut, one_atom_occupations,             &
+                               london_rcut,                                   &
 ! DCC
                                do_ee
   !
@@ -1049,6 +1049,9 @@ SUBROUTINE iosys()
   !
   IF ( lpath ) THEN
      !
+     IF ( io_level <= 0) CALL errore('iosys', &
+        'NEB and SMD do not work with "disk_io" set to "low" or "none"', 1)
+     !
      nstep_path = nstep
      !
      IF ( num_of_images < 2 ) &
@@ -1268,7 +1271,6 @@ SUBROUTINE iosys()
   angle2_   = angle2
   report_   = report
   lambda_   = lambda
-  one_atom_occupations_ = one_atom_occupations
   !
   assume_isolated_ = assume_isolated
   !
@@ -1360,8 +1362,6 @@ SUBROUTINE iosys()
   ncompz_ = ncompz
   cellmin_ = cellmin
   cellmax_ = cellmax
-  !
-  IF (TRIM(occupations) /= 'from_input') one_atom_occupations=.FALSE.
   !
   llondon     = london
   lon_rcut    = london_rcut

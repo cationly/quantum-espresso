@@ -13,6 +13,7 @@ subroutine transmit(ik, ien, tk_out, left_to_right)
 ! and the functions and integrals computed by scatter_forw in
 ! the scattering region.
 !
+#include "f_defs.h"
   use io_global,  ONLY :  stdout
   use io_files,  ONLY :  prefixl, prefixs
   use lsda_mod, only: nspin
@@ -47,7 +48,8 @@ implicit none
     nchan_out = nchanl
   endif
 !--
-
+! electron scattering energy in eV with respect to the Fermi level
+  eev = earr(ien)
 !--
 ! Goes further only if nchan_in, nchan_out <> 0 or
 ! nchan_in <> 0 and nchan_out = 0 but lorb = .t.
@@ -71,7 +73,6 @@ implicit none
     write(stdout,*)
   endif
 
-  eev = earr(ien)
   ntran=4*n2d+npol*(norbs+nocrosl+nocrosr)
 
   allocate( ipiv( ntran ) )
@@ -366,7 +367,7 @@ implicit none
     allocate( vec2( ntran, nchanl ) )
     x1 = (1.d0,0.d0)
     x2 = (0.d0,0.d0)
-    call zgemm('n', 'n', ntran, nchanl, nchanl, x1, vec1, ntran,  &
+    call ZGEMM('n', 'n', ntran, nchanl, nchanl, x1, vec1, ntran,  &
               veceig, nchanl, x2, vec2, ntran)
     write(stdout,*) 'Nchannel, Norbital, projection'
 !---------------------------
@@ -403,7 +404,7 @@ implicit none
      allocate( vec2(ntran,nchan_in) )
      x1 = (1.d0,0.d0)
      x2 = (0.d0,0.d0)
-     call zgemm('n', 'n', ntran, nchan_in, nchan_in, x1, vec1, ntran,  &
+     call ZGEMM('n', 'n', ntran, nchan_in, nchan_in, x1, vec1, ntran,  &
               veceig, nchan_in, x2, vec2, ntran)
 
      call scat_states_plot(ik,ien,norbs,nocrosl,nchan_in,vec2,veceig, &
