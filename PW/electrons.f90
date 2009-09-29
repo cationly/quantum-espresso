@@ -1,10 +1,11 @@
 !
-! Copyright (C) 2001-2006 Quantum ESPRESSO group
+! Copyright (C) 2001-2006 Quantum-ESPRESSO group
 ! This file is distributed under the terms of the
 ! GNU General Public License. See the file `License'
 ! in the root directory of the present distribution,
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
+#include "f_defs.h"
 !
 !----------------------------------------------------------------------------
 SUBROUTINE electrons()
@@ -471,7 +472,10 @@ SUBROUTINE electrons()
      etot = eband + ( etxc - etxcc ) + ewld + ehart + deband + demet + descf +en_el
      IF (okpaw) etot = etot + epaw
      IF (textfor) etot = etot + compute_eextfor()
-     IF ( llondon ) etot = etot + elondon
+     IF ( llondon ) THEN
+        etot = etot + elondon
+        hwf_energy = hwf_energy + elondon
+     END IF
      !
 #if defined (EXX)
      !
