@@ -1,0 +1,111 @@
+
+     Program TDDFPT v.4.2CVS    starts on 17Feb2010 at 16:57:53 
+
+     This program is part of the open-source Quantum ESPRESSO suite
+     for quantum simulation of materials; please acknowledge
+         "P. Giannozzi et al., J. Phys.:Condens. Matter 21 395502 (2009);
+          URL http://www.quantum-espresso.org", 
+     in publications or presentations arising from this work. More details at
+     http://www.quantum-espresso.org/wiki/index.php/Citing_Quantum-ESPRESSO
+
+     Parallel version (MPI), running on     1 processors
+
+     ----------------------------------------
+
+     This is TDDFPT (Time Dependent Density Functional Perturbation Theory)
+
+     Sub Version: BETA 1 
+
+     
+
+     Please cite this project as:  
+
+     ----------------------------------------
+
+     Ultrasoft (Vanderbilt) Pseudopotentials
+     file C.pz-rrkjus.UPF: wavefunction(s)  2S renormalized
+     file H.pz-rrkjus.UPF: wavefunction(s)  1S renormalized
+
+     Planes per process (thick) : nr3 =135 npp = 135 ncplane =26244
+     Planes per process (smooth): nr3s= 90 npps=  90 ncplanes=11664
+ 
+     Proc/  planes cols     G    planes cols    G      columns  G
+     Pool       (dense grid)       (smooth grid)      (wavefct grid)
+        1   135  20369  1815357   90   8121   459173   2029    57327
+ 
+
+     negative rho (up, down):  0.961E-03 0.000E+00
+     Real space initialisation completed
+
+     Real space implementation V.1 D190908
+     Real space initialisation completed
+
+     Lanczos linear response spectrum calculation
+     Number of Lanczos iterations =   1500
+
+     Gamma point algorithm
+     Some files are missing, unable to restart current loop
+     lr_wfcinit_spectrum: finished lr_solve_e
+     Some files are missing, unable to restart current loop
+     Norm of initial Lanczos vectors=     3.847027682527719
+
+     Starting Lanczos loop        1
+
+     Lanczos iteration:        1
+     z1=       1 0.000000000000000E+00 0.000000000000000E+00
+     z1=       2 0.000000000000000E+00 0.000000000000000E+00
+     z1=       3 0.000000000000000E+00 0.000000000000000E+00
+     lr_apply_liouvillian: not applying interaction
+     lr_calc_dens: Charge drift due to real space implementation =  -0.11951E-02
+     lr_apply_liouvillian: applying interaction: normal
+     alpha(00000001)=0.000000000000000E+00
+     beta (00000002)=0.189136399320824E+01
+     gamma(00000002)=0.189136399320824E+01
+     lr_calc_dens: Charge drift due to real space implementation =  -0.13363E-06
+     lr_apply_liouvillian: applying interaction: normal
+     lr_apply_liouvillian: not applying interaction
+
+     Lanczos iteration:        2
+     z1=       1 0.217874397126933E+01 0.000000000000000E+00
+     z1=       2 0.817366673117097E-03 0.000000000000000E+00
+     z1=       3 -.353744149087203E-05 0.000000000000000E+00
+     alpha(00000002)=0.000000000000000E+00
+     beta (00000003)=0.902929107756790E+01
+     gamma(00000003)=0.902929107756790E+01
+     lr_apply_liouvillian: not applying interaction
+     lr_calc_dens: Charge drift due to real space implementation =  -0.23246E-06
+     lr_apply_liouvillian: applying interaction: normal
+
+     Lanczos iteration:        3
+     z1=       1 0.000000000000000E+00 0.000000000000000E+00
+     z1=       2 0.000000000000000E+00 0.000000000000000E+00
+     z1=       3 0.000000000000000E+00 0.000000000000000E+00
+     alpha(00000003)=0.000000000000000E+00
+     beta (00000004)=0.139818158074179E+02
+     gamma(00000004)=0.139818158074179E+02
+     lr_calc_dens: Charge drift due to real space implementation =  -0.12997E-06
+     lr_apply_liouvillian: applying interaction: normal
+     lr_apply_liouvillian: not applying interaction
+
+     Lanczos iteration:        4
+     z1=       1 -.109806547340024E+01 0.000000000000000E+00
+     z1=       2 0.663592925053520E-03 0.000000000000000E+00
+     z1=       3 0.430391597882454E-05 0.000000000000000E+00
+     alpha(00000004)=0.000000000000000E+00
+     beta (00000005)=0.113982024647812E+02
+     gamma(00000005)=0.113982024647812E+02
+     lr_apply_liouvillian: not applying interaction
+     lr_calc_dens: Charge drift due to real space implementation =   0.89601E-07
+     lr_apply_liouvillian: applying interaction: normal
+
+     Lanczos iteration:        5
+     z1=       1 0.000000000000000E+00 0.000000000000000E+00
+     z1=       2 0.000000000000000E+00 0.000000000000000E+00
+     z1=       3 0.000000000000000E+00 0.000000000000000E+00
+     alpha(00000005)=0.000000000000000E+00
+     beta (00000006)=0.153992333763305E+02
+     gamma(00000006)=0.153992333763305E+02
+     lr_calc_dens: Charge drift due to real space implementation =   0.13203E-06
+     lr_apply_liouvillian: applying interaction: normal
+     lr_apply_liouvillian: not applying interaction
+
