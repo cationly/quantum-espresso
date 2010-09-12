@@ -8,6 +8,7 @@ default :
 	@echo '  pw           basic code for scf, structure optimization, MD'
 	@echo '  cp           CP code: CP MD with ultrasoft pseudopotentials'
 	@echo '  ph           phonon code'
+	@echo '  neb          neb code'
 	@echo '  tddfpt       time dependent dft code'
 	@echo '  pp           postprocessing programs'
 	@echo '  gamma        Gamma-only version of phonon code'
@@ -51,6 +52,11 @@ ph : bindir mods libs pw
 	( cd PH ; if test "$(MAKE)" = "" ; then make $(MFLAGS) TLDEPS= all ; \
 	else $(MAKE) $(MFLAGS) TLDEPS= all ; fi ) ; fi
 
+neb : bindir mods liblapack libblas libs libiotk pw eelib
+	if test -d NEB ; then \
+	( cd NEB ; if test "$(MAKE)" = "" ; then make $(MFLAGS) TLDEPS= all ; \
+	else $(MAKE) $(MFLAGS) TLDEPS= all ; fi ) ; fi
+
 tddfpt : bindir mods libs pw ph
 	if test -d TDDFPT ; then \
 	( cd TDDFPT ; if test "$(MAKE)" = "" ; then make $(MFLAGS) TLDEPS= all ; \
@@ -81,7 +87,7 @@ vdw : bindir mods libs pw ph pp
 	( cd VdW ; if test "$(MAKE)" = "" ; then make $(MFLAGS) TLDEPS= all ; \
 	else $(MAKE) $(MFLAGS) TLDEPS= all ; fi ) ; fi
 
-acfdt : bindir mods libs pw
+acfdt : bindir mods libs pw ph
 	if test -d ACFDT ; then \
 	( cd ACFDT ; if test "$(MAKE)" = "" ; then make $(MFLAGS) TLDEPS= all ; \
 	else $(MAKE) $(MFLAGS) TLDEPS= all ; fi ) ; fi
@@ -121,7 +127,7 @@ xspectra : bindir mods libs pw pp gipaw
 	( cd XSpectra ; if test "$(MAKE)" = "" ; then make $(MFLAGS) TLDEPS= all ; \
 	else $(MAKE) $(MFLAGS) TLDEPS= all ; fi ) ; fi
 
-pwall : pw ph pp gamma pwcond d3 vdw tools
+pwall : pw neb ph pp gamma pwcond d3 vdw tools acfdt
 all   : pwall cp ld1 upf gww tddfpt
 
 ###########################################################
@@ -208,7 +214,7 @@ links : bindir
 clean :
 	touch make.sys 
 	for dir in \
-		CPV D3 Gamma Modules PH PP PW PWCOND VdW EE \
+		CPV D3 Gamma Modules PH PP PW PWCOND VdW ACFDT EE \
 		atomic clib flib pwtools upftools iotk GIPAW XSpectra \
 		dev-tools GWW extlibs plugins TDDFPT \
 	; do \

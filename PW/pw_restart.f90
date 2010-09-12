@@ -81,7 +81,7 @@ MODULE pw_restart
       USE klist,                ONLY : nks, nkstot, xk, ngk, wk, qnorm, &
                                        lgauss, ngauss, degauss, nelec, &
                                        two_fermi_energies, nelup, neldw
-      USE gvect,                ONLY : nr1, nr2, nr3, nrx1, nrx2, ngm, ngm_g, &
+      USE gvect,                ONLY : nr1, nr2, nr3, ngm, ngm_g, &
                                        g, ig1, ig2, ig3, ecutwfc, dual
       USE basis,                ONLY : natomwfc
       USE gsmooth,              ONLY : nr1s, nr2s, nr3s, ngms_g
@@ -114,6 +114,7 @@ MODULE pw_restart
       USE exx,                  ONLY : x_gamma_extrapolation, nq1, nq2, nq3, &
                                        exxdiv_treatment, yukawa, ecutvcut
 #endif
+      USE cellmd,               ONLY : lmovecell, cell_factor 
 
       !
       IMPLICIT NONE
@@ -328,6 +329,7 @@ MODULE pw_restart
          !
          CALL write_cell( ibrav, symm_type, celldm, alat, &
                           at(:,1), at(:,2), at(:,3), bg(:,1), bg(:,2), bg(:,3) )
+         IF (lmovecell) CALL write_moving_cell(lmovecell, cell_factor)
          !
 !-------------------------------------------------------------------------------
 ! ... IONS
@@ -1421,6 +1423,7 @@ MODULE pw_restart
       USE printout_base, ONLY: title
       USE cell_base, ONLY : ibrav, alat, symm_type, at, bg, celldm
       USE cell_base, ONLY : tpiba, tpiba2, omega
+      USE cellmd,    ONLY : lmovecell, cell_factor
       !
       IMPLICIT NONE
       !
@@ -1524,6 +1527,12 @@ MODULE pw_restart
          !
          CALL iotk_scan_end( iunpun, "CELL" )
          !
+         CALL iotk_scan_begin( iunpun, "MOVING_CELL", found=lmovecell )
+         IF (lmovecell) THEN
+            CALL iotk_scan_dat( iunpun, "CELL_FACTOR", cell_factor)
+            CALL iotk_scan_end( iunpun, "MOVING_CELL"  )
+         END IF
+         !
          CALL iotk_close_read( iunpun )
          !
       END IF
@@ -1537,6 +1546,12 @@ MODULE pw_restart
       CALL mp_bcast( omega,     ionode_id, intra_image_comm )
       CALL mp_bcast( at,        ionode_id, intra_image_comm )
       CALL mp_bcast( bg,        ionode_id, intra_image_comm )
+      CALL mp_bcast( lmovecell, ionode_id, intra_image_comm )
+      IF (lmovecell) THEN
+         CALL mp_bcast( cell_factor,  ionode_id, intra_image_comm )
+      ELSE
+         cell_factor=1.0_DP
+      END IF
       !
       title = ' '
       !
@@ -2424,7 +2439,7 @@ MODULE pw_restart
       USE lsda_mod,       ONLY : lsda, nspin
       USE fixed_occ,      ONLY : tfixed_occ, f_inp
       USE ktetra,         ONLY : ntetra, tetra, ltetra
-      USE klist,          ONLY : lgauss, ngauss, degauss
+      USE klist,          ONLY : lgauss, ngauss, degauss, smearing
       USE electrons_base, ONLY : nupdwn 
       USE wvfct,          ONLY : nbnd
       !
@@ -2458,6 +2473,19 @@ MODULE pw_restart
          IF ( lgauss ) THEN
             !
             CALL iotk_scan_dat( iunpun, "SMEARING_TYPE", ngauss )
+            SELECT CASE (ngauss )
+            CASE (0)
+               smearing = 'gaussian'
+            CASE (1)
+               smearing = 'Methfessel-Paxton'
+            CASE (-1)
+               smearing = 'Marzari-Vanderbilt'
+            CASE (-99)
+               smearing = 'Fermi-Dirac'
+            CASE DEFAULT
+                 CALL errore('read_occupations',&
+                              'wrong smearing index', abs(1000+ngauss) )
+            END SELECT
             !
             CALL iotk_scan_dat( iunpun, "SMEARING_PARAMETER", degauss )
             !

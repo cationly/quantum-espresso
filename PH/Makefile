@@ -34,6 +34,7 @@ cgsolve_all.o \
 cgsolve_all_imfreq.o \
 ch_psi_all.o \
 check_initial_status.o \
+check_q_points_sym.o \
 check_restart_recover.o \
 clean_pw_ph.o \
 clinear.o \
@@ -188,7 +189,7 @@ QEMODS = ../Modules/libqemod.a
 
 TLDEPS= bindir mods libs pw
 
-all : tldeps libph.a ph.x dynmat.x matdyn.x q2r.x lambda.x
+all : tldeps libph.a ph.x dynmat.x matdyn.x q2r.x lambda.x fqha.x
 
 ph.x : phonon.o libph.a $(PWOBJS) $(LIBOBJS)
 	$(LD) $(LDFLAGS) -o ph.x phonon.o libph.a \
@@ -214,6 +215,9 @@ lambda.x : lambda.o $(PWOBJS) $(QEMODS) $(LIBOBJS)
 	$(LD) $(LDFLAGS) -o $@ lambda.o \
                  $(PWOBJS) $(QEMODS) $(LIBOBJS) $(LIBS)
 	- ( cd ../bin ; ln -fs ../PH/$@ . )
+
+fqha.o :
+	$(MPIF90) $(FFLAGS_NOOPT) -c fqha.f90
 
 fqha.x : fqha.o $(PWOBJS) $(QEMODS) $(LIBOBJS)
 	$(LD) $(LDFLAGS) -o $@ fqha.o \

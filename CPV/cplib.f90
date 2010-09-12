@@ -203,8 +203,8 @@ END FUNCTION
       USE mp,                 ONLY: mp_sum
       USE mp_global,          ONLY: intra_image_comm
       USE uspp_param,         ONLY: upf
-      USE grid_dimensions,    ONLY: nr1, nr2, nr3, nr1x, nr2x, nr3x
-      USE cp_interfaces,      ONLY: fwfft
+      USE grid_dimensions,    ONLY: nr1, nr2, nr3
+      USE fft_interfaces,     ONLY: fwfft
       USE fft_base,           ONLY: dfftp
 
       IMPLICIT NONE
@@ -593,7 +593,7 @@ END FUNCTION
       !
       kmax = i - 1
       !
-!$omp parallel default(shared), private( temp, k, ig )
+!$omp parallel default(shared), private( temp, k, ig, inl )
 
       ALLOCATE( temp( ngw ) )
 
@@ -609,17 +609,10 @@ END FUNCTION
          ENDIF
       END DO
 !$omp end do
-
-      DEALLOCATE( temp )
-
-!$omp end parallel
-
-      CALL mp_sum( csc( 1:kmax ), intra_image_comm )
-
-      ALLOCATE( temp( ngw ) )
       !
       !     calculate bec(i)=<cp(i)|beta>
       !
+!$omp do
       DO inl=1,nhsavb
          DO ig=1,ngw
             temp(ig)=cp(1,ig,i)* DBLE(betae(ig,inl))+             &
@@ -628,11 +621,18 @@ END FUNCTION
          bec(inl,i)=2.d0*SUM(temp)
          IF (gstart == 2) bec(inl,i)= bec(inl,i)-temp(1)
       END DO
+!$omp end do
 
+      DEALLOCATE( temp )
+
+!$omp end parallel
+
+      CALL mp_sum( csc( 1:kmax ), intra_image_comm )
       CALL mp_sum( bec( 1:nhsavb, i ), intra_image_comm )
 !
 !     calculate csc(k)=<cp(i)|S|cp(k)>,  k<i
 !
+!$omp parallel do default(shared), private( k, is, iv, jv, ia, inl, jnl, rsum )
       DO k=1,kmax
          IF (ispin(i).EQ.ispin(k)) THEN
             rsum=0.d0
@@ -652,6 +652,7 @@ END FUNCTION
             csc(k)=csc(k)+rsum
          ENDIF
       END DO
+!$omp end parallel do
 !
 !     orthogonalized cp(i) : |cp(i)>=|cp(i)>-\sum_k<i csc(k)|cp(k)>
 !
@@ -663,7 +664,6 @@ END FUNCTION
          END DO
       END DO
 
-      DEALLOCATE( temp )
 !
       RETURN
       END SUBROUTINE gracsc
@@ -807,7 +807,10 @@ END FUNCTION
       REAL(DP) :: anorm, cscnorm
       REAL(DP), ALLOCATABLE :: csc( : )
       INTEGER :: i,k
-      EXTERNAL cscnorm
+      EXTERNAL :: cscnorm
+      REAL(DP), PARAMETER :: one  =  1.d0
+      REAL(DP), PARAMETER :: mone = -1.d0
+
 !
       CALL start_clock( 'gram' )
 
@@ -819,9 +822,9 @@ END FUNCTION
          !
          ! calculate orthogonalized cp(i) : |cp(i)>=|cp(i)>-\sum_k<i csc(k)|cp(k)>
          !
-         DO k = 1, i - 1
-            CALL daxpy( 2*ngw, -csc(k), cp(1,k), 1, cp(1,i), 1 )
-         END DO
+         IF( i > 1 ) &
+            CALL dgemv( 'N', 2*ngw, i-1, mone, cp(1,1), 2*ngwx, csc(1), 1, one, cp(1,i), 1 )
+
          anorm = cscnorm( bec, nkbx, cp, ngwx, i, n )
          CALL dscal( 2*ngw, 1.0d0/anorm, cp(1,i), 1 )
          !
@@ -996,7 +999,7 @@ END FUNCTION
       USE control_flags,            ONLY: iprint, thdyn, tfor, tprnfor
       USE mp,                       ONLY: mp_sum
       USE mp_global,                ONLY: intra_image_comm
-      USE cp_interfaces,            ONLY: invfft
+      USE fft_interfaces,           ONLY: invfft
       USE fft_base,                 ONLY: dfftb
 !
       IMPLICIT NONE
@@ -1793,6 +1796,7 @@ END FUNCTION
 !     Requires on input: c=psi, bec=<c|beta>, rhoup(r), rhodw(r)
 !     Assumes real psi, with only half G vectors.
 !
+      USE kinds, only: dp
       USE electrons_base, ONLY: nx => nbspx, n => nbsp, iupdwn, nupdwn, f, nel, nspin
       USE io_global, ONLY: stdout
       USE mp_global, ONLY: intra_image_comm
@@ -1809,12 +1813,12 @@ END FUNCTION
 !
       IMPLICIT NONE
 ! input
-      REAL(8) bec(nhsa,n), rhor(nnr,nspin)
-      COMPLEX(8) c(ngw,nx)
+      REAL(dp) bec(nhsa,n), rhor(nnr,nspin)
+      COMPLEX(dp) c(ngw,nx)
 ! local variables
       INTEGER nup, ndw, ir, i, j, jj, ig, ia, is, iv, jv, inl, jnl
-      REAL(8) spin0, spin1, spin2, fup, fdw
-      REAL(8), ALLOCATABLE:: overlap(:,:), temp(:)
+      REAL(dp) spin0, spin1, spin2, fup, fdw
+      REAL(dp), ALLOCATABLE:: overlap(:,:), temp(:)
       LOGICAL frac
 !
 !
@@ -1943,10 +1947,8 @@ END FUNCTION
       USE cell_base,          ONLY: a1, a2, a3, tpiba2, h, ainv
       USE reciprocal_vectors, ONLY: gstart, g, gx
       USE recvecs_indexes,    ONLY: np, nm
-      USE grid_dimensions,    ONLY: nr1, nr2, nr3, &
-                                    nr1x, nr2x, nr3x, nnr => nnrx
-      USE smooth_grid_dimensions, ONLY: nr1s, nr2s, nr3s, &
-                                        nr1sx, nr2sx, nr3sx, nnrsx
+      USE grid_dimensions,    ONLY: nr1, nr2, nr3, nnr => nnrx
+      USE smooth_grid_dimensions, ONLY: nnrsx
       USE electrons_base,   ONLY: nspin
       USE constants,        ONLY: pi, fpi, au_gpa
       USE energies,         ONLY: etot, eself, enl, ekin, epseu, esr, eht, exc, eextfor 
@@ -1961,11 +1963,11 @@ END FUNCTION
       USE funct,            ONLY: dft_is_meta
       USE pres_ai_mod,      ONLY: abivol, abisur, v_vol, P_ext, volclu,  &
                                   Surf_t, surfclu
-      USE cp_interfaces,    ONLY: fwfft, invfft, self_vofhar
+      USE fft_interfaces,   ONLY: fwfft, invfft
       USE sic_module,       ONLY: self_interaction, sic_epsilon, sic_alpha
       USE energies,         ONLY: self_exc, self_ehte
       USE cp_interfaces,    ONLY: pseudo_stress, compute_gagb, stress_hartree, &
-                                  add_drhoph, stress_local, force_loc
+                                  add_drhoph, stress_local, force_loc, self_vofhar
       USE fft_base,         ONLY: dfftp, dffts
       USE ldau_cp,          ONLY: e_hubbard
       USE step_penalty,     ONLY: e_pen

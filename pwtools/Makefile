@@ -3,7 +3,8 @@
 include ../make.sys
 
 # location of needed modules
-MODFLAGS= $(MOD_FLAG)../iotk/src $(MOD_FLAG)../Modules $(MOD_FLAG)../PW $(MOD_FLAG). 
+MODFLAGS= $(MOD_FLAG)../iotk/src $(MOD_FLAG)../Modules \
+	  $(MOD_FLAG)../PW $(MOD_FLAG). 
 
 PWOBJS = ../PW/libpw.a
 QEMODS = ../Modules/libqemod.a
@@ -11,7 +12,7 @@ QEMODS = ../Modules/libqemod.a
 TLDEPS= bindir mods libs pw
 
 all : tldeps band_plot.x dist.x ev.x kpoints.x \
-      path_int.x pwi2xsf.x bands_FS.x kvecs_FS.x
+      pwi2xsf.x bands_FS.x kvecs_FS.x
 
 band_plot.x : band_plot.o $(LIBOBJS)
 	$(LD) $(LDFLAGS) -o $@ band_plot.o $(QEMODS) $(LIBOBJS) $(LIBS)
@@ -22,19 +23,14 @@ dist.x : dist.o $(PWOBJS) $(QEMODS) $(LIBOBJS)
 		dist.o $(PWOBJS) $(QEMODS) $(LIBOBJS) $(LIBS)
 	- ( cd ../bin ; ln -fs ../pwtools/$@ . )
 
-ev.x : ev.o $(PWOBJS) $(QEMODS) $(LIBOBJS)
+ev.x : ev.o ev_xml.o $(PWOBJS) $(QEMODS) $(LIBOBJS)
 	$(LD) $(LDFLAGS) -o $@ \
-		ev.o $(PWOBJS) $(QEMODS) $(LIBOBJS) $(LIBS)
+		ev.o ev_xml.o $(PWOBJS) $(QEMODS) $(LIBOBJS) $(LIBS)
 	- ( cd ../bin ; ln -fs ../pwtools/$@ . )
 
 kpoints.x : kpoints.o $(PWOBJS) $(QEMODS) $(LIBOBJS)
 	$(LD) $(LDFLAGS) -o $@ \
 		kpoints.o $(PWOBJS) $(QEMODS) $(LIBOBJS) $(LIBS)
-	- ( cd ../bin ; ln -fs ../pwtools/$@ . )
-
-path_int.x : path_int.o $(PWOBJS) $(QEMODS) $(LIBOBJS)
-	$(LD) $(LDFLAGS) -o $@ \
-		path_int.o $(PWOBJS) $(QEMODS) $(LIBOBJS) $(LIBS)
 	- ( cd ../bin ; ln -fs ../pwtools/$@ . )
 
 pwi2xsf.x : pwi2xsf.o $(PWOBJS) $(QEMODS) $(LIBOBJS)

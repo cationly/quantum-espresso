@@ -146,15 +146,14 @@ SUBROUTINE compute_vsgga( rhoout, grho, vsgga )
      !
   END DO
   !
-  ALLOCATE( dh( nrxx ) )    
+  ALLOCATE( dh( nrxx ) )
   !
   ! ... second term of the gradient correction :
   ! ... \sum_alpha (D / D r_alpha) ( D(rho*Exc)/D(grad_alpha rho) )
   !
   DO is = 1, nspin_gga
      !
-     CALL grad_dot( nrx1, nrx2, nrx3, nr1, nr2, nr3, &
-                    nrxx, h(1,1,is), ngm, g, nl, alat, dh )
+     CALL grad_dot( nrxx, h(1,1,is), ngm, g, nl, alat, dh )
      !
      vaux(:,is) = vaux(:,is) - dh(:)
      !

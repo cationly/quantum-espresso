@@ -24,7 +24,7 @@ program fqha
   !
   de = 0d0
   do i=1,ndivx
-     ! nu(i) = frequencies (cm^{-1}), dos(i) in states/cm^{-1} 
+     ! nu(i) = frequencies (cm^{-1}), dos(i) in states/cm^{-1}
      read(1,*,end=10,err=20) nu(i),dos(i)
       if ( nu(i) < -1.d0 ) then
          stop ' wrong grid: omega < 0'
@@ -33,18 +33,19 @@ program fqha
       end if
       if ( i > 1 ) then
          de = nu(i) - nu(i-1)
-      else if ( i > 2 ) then
-         de_ = nu(i) - nu(i-1)
-         if ( abs(de - de_) > 1.0d-4 ) stop ' wrong grid: not uniform' 
+         if ( i > 2 ) then
+            de_ = nu(i) - nu(i-1)
+            if ( abs(de - de_) > 1.0d-4 ) stop ' wrong grid: not uniform'
+         end if
       end if
+      ndiv=i
   enddo
   read(1,*,end=10,err=20) nu_,dos_
   write(*,"('File read only up to line # ',i5)") ndivx
 10 close(1)
-  ndiv=i-1
   write(*,"('Read ',i5,' lines; Delta e (cm^-1) =',f10.6)") ndiv,de
   ! zero point energy : \sum (\hbar\omega/2) g(omega) d\omega
-  F0 = 0.5 * de * dot_product ( dos(1:ndiv), nu(1:ndiv) ) 
+  F0 = 0.5 * de * dot_product ( dos(1:ndiv), nu(1:ndiv) )
   ! result is in cm^{-1}, bring it to Ry
   F0 = F0 / 8065.5d0 / 13.6058d0
   ! normalization check: \sum g(omega) d\omega = 3*Nat
@@ -52,7 +53,7 @@ program fqha
   write(*,"('Check: 3*Nat = ',f8.4,5x'zero-point energy (Ry)=',f15.8)") norm,F0
   write (*,"('Output file for the Free energy >>> ',$)")
   read(*,'(a)') filename
-  if ( filename /= '') then
+  if ( filename == '') then
      filename = 'fqha.out'
      write(*,"(' output to file ',a)") trim(filename)
   end if
@@ -80,6 +81,6 @@ program fqha
   go to 1
 20 close(1)
   !
-  stop 
+  stop
 end program fqha
 !

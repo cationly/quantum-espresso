@@ -10,7 +10,7 @@ PROGRAM X_Spectra
   USE kinds, ONLY : DP
   USE constants,       ONLY : rytoev,pi,fpi
   USE io_global,       ONLY : stdout,ionode,ionode_id   ! Modules/io_global.f90
-  USE io_files,        ONLY : prefix, tmp_dir, diropn
+  USE io_files,        ONLY : prefix, tmp_dir
   USE parser,          ONLY :  read_line
   USE cell_base,       ONLY : bg, at, celldm
   USE parameters,      ONLY : ntypx,lmaxx,lqmax
@@ -1637,7 +1637,6 @@ SUBROUTINE lanczos (a,b,psi,ncalcv, terminator)
   USE wvfct,  ONLY:  npwx,nbndx, nbnd,npw,igk,g2kin
   !USE wavefunctions_module, ONLY : psic
   USE becmod, ONLY:becp
-  USE gsmooth,  ONLY : nls, nr1s, nr2s, nr3s, nrx1s, nrx2s, nrx3s, nrxxs
   USE uspp,   ONLY : vkb, nkb
   USE cell_base, ONLY:omega
   USE xspectra, ONLY : xniter, xnepoint, xcheck_conv,xnitermax,xemin,xemax,xgamma,xerror
@@ -1824,7 +1823,6 @@ SUBROUTINE lanczos_uspp (a,b,psi,ncalcv, terminator)
   USE wvfct,  ONLY:  npwx,nbndx, nbnd,npw,igk,g2kin
   !USE wavefunctions_module, ONLY : psic
   USE becmod, ONLY: becp, calbec
-  USE gsmooth,  ONLY : nls, nr1s, nr2s, nr3s, nrx1s, nrx2s, nrx3s, nrxxs
   USE uspp,   ONLY : vkb, nkb
   USE cell_base, ONLY:omega
   USE xspectra, ONLY : xniter, xnepoint,xcheck_conv,xnitermax,xemin,xemax,xgamma,xerror
@@ -3330,7 +3328,7 @@ END SUBROUTINE write_status_of_the_code
 
 !<CG>
 SUBROUTINE verify_hpsi
-  USE io_files,         ONLY : nwordwfc, iunwfc
+  USE io_files,         ONLY : nwordwfc, iunwfc, diropn
   USE io_global,        ONLY : stdout     ! Modules/io_global.f90
   USE kinds,            ONLY : DP
   USE parameters,       ONLY : ntypx

@@ -26,6 +26,16 @@ MODULE read_namelists_module
   !
   PUBLIC :: read_namelists, sm_not_set
   !
+  ! ... modules needed by read_xml.f90
+  !
+  PUBLIC :: control_defaults, system_defaults, ee_defaults, &
+       electrons_defaults, wannier_ac_defaults, ions_defaults, &
+       cell_defaults, press_ai_defaults, wannier_defaults, control_bcast, &
+       system_bcast, ee_bcast, electrons_bcast, ions_bcast, cell_bcast, &
+       press_ai_bcast, wannier_bcast, wannier_ac_bcast, control_checkin, &
+       system_checkin, electrons_checkin, ions_checkin, cell_checkin, &
+       wannier_checkin, wannier_ac_checkin, fixval
+  !
   !  ... end of module-scope declarations
   !
   !  ----------------------------------------------
@@ -1329,15 +1339,6 @@ MODULE read_namelists_module
              CALL infomsg( sub_name ,' nosym_evc not implemented in CP ')
           IF( noinv ) &
              CALL infomsg( sub_name ,' noinv not implemented in CP ')
-       END IF
-       !
-       ! ... non collinear check
-       !
-       IF ( noncolin ) THEN
-          !
-          IF ( diagonalization == 'cg' ) &
-             CALL errore( sub_name ,' cg not allowed with noncolin ', 1 )
-          !
        END IF
        !
        ! ... control on SIC variables

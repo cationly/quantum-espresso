@@ -1,5 +1,5 @@
 !
-! Copyright (C) 2002-2005 FPMD-CPV groups
+! Copyright (C) 2002-2010 Quantum ESPRESSO group
 ! This file is distributed under the terms of the
 ! GNU General Public License. See the file `License'
 ! in the root directory of the present distribution,
@@ -41,9 +41,6 @@
 
    PUBLIC :: runcp_uspp
    PUBLIC :: runcp_uspp_force_pairing
-
-   PUBLIC :: invfft
-   PUBLIC :: fwfft
 
    PUBLIC :: eigs
    PUBLIC :: fermi_energy
@@ -363,30 +360,6 @@
    END INTERFACE
 
 
-   INTERFACE invfft
-      SUBROUTINE invfft_x( grid_type, f, dfft, ia )
-         USE fft_types,  only: fft_dlay_descriptor
-         USE kinds,      ONLY: DP
-         IMPLICIT NONE
-         INTEGER, OPTIONAL, INTENT(IN) :: ia
-         CHARACTER(LEN=*),  INTENT(IN) :: grid_type
-         TYPE(fft_dlay_descriptor), INTENT(IN) :: dfft
-         COMPLEX(DP) :: f(:)
-      END SUBROUTINE
-   END INTERFACE
-
-   INTERFACE fwfft
-      SUBROUTINE fwfft_x( grid_type, f, dfft )
-         USE fft_types,  only: fft_dlay_descriptor
-         USE kinds,      ONLY: DP
-         IMPLICIT NONE
-         CHARACTER(LEN=*), INTENT(IN) :: grid_type
-         TYPE(fft_dlay_descriptor), INTENT(IN) :: dfft
-         COMPLEX(DP) :: f(:)
-      END SUBROUTINE
-   END INTERFACE
-
-
    INTERFACE eigs
       SUBROUTINE cp_eigs_x( nfi, lambdap, lambda )
          USE kinds,            ONLY: DP
@@ -419,7 +392,7 @@
 
    INTERFACE ortho
       SUBROUTINE ortho_cp &
-         ( eigr, cp, phi, ngwx, x0, descla, diff, iter, ccc, bephi, becp, nbsp, nspin, nupdwn, iupdwn)
+         ( eigr, cp, phi, ngwx, x0, descla, diff, iter, ccc, bephi, becp_dist, nbsp, nspin, nupdwn, iupdwn)
          USE kinds,          ONLY: DP
          USE ions_base,      ONLY: nat
          USE uspp,           ONLY: nkb
@@ -431,13 +404,14 @@
          COMPLEX(DP) :: cp(ngwx,nbsp), phi(ngwx,nbsp), eigr(ngwx,nat)
          REAL(DP)    :: x0( :, :, : ), diff, ccc
          INTEGER     :: iter
-         REAL(DP)    :: bephi(:,:), becp(:,:)
+         REAL(DP)    :: bephi(:,:)
+         REAL(DP)    :: becp_dist(:,:)
       END SUBROUTINE
    END INTERFACE
 
    INTERFACE ortho_gamma
       SUBROUTINE ortho_gamma_x &
-         ( iopt, cp, ngwx, phi, becp, qbecp, nkbx, bephi, qbephi, &
+         ( iopt, cp, ngwx, phi, becp_dist, qbecp, nkbx, bephi, qbephi, &
            x0, nx0, descla, diff, iter, n, nss, istart )
          USE kinds,          ONLY: DP
          USE descriptors,    ONLY: descla_siz_
@@ -446,7 +420,8 @@
          INTEGER,  INTENT(IN)  :: ngwx, nkbx, nx0
          INTEGER,  INTENT(IN)  :: n, nss, istart
          COMPLEX(DP) :: phi( ngwx, n ), cp( ngwx, n )
-         REAL(DP)    :: bephi( :, : ), becp( :, : )
+         REAL(DP)    :: bephi( :, : )
+         REAL(DP)    :: becp_dist(:,:)
          REAL(DP)    :: qbephi( :, : ), qbecp( :, : )
          REAL(DP)    :: x0( nx0, nx0 )
          INTEGER,  INTENT(IN)  :: descla( descla_siz_ )

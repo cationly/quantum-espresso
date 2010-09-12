@@ -6,7 +6,7 @@
 ! or http://www.gnu.org/copyleft/gpl.txt .
 !
 !-----------------------------------------------------------------------
-subroutine star_q (xq, at, bg, nsym, s, invs, nq, sxq, isq, imq )
+subroutine star_q (xq, at, bg, nsym, s, invs, nq, sxq, isq, imq, verbosity )
   !-----------------------------------------------------------------------
   ! generate the star of q vectors that are equivalent to the input one
   ! NB: input s(:,:,1:nsym) must contain all crystal symmetries,
@@ -31,6 +31,8 @@ subroutine star_q (xq, at, bg, nsym, s, invs, nq, sxq, isq, imq )
 
   real(DP), intent(out) :: sxq (3, 48)
   ! list of vectors in the star of q
+  logical, intent(in) :: verbosity
+  ! if true prints several messages.
   !
   integer :: nsq (48), isym, ism1, iq, i
   ! number of symmetry ops. of bravais lattice
@@ -84,7 +86,7 @@ subroutine star_q (xq, at, bg, nsym, s, invs, nq, sxq, isq, imq )
         nq = nq + 1
         nsq (nq) = 1
         isq (isym) = nq
-        saq(:,nq) = raq(:) 
+        saq(:,nq) = raq(:)
         do i = 1, 3
            sxq (i, nq) = bg (i, 1) * saq (1, nq) &
                        + bg (i, 2) * saq (2, nq) &
@@ -95,7 +97,7 @@ subroutine star_q (xq, at, bg, nsym, s, invs, nq, sxq, isq, imq )
   !
   ! set imq index if needed and check star degeneracy
   !
-  raq (:) = - aq(:) 
+  raq (:) = - aq(:)
   imq = 0
   do iq = 1, nq
      if (eqvect (raq, saq (1, iq), zero) ) imq = iq
@@ -104,6 +106,7 @@ subroutine star_q (xq, at, bg, nsym, s, invs, nq, sxq, isq, imq )
   !
   ! writes star of q
   !
+  IF (verbosity) THEN
   WRITE( stdout, * )
   WRITE( stdout, '(5x,a,i4)') 'Number of q in the star = ', nq
   WRITE( stdout, '(5x,a)') 'List of q in the star:'
@@ -112,5 +115,6 @@ subroutine star_q (xq, at, bg, nsym, s, invs, nq, sxq, isq, imq )
      WRITE( stdout, '(5x,a)') 'In addition there is the -q list: '
      WRITE( stdout, '(7x,i4,3f14.9)') (iq, (-sxq(i,iq), i=1,3), iq=1,nq)
   endif
+  ENDIF
   return
 end subroutine star_q

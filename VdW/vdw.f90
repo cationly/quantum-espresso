@@ -18,8 +18,6 @@ PROGRAM vdw
   !    3) solve the modified Sternheimer equation to determine density response,
   !       hence polarizability
   !
-  !    DESCRIPTION of the INPUT : see file Docs/INPUT_VdW
-  !
   USE kinds,           ONLY : DP
   USE environment,     ONLY : environment_start
   USE mp_global,       ONLY : mp_startup
@@ -70,8 +68,7 @@ PROGRAM vdw
   !
   ! Calculate the effective potential
   !
-  CALL eff_pot (rho%of_r, nr1, nr2, nr3, nrx1, nrx2, nrx3, nrxx, nl,&
-                ngm, gg, gstart, nspin, alat, omega, ecutwfc,  &
+  CALL eff_pot (rho%of_r, nspin, alat, omega, &
                 charge, vstart, thresh_veff)
   !
   WRITE( stdout,'(/,5x,"End of Effective Potential Calculation",/)')

@@ -21,7 +21,7 @@ subroutine phq_summary
   USE ions_base,     ONLY : nat, ityp, atm, tau, ntyp => nsp, amass
   USE io_global,     ONLY : stdout
   USE cell_base,     ONLY : at, bg, ibrav, alat, omega, celldm
-  USE klist,         ONLY : lgauss, degauss, ngauss, nkstot, xk, wk
+  USE klist,         ONLY : lgauss, smearing, degauss, ngauss, nkstot, xk, wk
   USE gvect,         ONLY : ecutwfc, dual, nr1, nr2, nr3, gcutm, ngm
   USE gsmooth,       ONLY : doublegrid, nr1s, nr2s, nr3s, gcutms, ngms
   USE symm_base,     ONLY : s, sr, ftau, sname, t_rev
@@ -40,7 +40,7 @@ subroutine phq_summary
   USE qpoint,        ONLY : xq
   USE ramanm,        ONLY : lraman, elop
   USE control_flags, ONLY : iverbosity
-  
+
   implicit none
 
   integer :: i, mu, nu, ipol, apol, na, isymq, isym, nsymtot, &
@@ -86,7 +86,7 @@ subroutine phq_summary
   !
   IF (noncolin) THEN
      IF (lspinorb) THEN
-        IF (domag) THEN 
+        IF (domag) THEN
            WRITE( stdout, '(5x, "Noncollinear calculation with spin-orbit",/)')
         ELSE
            WRITE( stdout, '(5x, "Non magnetic calculation with spin-orbit",/)')
@@ -95,7 +95,7 @@ subroutine phq_summary
         WRITE( stdout, '(5x, "Noncollinear calculation without spin-orbit",/)')
      END IF
   ELSE
-     WRITE(stdout,'(/)') 
+     WRITE(stdout,'(/)')
   END IF
   !
   !    and here more detailed information. Description of the unit cell
@@ -212,9 +212,9 @@ subroutine phq_summary
   if (.NOT.lgauss) then
      WRITE( stdout, '(5x,"number of k points=",i6)') nkstot
   else
-     WRITE( stdout, '(5x,"number of k points=",i6, &
-          &               "  gaussian broad. (Ry)=",f8.4,5x, &
-          &               "ngauss = ",i3)') nkstot, degauss, ngauss
+     WRITE( stdout, '(/5x,"number of k points=", i6, 2x, &
+          &             a," smearing, width (Ry)=",f8.4)') &
+          &             nkstot, TRIM(smearing), degauss
   endif
   IF (iverbosity==1 .or. (nkstot < 100 .and. .not.ldisp) ) then
      WRITE( stdout, '(23x,"cart. coord. in units 2pi/a_0")')
@@ -249,16 +249,16 @@ subroutine phq_summary
      ELSE
         WRITE( stdout, '(5x,"Dielectric constant")')
      END IF
-     IF (zue.AND.zeu) THEN 
+     IF (zue.AND.zeu) THEN
              WRITE( stdout, '(5x,"Born effective charges in two ways ")' )
      ELSEIF (zue) THEN
              WRITE( stdout, '(5x,"Born effective charges as d P / d u")')
      ELSEIF (zeu) THEN
              WRITE( stdout, '(5x,"Born effective charges as d Force / d E")')
      END IF
-     IF (lraman) & 
+     IF (lraman) &
           WRITE( stdout, '(5x,"Raman tensor")')
-     IF (elop) & 
+     IF (elop) &
           WRITE( stdout, '(5x,"Electro-optic tensor")')
      IF (fpol)  THEN
         WRITE( stdout, '(5x,"Frequency Dependent Polarizability at (Ry) ")' )

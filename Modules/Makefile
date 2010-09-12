@@ -25,6 +25,7 @@ energies.o \
 environment.o \
 error_handler.o \
 fft_base.o \
+fft_interfaces.o \
 fft_parallel.o \
 fft_scalar.o \
 fft_types.o \
@@ -45,12 +46,12 @@ mp.o \
 mp_base.o \
 mp_global.o \
 mp_wave.o \
-path_base.o \
-path_formats.o \
-path_io_routines.o  \
-path_opt_routines.o \
-path_reparametrisation.o \
-path_variables.o \
+path_base_pre.o \
+path_formats_pre.o \
+path_io_routines_pre.o  \
+path_opt_routines_pre.o \
+path_reparametrisation_pre.o \
+path_variables_pre.o \
 parallel_include.o \
 parameters.o \
 parser.o \
@@ -65,6 +66,9 @@ read_ncpp.o \
 read_upf_v1.o \
 read_upf_v2.o \
 read_uspp.o \
+read_xml.o \
+read_xml_cards.o \
+read_xml_fields.o \
 recvec.o \
 set_signal.o \
 sic.o \

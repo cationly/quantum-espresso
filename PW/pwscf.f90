@@ -15,10 +15,10 @@ PROGRAM pwscf
   USE parameters,       ONLY : ntypx, npk, lmaxx
   USE control_flags,    ONLY : conv_elec, conv_ions, lpath, gamma_only
   USE environment,      ONLY : environment_start
-  USE path_variables,   ONLY : conv_path
+!  USE path_variables,   ONLY : conv_path
   USE check_stop,       ONLY : check_stop_init
-  USE path_base,        ONLY : initialize_path, search_mep
-  USE path_io_routines, ONLY : path_summary
+!  USE path_base,        ONLY : initialize_path, search_mep
+!  USE path_io_routines, ONLY : path_summary
   USE image_io_routines, ONLY : io_image_start
   USE mp_global,        ONLY : mp_startup
 #if defined(__MS2)
@@ -57,66 +57,47 @@ PROGRAM pwscf
   CALL ms2_initialization()
 #endif
   !
-  IF ( lpath ) THEN
+  CALL setup ()
+  !
+#if defined(__MS2)
+  CALL set_positions()
+#endif
+  !
+  CALL init_run()
+  !
+  main_loop: DO
      !
-     CALL io_image_start()
      !
-     CALL initialize_path()
+     ! ... electronic self-consistentcy
      !
-     CALL path_summary()
+     CALL electrons()
      !
-     CALL search_mep()
+     IF ( .NOT. conv_elec ) CALL stop_run( conv_elec )
      !
-     CALL stop_run( conv_path )
+     ! ... if requested ions are moved
      !
-  ELSE
+     CALL ions()
      !
-#if defined (EXX)
-     CALL exx_loop()
-#else
+#if defined(__MS2)
+     CALL return_forces()
+#endif
      !
-     CALL setup ()
+     ! ... exit condition (ionic convergence) is checked here
+     !
+     IF ( conv_ions ) EXIT main_loop
+     !
+     ! ... the ionic part of the hamiltonian is reinitialized
      !
 #if defined(__MS2)
      CALL set_positions()
 #endif
+     CALL hinit1()
      !
-     CALL init_run()
-     !
-     main_loop: DO
-        !
-        !
-        ! ... electronic self-consistentcy
-        !
-        CALL electrons()
-        !
-        IF ( .NOT. conv_elec ) CALL stop_run( conv_elec )
-        !
-        ! ... if requested ions are moved
-        !
-        CALL ions()
-        !
-#if defined(__MS2)
-        CALL return_forces()
-#endif
-        !
-        ! ... exit condition (ionic convergence) is checked here
-        !
-        IF ( conv_ions ) EXIT main_loop
-        !
-        ! ... the ionic part of the hamiltonian is reinitialized
-        !
-#if defined(__MS2)
-        CALL set_positions()
-#endif
-        CALL hinit1()
-        !
-     END DO main_loop
-#endif
-     !
-     CALL stop_run( conv_ions )
-     !
-  END IF      
+  END DO main_loop
+  !
+  CALL stop_run( conv_ions )
+  !
+  !  END IF      
   !
   STOP
   !

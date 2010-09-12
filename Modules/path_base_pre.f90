@@ -7,7 +7,7 @@
 !
 !
 !---------------------------------------------------------------------------
-MODULE path_base
+MODULE path_base_pre
   !---------------------------------------------------------------------------
   !
   ! ... This module contains most of the subroutines and functions needed by
@@ -67,15 +67,15 @@ MODULE path_base
 !      USE metadyn_vars,     ONLY : ncolvar
       USE io_files,         ONLY : prefix, tmp_dir, path_file, dat_file, crd_file, &
                                    int_file, xyz_file, axsf_file, broy_file
-      USE path_variables,   ONLY : climbing, pos, istep_path, nstep_path,    &
+      USE path_variables_pre,   ONLY : climbing, pos, istep_path, nstep_path,    &
                                    dim1, num_of_images, pes, grad_pes, mass, &
                                    use_masses, tangent, error, path_length,  &
                                    deg_of_freedom, frozen, use_freezing, k,  &
                                    k_min, tune_load_balance, grad, posold,   &
                                    elastic_grad, pending_image, first_last_opt
       USE mp_global,        ONLY : nimage
-      USE path_io_routines, ONLY : read_restart
-      USE path_variables,   ONLY : path_allocation
+      USE path_io_routines_pre, ONLY : read_restart
+      USE path_variables_pre,   ONLY : path_allocation
       !
       IMPLICIT NONE
       !
@@ -279,8 +279,8 @@ MODULE path_base
       ! ... linear interpolation
       !
       USE input_parameters, ONLY : input_images
-      USE path_variables,   ONLY : pos, dim1, num_of_images, path_length
-      USE path_formats,     ONLY : summary_fmt
+      USE path_variables_pre,   ONLY : pos, dim1, num_of_images, path_length
+      USE path_formats_pre,     ONLY : summary_fmt
       USE io_files,         ONLY : iunpath
       !
       IMPLICIT NONE
@@ -374,7 +374,7 @@ MODULE path_base
       !
       ! ... improved definition of the tangent (see JCP 113, 9978)
       !
-      USE path_variables, ONLY : dim1, pos, num_of_images, pes
+      USE path_variables_pre, ONLY : dim1, pos, num_of_images, pes
       !
       IMPLICIT NONE
       !
@@ -448,7 +448,7 @@ MODULE path_base
     SUBROUTINE elastic_constants()
       !------------------------------------------------------------------------
       !
-      USE path_variables, ONLY : num_of_images, Emax, Emin, &
+      USE path_variables_pre, ONLY : num_of_images, Emax, Emin, &
                                  k_max, k_min, k, pes
       !
       IMPLICIT NONE
@@ -488,7 +488,7 @@ MODULE path_base
     SUBROUTINE neb_gradient()
       !------------------------------------------------------------------------
       !
-      USE path_variables,    ONLY : pos, grad, elastic_grad, grad_pes, k, &
+      USE path_variables_pre,    ONLY : pos, grad, elastic_grad, grad_pes, k, &
                                     num_of_images, climbing, mass, tangent
       !
       IMPLICIT NONE
@@ -546,10 +546,10 @@ MODULE path_base
       !-----------------------------------------------------------------------
       !
       USE ions_base,         ONLY : if_pos
-      USE path_variables,    ONLY : dim1, mass, num_of_images, grad_pes, &
+      USE path_variables_pre,    ONLY : dim1, mass, num_of_images, grad_pes, &
                                     tangent, llangevin, lang, grad, ds, &
                                     temp_req
-      USE path_variables,    ONLY : climbing
+      USE path_variables_pre,    ONLY : climbing
       USE random_numbers,    ONLY : gauss_dist
       !
       IMPLICIT NONE
@@ -616,7 +616,7 @@ MODULE path_base
     FUNCTION new_tangent() RESULT( ntan )
       !-----------------------------------------------------------------------
       !
-      USE path_variables, ONLY : dim1, num_of_images
+      USE path_variables_pre, ONLY : dim1, num_of_images
       !
       IMPLICIT NONE
       !
@@ -645,7 +645,7 @@ MODULE path_base
     SUBROUTINE compute_error( err_out )
       !-----------------------------------------------------------------------
       !
-      USE path_variables, ONLY : pos, posold, num_of_images, grad, &
+      USE path_variables_pre, ONLY : pos, posold, num_of_images, grad, &
                                  use_freezing, first_last_opt, path_thr, &
                                  error, frozen, lquick_min
       USE mp_global,      ONLY : nimage
@@ -760,7 +760,7 @@ MODULE path_base
     SUBROUTINE born_oppenheimer_pes( stat )
       !------------------------------------------------------------------------
       !
-      USE path_variables, ONLY : nim => num_of_images, &
+      USE path_variables_pre, ONLY : nim => num_of_images, &
                                  pending_image, istep_path, pes, &
                                  first_last_opt, Emin, Emax, Emax_index
       !
@@ -801,7 +801,7 @@ MODULE path_base
     SUBROUTINE born_oppenheimer_fes( stat )
       !------------------------------------------------------------------------
       !
-      USE path_variables, ONLY : num_of_images, pending_image, &
+      USE path_variables_pre, ONLY : num_of_images, pending_image, &
                                  istep_path, first_last_opt
       !
       IMPLICIT NONE
@@ -835,8 +835,8 @@ MODULE path_base
     SUBROUTINE fe_profile()
       !------------------------------------------------------------------------
       !
-      USE path_variables, ONLY : nim => num_of_images
-      USE path_variables, ONLY : pos, pes, grad_pes, &
+      USE path_variables_pre, ONLY : nim => num_of_images
+      USE path_variables_pre, ONLY : pos, pes, grad_pes, &
                                  Emin, Emax, Emax_index
       !
       IMPLICIT NONE
@@ -865,7 +865,7 @@ MODULE path_base
     SUBROUTINE check_domain()
       !-----------------------------------------------------------------------
       !
-      USE path_variables,     ONLY : pos, num_of_images, &
+      USE path_variables_pre,     ONLY : pos, num_of_images, &
                                      istep_path, first_last_opt
       USE constraints_module, ONLY : constr_target
       USE metadyn_base,       ONLY : impose_domain_constraints
@@ -905,14 +905,14 @@ MODULE path_base
       !
 !      USE control_flags,    ONLY : lneb, lsmd, lcoarsegrained
       USE control_flags,    ONLY : lneb, lsmd
-      USE path_variables,   ONLY : conv_path, istep_path, nstep_path,  &
+      USE path_variables_pre,   ONLY : conv_path, istep_path, nstep_path,  &
                                    pending_image, activation_energy, &
                                    err_max, pes, climbing, CI_scheme,  &
                                    Emax_index, fixed_tan, tangent
-      USE path_io_routines, ONLY : write_restart, write_dat_files, write_output
-      USE path_formats,     ONLY : scf_iter_fmt
+      USE path_io_routines_pre, ONLY : write_restart, write_dat_files, write_output
+      USE path_formats_pre,     ONLY : scf_iter_fmt
       !
-      USE path_reparametrisation
+      USE path_reparametrisation_pre
       !
       IMPLICIT NONE
       !
@@ -1046,9 +1046,9 @@ MODULE path_base
       !------------------------------------------------------------------------
       !
       USE control_flags,  ONLY : lsmd
-      USE path_variables, ONLY : pending_image, tangent
+      USE path_variables_pre, ONLY : pending_image, tangent
       !
-      USE path_reparametrisation
+      USE path_reparametrisation_pre
       !
       IMPLICIT NONE
       !
@@ -1069,10 +1069,10 @@ MODULE path_base
       !
       USE input_parameters, ONLY : num_of_images_inp => num_of_images
       USE control_flags,    ONLY : lneb, lsmd
-      USE path_variables,   ONLY : path_thr, istep_path, nstep_path, &
+      USE path_variables_pre,   ONLY : path_thr, istep_path, nstep_path, &
                                    conv_path, pending_image, &
                                    num_of_images, llangevin
-      USE path_formats,     ONLY : final_fmt
+      USE path_formats_pre,     ONLY : final_fmt
       !
       IMPLICIT NONE
       !
@@ -1151,10 +1151,10 @@ MODULE path_base
     SUBROUTINE optimisation_step()
       !------------------------------------------------------------------------
       !
-      USE path_variables,    ONLY : num_of_images, frozen, lsteep_des, &
+      USE path_variables_pre,    ONLY : num_of_images, frozen, lsteep_des, &
                                     lquick_min, lbroyden, lbroyden2, &
                                     llangevin, istep_path
-      USE path_opt_routines, ONLY : quick_min, broyden, broyden2, &
+      USE path_opt_routines_pre, ONLY : quick_min, broyden, broyden2, &
                                     steepest_descent, langevin
       !
       IMPLICIT NONE
@@ -1198,4 +1198,4 @@ MODULE path_base
       !
     END SUBROUTINE optimisation_step
     !
-END MODULE path_base
+END MODULE path_base_pre

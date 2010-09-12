@@ -111,8 +111,7 @@
       USE grid_dimensions,    ONLY: nr1, nr2, nr3, &
                                     nr1x, nr2x, nr3x, nnrx
       USE cell_base,          ONLY: omega
-      USE smooth_grid_dimensions, ONLY: nr1s, nr2s, nr3s, &
-                                        nr1sx, nr2sx, nr3sx, nnrsx
+      USE smooth_grid_dimensions, ONLY: nnrsx
       USE electrons_base,     ONLY: nx => nbspx, n => nbsp, f, ispin, nspin
       USE constants,          ONLY: pi, fpi
       USE mp,                 ONLY: mp_sum
@@ -121,7 +120,8 @@
                                     use_task_groups, ogrp_comm, nolist
       USE funct,              ONLY: dft_is_meta
       USE cg_module,          ONLY: tcg
-      USE cp_interfaces,      ONLY: fwfft, invfft, stress_kin
+      USE cp_interfaces,      ONLY: stress_kin
+      USE fft_interfaces,     ONLY: fwfft, invfft
       USE fft_base,           ONLY: dffts, dfftp
       USE cp_interfaces,      ONLY: checkrho
       USE cdvan,              ONLY: dbec, drhovan
@@ -479,7 +479,7 @@
 
          ALLOCATE( psis( dffts%nnrx * nogrp ) ) 
          !
-         ALLOCATE( tmp_rhos ( nr1sx * nr2sx * dffts%tg_npp( me_image + 1 ), nspin ) )
+         ALLOCATE( tmp_rhos ( dffts%nr1x*dffts%nr2x*dffts%tg_npp( me_image + 1 ), nspin ) )
          !
          tmp_rhos = 0_DP
 
@@ -590,11 +590,12 @@
             !code this should be equal to the total number of planes
             !
 
-            IF( nr1sx * nr2sx * dffts%tg_npp( me_image + 1 ) > SIZE( psis ) ) &
-               CALL errore( ' rhoofr ', ' psis size too low ', nr1sx * nr2sx * dffts%tg_npp( me_image + 1 ) )
+            ir =  dffts%nr1x*dffts%nr2x*dffts%tg_npp( me_image + 1 ) 
+            IF( ir > SIZE( psis ) ) &
+               CALL errore( ' rhoofr ', ' psis size too small ', ir )
 
 !$omp parallel do default(shared)
-            do ir = 1, nr1sx * nr2sx * dffts%tg_npp( me_image + 1 )
+            do ir = 1, dffts%nr1x*dffts%nr2x*dffts%tg_npp( me_image + 1 )
                tmp_rhos(ir,iss1) = tmp_rhos(ir,iss1) + sa1*( real(psis(ir)))**2
                tmp_rhos(ir,iss2) = tmp_rhos(ir,iss2) + sa2*(aimag(psis(ir)))**2
             end do
@@ -613,11 +614,11 @@
          from = 1
          DO ii = 1, nogrp
             IF ( nolist( ii ) == me_image ) EXIT !Exit the loop
-            from = from +  nr1sx*nr2sx*dffts%npp( nolist( ii ) + 1 )! From where to copy initially
+            from = from +  dffts%nr1x*dffts%nr2x*dffts%npp( nolist( ii ) + 1 )! From where to copy initially
          ENDDO
          !
          DO ir = 1, nspin
-            CALL dcopy( nr1sx*nr2sx*dffts%npp(me_image+1), tmp_rhos(from,ir), 1, rhos(1,ir), 1)
+            CALL dcopy( dffts%nr1x*dffts%nr2x*dffts%npp(me_image+1), tmp_rhos(from,ir), 1, rhos(1,ir), 1)
          ENDDO
 
          DEALLOCATE( tmp_rhos )
@@ -647,7 +648,7 @@
       use grid_dimensions,    only: nr1, nr2, nr3, &
                                     nr1x, nr2x, nr3x, nnrx
       use cell_base,          only: tpiba
-      USE cp_interfaces,      ONLY: invfft
+      USE fft_interfaces,     ONLY: invfft
       USE fft_base,           ONLY: dfftp
 !
       implicit none
@@ -776,7 +777,7 @@ SUBROUTINE drhov(irb,eigrb,rhovan,drhovan,rhog,rhor,drhog,drhor)
       USE qgb_mod,                  ONLY: qgb
       USE dqgb_mod,                 ONLY: dqgb
       USE recvecs_indexes,          ONLY: nm, np
-      USE cp_interfaces,            ONLY: fwfft, invfft
+      USE fft_interfaces,           ONLY: fwfft, invfft
       USE fft_base,                 ONLY: dfftb, dfftp
 
       IMPLICIT NONE
@@ -1068,7 +1069,7 @@ SUBROUTINE rhov(irb,eigrb,rhovan,rhog,rhor)
       USE control_flags,            ONLY: iprint, iprsta, tpre
       USE qgb_mod,                  ONLY: qgb
       USE recvecs_indexes,          ONLY: np, nm
-      USE cp_interfaces,            ONLY: fwfft, invfft
+      USE fft_interfaces,           ONLY: fwfft, invfft
       USE fft_base,                 ONLY: dfftb, dfftp
 !
       IMPLICIT NONE
@@ -1121,9 +1122,9 @@ SUBROUTINE rhov(irb,eigrb,rhovan,rhog,rhor)
 
 !$omp parallel default(none) &
 !$omp          shared(nvb, na, nnrb, ngb, nh, rhovan, qgb, eigrb, dfftb, iprsta, omegab, irb, v, nr1b, &
-!$omp                 nr2b, nr3b, nmb, stdout, ci, npb ) &
+!$omp                 nr2b, nr3b, nmb, stdout, ci, npb, rhor ) &
 !$omp          private(mytid, ntids, is, ia, nfft, ifft, iv, jv, ijv, sumrho, qgbt, ig, iss, isa, ca, &
-!$omp                  qv, itid )
+!$omp                  qv, itid, ir, nnr )
 
          iss=1
          isa=1
@@ -1235,16 +1236,17 @@ SUBROUTINE rhov(irb,eigrb,rhovan,rhog,rhor)
 
          DEALLOCATE(qv)
          DEALLOCATE(qgbt)
-
-!$omp end parallel
-
-         iss = 1
          !
          !  rhor(r) = total (smooth + US) charge density in real space
          !
+!$omp end parallel
+
+         iss = 1
+
          DO ir=1,nnr
             rhor(ir,iss)=rhor(ir,iss)+DBLE(v(ir))        
          END DO
+
 !
          IF(iprsta.GT.2) THEN
             ca = SUM(v)

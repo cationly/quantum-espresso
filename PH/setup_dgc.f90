@@ -16,7 +16,9 @@ subroutine setup_dgc
   !
 
   USE constants,ONLY : e2
-  USE gvect,    ONLY : ngm, nrxx, g, nr1, nr2, nr3, nrx1, nrx2, nrx3, nl
+  USE fft_base, ONLY : dfftp
+  USE fft_interfaces, ONLY: fwfft
+  USE gvect,    ONLY : ngm, nrxx, g, nl
   USE spin_orb, ONLY : domag
   USE scf,      ONLY : rho, rho_core, rhog_core
   USE noncollin_module, ONLY : noncolin, ux, nspin_gga, nspin_mag
@@ -43,18 +45,18 @@ subroutine setup_dgc
   if ( .not. dft_is_gradient() ) return
 
   IF (noncolin.AND.domag) THEN
-     allocate (segni (nrxx))    
-     allocate (vsgga (nrxx))    
-     allocate (gmag (3, nrxx, nspin_mag))    
+     allocate (segni (nrxx))
+     allocate (vsgga (nrxx))
+     allocate (gmag (3, nrxx, nspin_mag))
      gmag=0.0_dp
   ENDIF
 
-  allocate (dvxc_rr(  nrxx , nspin_gga , nspin_gga))    
-  allocate (dvxc_sr(  nrxx , nspin_gga , nspin_gga))    
-  allocate (dvxc_ss(  nrxx , nspin_gga , nspin_gga))    
-  allocate (dvxc_s (  nrxx , nspin_gga , nspin_gga))    
-  allocate (grho   (  3    , nrxx   , nspin_gga))    
-  allocate (rhoout (  nrxx , nspin_gga))    
+  allocate (dvxc_rr(  nrxx , nspin_gga , nspin_gga))
+  allocate (dvxc_sr(  nrxx , nspin_gga , nspin_gga))
+  allocate (dvxc_ss(  nrxx , nspin_gga , nspin_gga))
+  allocate (dvxc_s (  nrxx , nspin_gga , nspin_gga))
+  allocate (grho   (  3    , nrxx   , nspin_gga))
+  allocate (rhoout (  nrxx , nspin_gga))
 
   dvxc_rr(:,:,:) = 0.d0
   dvxc_sr(:,:,:) = 0.d0
@@ -71,16 +73,15 @@ subroutine setup_dgc
      DO is = 1, nspin_gga
         !
         if (nlcc_any) rhoout(:,is)  = fac * rho_core(:)  + rhoout(:,is)
-       
+
         psic(:) = rhoout(:,is)
         !
-        CALL cft3( psic, nr1, nr2, nr3, nrx1, nrx2, nrx3, -1 )
+        CALL fwfft ('Dense', psic, dfftp)
         !
         rhogout(:,is) = psic(nl(:))
         !
         !
-        CALL gradrho( nrx1, nrx2, nrx3, nr1, nr2, nr3, nrxx, &
-                   rhogout(1,is), ngm, g, nl, grho(1,1,is) )
+        CALL gradrho( nrxx, rhogout(1,is), ngm, g, nl, grho(1,1,is) )
         !
      END DO
      DEALLOCATE(rhogout)
@@ -95,8 +96,7 @@ subroutine setup_dgc
         enddo
      endif
      do is = 1, nspin_gga
-        call gradrho (nrx1, nrx2, nrx3, nr1, nr2, nr3, nrxx, rho%of_g (1, is), &
-             ngm, g, nl, grho (1, 1, is) )
+        call gradrho ( nrxx, rho%of_g (1, is), ngm, g, nl, grho (1, 1, is) )
      enddo
   END IF
 

@@ -7,9 +7,7 @@ MODFLAGS= $(MOD_FLAG)../iotk/src $(MOD_FLAG)../Modules \
           $(MOD_FLAG)../EE $(MOD_FLAG).
 
 PWOBJS = \
-pwscf.o \
-compute_fes_grads.o \
-compute_scf.o
+pwscf.o 
 
 PWLIBS = \
 a2fmod.o \
@@ -41,8 +39,6 @@ ccgdiagg.o \
 cdiagh.o \
 cdiaghg.o \
 cegterg.o \
-cft3.o \
-cft3s.o \
 clean_pw.o \
 close_files.o \
 commutator_Hx_psi.o \
@@ -73,7 +69,6 @@ eqvect.o \
 ewald.o \
 ewald_dipole.o \
 exx.o \
-exx_loop.o \
 find_group.o \
 forces_bp_efield.o \
 force_cc.o \
@@ -216,10 +211,7 @@ vcsubs.o \
 vhpsi.o \
 vloc_of_g.o \
 vloc_psi.o \
-w0gauss.o \
-w1gauss.o \
 wfcinit.o \
-wgauss.o \
 write_ns.o \
 wsweight.o \
 weights.o \
